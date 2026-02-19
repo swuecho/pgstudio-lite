@@ -401,21 +401,45 @@ export default function SqlEditorPage() {
       return
     }
 
-    if (activeQueryTab?.snippetId && !forceCreate) {
-      const existingSnippet = snippetItems.find((item) => item.id === activeQueryTab.snippetId)
+    try {
+      setSavingSnippet(true)
+      if (activeQueryTab?.snippetId && !forceCreate) {
+        const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            id: activeQueryTab.snippetId,
+            queryText: content,
+          }),
+        })
+        setStatus({ text: `Updated snippet: ${payload.item.title}`, tone: 'ok' })
+        setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
+        setQueryTabs((tabs) =>
+          tabs.map((tab) =>
+            tab.id === activeQueryTab.id
+              ? {
+                  ...tab,
+                  title: payload.item.title,
+                  query: payload.item.query_text,
+                  snippetId: payload.item.id,
+                  dirty: false,
+                }
+              : tab
+          )
+        )
+        return
+      }
+
+      const defaultTitle = content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
+      const title = window.prompt('Snippet name', defaultTitle)?.trim()
+      if (!title) return
       const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          id: activeQueryTab.snippetId,
-          title: existingSnippet?.title || activeQueryTab.title || 'Snippet',
-          queryText: content,
-        }),
+        method: 'POST',
+        body: JSON.stringify({ title, queryText: content }),
       })
-      setStatus({ text: `Updated snippet: ${payload.item.title}`, tone: 'ok' })
-      setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
+      setStatus({ text: `Saved snippet: ${payload.item.title}`, tone: 'ok' })
       setQueryTabs((tabs) =>
         tabs.map((tab) =>
-          tab.id === activeQueryTab.id
+          tab.id === activeQueryTab?.id
             ? {
                 ...tab,
                 title: payload.item.title,
@@ -426,46 +450,28 @@ export default function SqlEditorPage() {
             : tab
         )
       )
-      return
+      await loadSnippets()
+      setActiveNavTab('snippets')
+    } catch (error) {
+      setStatus({
+        text: error instanceof Error ? error.message : 'Failed to save snippet',
+        tone: 'error',
+      })
+    } finally {
+      setSavingSnippet(false)
     }
-
-    const defaultTitle = content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
-    const title = window.prompt('Snippet name', defaultTitle)?.trim()
-    if (!title) return
-    const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-      method: 'POST',
-      body: JSON.stringify({ title, queryText: content }),
-    })
-    setStatus({ text: `Saved snippet: ${payload.item.title}`, tone: 'ok' })
-    setQueryTabs((tabs) =>
-      tabs.map((tab) =>
-        tab.id === activeQueryTab?.id
-          ? {
-              ...tab,
-              title: payload.item.title,
-              query: payload.item.query_text,
-              snippetId: payload.item.id,
-              dirty: false,
-            }
-          : tab
-      )
-    )
-    await loadSnippets()
-    setActiveNavTab('snippets')
   }
 
   async function autosaveSnippetDraft(tabId: string, snippetId: string, queryText: string) {
     const content = queryText.trim()
     if (!content) return
 
-    const existingSnippet = snippetItems.find((item) => item.id === snippetId)
     setSavingSnippet(true)
     try {
       const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
         method: 'PATCH',
         body: JSON.stringify({
           id: snippetId,
-          title: existingSnippet?.title || 'Snippet',
           queryText: content,
         }),
       })
@@ -482,6 +488,11 @@ export default function SqlEditorPage() {
             : tab
         )
       )
+    } catch (error) {
+      setStatus({
+        text: error instanceof Error ? error.message : 'Autosave failed',
+        tone: 'warning',
+      })
     } finally {
       setSavingSnippet(false)
     }
@@ -934,6 +945,9 @@ export default function SqlEditorPage() {
 
                 editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
                   void runCurrentQuery()
+                })
+                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+                  void saveCurrentAsSnippet()
                 })
                 editor.onDidChangeCursorSelection((event) => setHasSelection(!event.selection.isEmpty()))
               }}
