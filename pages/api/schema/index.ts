@@ -1,0 +1,21 @@
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { listSchemaObjects } from '../../../lib/db'
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET')
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const connectionName =
+    typeof req.query.connectionName === 'string' ? req.query.connectionName : 'default'
+
+  try {
+    const tables = await listSchemaObjects(connectionName)
+    return res.status(200).json({ tables })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const statusCode = (error as { statusCode?: number })?.statusCode || 400
+    return res.status(statusCode).json({ error: message })
+  }
+}
