@@ -2,8 +2,10 @@ import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useState } from 'react'
 import { fetchJson } from '../../lib/http'
 import { detectOS, suffixWithLimit } from './utils'
-import { Connection, HistoryItem, QueryResult, SnippetItem } from './types'
+import { Connection, QueryResult } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'
+import { useSqlEditorHistory } from './useSqlEditorHistory'
+import { useSqlEditorSnippets } from './useSqlEditorSnippets'
 import { useSqlEditorTabs } from './useSqlEditorTabs'
 
 export function useSqlEditorState() {
@@ -11,43 +13,34 @@ export function useSqlEditorState() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [connectionName, setConnectionName] = useState('default')
   const [status, setStatus] = useState<{ text: string; tone: string }>({ text: 'Ready', tone: 'default' })
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
-  const [snippetItems, setSnippetItems] = useState<SnippetItem[]>([])
   const [activeNavTab, setActiveNavTab] = useState<'history' | 'snippets' | 'explorer'>('explorer')
   const [historySearch, setHistorySearch] = useState('')
   const [running, setRunning] = useState(false)
-  const [savingSnippet, setSavingSnippet] = useState(false)
-  const [renamingSnippetId, setRenamingSnippetId] = useState<string | null>(null)
-  const [renameDraft, setRenameDraft] = useState('')
   const [hasSelection, setHasSelection] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
 
   const tabs = useSqlEditorTabs()
   const explorer = useSqlEditorExplorer(connectionName, historySearch)
+  const history = useSqlEditorHistory(historySearch)
+  const snippets = useSqlEditorSnippets({
+    activeQueryTab: tabs.activeQueryTab,
+    setQueryTabs: tabs.setQueryTabs,
+    setStatus,
+    setActiveNavTab,
+  })
 
   const runLabel = useMemo(() => {
     const shortcut = detectOS() === 'macos' ? '⌘↵' : 'Ctrl↵'
     return hasSelection ? `Run selected (${shortcut})` : `Run (${shortcut})`
   }, [hasSelection])
 
-  const filteredHistory = useMemo(() => {
-    const q = historySearch.trim().toLowerCase()
-    if (!q) return historyItems
-    return historyItems.filter(
-      (item) =>
-        item.query_text.toLowerCase().includes(q) ||
-        item.connection_name.toLowerCase().includes(q) ||
-        item.status.toLowerCase().includes(q)
-    )
-  }, [historyItems, historySearch])
-
   const filteredSnippets = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
-    if (!q) return snippetItems
-    return snippetItems.filter(
+    if (!q) return snippets.snippetItems
+    return snippets.snippetItems.filter(
       (item) => item.title.toLowerCase().includes(q) || item.query_text.toLowerCase().includes(q)
     )
-  }, [snippetItems, historySearch])
+  }, [snippets.snippetItems, historySearch])
 
   function insertIntoEditor(sqlText: string) {
     if (!editorRef) {
@@ -74,16 +67,6 @@ export function useSqlEditorState() {
     if (data.connections[0]) setConnectionName(data.connections[0].name)
   }
 
-  async function loadHistory() {
-    const data = await fetchJson<{ items: HistoryItem[] }>('/api/history?limit=300')
-    setHistoryItems(data.items || [])
-  }
-
-  async function loadSnippets() {
-    const data = await fetchJson<{ items: SnippetItem[] }>('/api/snippets?limit=300')
-    setSnippetItems(data.items || [])
-  }
-
   async function runCurrentQuery() {
     if (running || !editorRef || !tabs.activeQueryTab) return
 
@@ -108,218 +91,27 @@ export function useSqlEditorState() {
       setResult(payload)
       setStatus({ text: `Success in ${payload.durationMs} ms`, tone: 'ok' })
       tabs.setQueryTabs((all) => all.map((t) => (t.id === tabs.activeQueryTab?.id ? { ...t, dirty: false } : t)))
-      await loadHistory()
+      await history.loadHistory()
     } catch (error) {
       setResult(null)
       setStatus({ text: error instanceof Error ? error.message : 'Query failed', tone: 'error' })
-      await loadHistory()
+      await history.loadHistory()
     } finally {
       setRunning(false)
     }
   }
 
-  async function clearHistory() {
-    await fetchJson<{ ok: boolean }>('/api/history', { method: 'DELETE' })
-    await loadHistory()
-  }
-
-  async function saveCurrentAsSnippet(forceCreate = false) {
-    const content = (tabs.activeQueryTab?.query || '').trim()
-    if (!content) {
-      setStatus({ text: 'Query is empty', tone: 'warning' })
-      return
-    }
-
-    try {
-      setSavingSnippet(true)
-      if (tabs.activeQueryTab?.snippetId && !forceCreate) {
-        const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-          method: 'PATCH',
-          body: JSON.stringify({
-            id: tabs.activeQueryTab.snippetId,
-            queryText: content,
-          }),
-        })
-        setStatus({ text: `Updated snippet: ${payload.item.title}`, tone: 'ok' })
-        setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
-        tabs.setQueryTabs((all) =>
-          all.map((tab) =>
-            tab.id === tabs.activeQueryTab?.id
-              ? {
-                  ...tab,
-                  title: payload.item.title,
-                  query: payload.item.query_text,
-                  snippetId: payload.item.id,
-                  dirty: false,
-                }
-              : tab
-          )
-        )
-        return
-      }
-
-      const defaultTitle = content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
-      const title = window.prompt('Snippet name', defaultTitle)?.trim()
-      if (!title) return
-      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-        method: 'POST',
-        body: JSON.stringify({ title, queryText: content }),
-      })
-      setStatus({ text: `Saved snippet: ${payload.item.title}`, tone: 'ok' })
-      tabs.setQueryTabs((all) =>
-        all.map((tab) =>
-          tab.id === tabs.activeQueryTab?.id
-            ? {
-                ...tab,
-                title: payload.item.title,
-                query: payload.item.query_text,
-                snippetId: payload.item.id,
-                dirty: false,
-              }
-            : tab
-        )
-      )
-      await loadSnippets()
-      setActiveNavTab('snippets')
-    } catch (error) {
-      setStatus({
-        text: error instanceof Error ? error.message : 'Failed to save snippet',
-        tone: 'error',
-      })
-    } finally {
-      setSavingSnippet(false)
-    }
-  }
-
-  async function autosaveSnippetDraft(tabId: string, snippetId: string, queryText: string) {
-    const content = queryText.trim()
-    if (!content) return
-
-    setSavingSnippet(true)
-    try {
-      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          id: snippetId,
-          queryText: content,
-        }),
-      })
-      setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
-      tabs.setQueryTabs((all) =>
-        all.map((tab) =>
-          tab.id === tabId && tab.query.trim() === content
-            ? {
-                ...tab,
-                title: payload.item.title,
-                query: payload.item.query_text,
-                dirty: false,
-              }
-            : tab
-        )
-      )
-    } catch (error) {
-      setStatus({
-        text: error instanceof Error ? error.message : 'Autosave failed',
-        tone: 'warning',
-      })
-    } finally {
-      setSavingSnippet(false)
-    }
-  }
-
-  async function renameSnippet(item: SnippetItem, nextTitle?: string) {
-    const title = (nextTitle ?? item.title).trim()
-    if (!title || title === item.title) {
-      setRenamingSnippetId(null)
-      setRenameDraft('')
-      return
-    }
-    try {
-      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-        method: 'PATCH',
-        body: JSON.stringify({ id: item.id, title }),
-      })
-      setStatus({ text: `Renamed snippet: ${payload.item.title}`, tone: 'ok' })
-      setSnippetItems((items) => items.map((entry) => (entry.id === payload.item.id ? payload.item : entry)))
-      tabs.setQueryTabs((all) =>
-        all.map((tab) =>
-          tab.snippetId === payload.item.id
-            ? {
-                ...tab,
-                title: payload.item.title,
-              }
-            : tab
-        )
-      )
-      setRenamingSnippetId(null)
-      setRenameDraft('')
-    } catch (error) {
-      setStatus({
-        text: error instanceof Error ? error.message : 'Failed to rename snippet',
-        tone: 'error',
-      })
-    }
-  }
-
-  async function duplicateSnippet(item: SnippetItem) {
-    const suggestedTitle = `${item.title} copy`
-    const title = window.prompt('Duplicate snippet as', suggestedTitle)?.trim()
-    if (!title) return
-    const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-      method: 'POST',
-      body: JSON.stringify({ title, queryText: item.query_text }),
-    })
-    setStatus({ text: `Duplicated snippet: ${payload.item.title}`, tone: 'ok' })
-    await loadSnippets()
-    setActiveNavTab('snippets')
-  }
-
-  async function deleteSnippet(item: SnippetItem) {
-    const confirmed = window.confirm(`Delete snippet "${item.title}"? This cannot be undone.`)
-    if (!confirmed) return
-    await fetchJson<{ ok: boolean }>('/api/snippets', {
-      method: 'DELETE',
-      body: JSON.stringify({ id: item.id }),
-    })
-    setSnippetItems((items) => items.filter((entry) => entry.id !== item.id))
-    tabs.setQueryTabs((all) =>
-      all.map((tab) => (tab.snippetId === item.id ? { ...tab, snippetId: undefined, dirty: true } : tab))
-    )
-    setStatus({ text: `Deleted snippet: ${item.title}`, tone: 'ok' })
-  }
-
-  function beginRenameSnippet(item: SnippetItem) {
-    setRenamingSnippetId(item.id)
-    setRenameDraft(item.title)
-  }
-
-  function cancelRenameSnippet() {
-    setRenamingSnippetId(null)
-    setRenameDraft('')
-  }
 
   useEffect(() => {
     void loadConnections()
-    void loadHistory()
-    void loadSnippets()
+    void history.loadHistory()
+    void snippets.loadSnippets()
   }, [])
 
   useEffect(() => {
     if (!connectionName) return
     void explorer.loadSchema()
   }, [connectionName])
-
-  useEffect(() => {
-    if (!tabs.activeQueryTab?.snippetId || !tabs.activeQueryTab.dirty) return
-    const timer = window.setTimeout(() => {
-      void autosaveSnippetDraft(
-        tabs.activeQueryTab.id,
-        tabs.activeQueryTab.snippetId as string,
-        tabs.activeQueryTab.query
-      )
-    }, 1200)
-    return () => window.clearTimeout(timer)
-  }, [tabs.activeQueryTab?.id, tabs.activeQueryTab?.snippetId, tabs.activeQueryTab?.query, tabs.activeQueryTab?.dirty])
 
   return {
     editorRef,
@@ -332,8 +124,8 @@ export function useSqlEditorState() {
     setActiveNavTab,
     historySearch,
     setHistorySearch,
-    savingSnippet,
-    filteredHistory,
+    savingSnippet: snippets.savingSnippet,
+    filteredHistory: history.filteredHistory,
     filteredSnippets,
     schemaGroups: explorer.schemaGroups,
     expandedSchemas: explorer.expandedSchemas,
@@ -342,11 +134,11 @@ export function useSqlEditorState() {
     toggleTable: explorer.toggleTable,
     loadingColumnsByKey: explorer.loadingColumnsByKey,
     tableColumnsByKey: explorer.tableColumnsByKey,
-    renamingSnippetId,
-    renameDraft,
-    setRenameDraft,
-    beginRenameSnippet,
-    cancelRenameSnippet,
+    renamingSnippetId: snippets.renamingSnippetId,
+    renameDraft: snippets.renameDraft,
+    setRenameDraft: snippets.setRenameDraft,
+    beginRenameSnippet: snippets.beginRenameSnippet,
+    cancelRenameSnippet: snippets.cancelRenameSnippet,
     runLabel,
     running,
     result,
@@ -359,14 +151,14 @@ export function useSqlEditorState() {
     activeQueryTab: tabs.activeQueryTab,
     setActiveTabQuery: tabs.setActiveTabQuery,
     openSnippetInTab: tabs.openSnippetInTab,
-    duplicateSnippet,
-    renameSnippet,
-    deleteSnippet,
+    duplicateSnippet: snippets.duplicateSnippet,
+    renameSnippet: snippets.renameSnippet,
+    deleteSnippet: snippets.deleteSnippet,
     runCurrentQuery,
-    saveCurrentAsSnippet,
-    clearHistory,
-    loadHistory,
-    loadSnippets,
+    saveCurrentAsSnippet: snippets.saveCurrentAsSnippet,
+    clearHistory: history.clearHistory,
+    loadHistory: history.loadHistory,
+    loadSnippets: snippets.loadSnippets,
     loadSchema: explorer.loadSchema,
     insertIntoEditor,
     schemaTablesRef: explorer.schemaTablesRef,
