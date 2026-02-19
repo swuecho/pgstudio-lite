@@ -1,96 +1,17 @@
-import dynamic from 'next/dynamic'
-import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
 import { SqlSidebar } from '../components/sql-editor/Sidebar'
 import { SqlTabsBar } from '../components/sql-editor/TabsBar'
 import { Connection, HistoryItem, QueryResult, QueryTab, SchemaTable, SnippetItem } from '../components/sql-editor/types'
+import { detectOS, formatCell, formatTime, suffixWithLimit } from '../components/sql-editor/utils'
 import ThemeToggle from '../components/theme-toggle'
-
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
+import { fetchJson } from '../lib/http'
 
 const DEFAULT_QUERY = '-- Write SQL and run with Ctrl/Cmd+Enter\nselect now() as server_time;'
 const TABS_STORAGE_KEY = 'pgstudio-query-tabs-v1'
 const ACTIVE_TAB_STORAGE_KEY = 'pgstudio-active-tab-v1'
-
-if (typeof window !== 'undefined') {
-  ;(window as any).MonacoEnvironment = {
-    ...((window as any).MonacoEnvironment || {}),
-    baseUrl: '/api/monaco/',
-  }
-}
-
-loader.config({ paths: { vs: '/api/monaco' } })
-
-function detectOS() {
-  if (typeof navigator === 'undefined') return 'linux'
-  const platform = navigator.platform.toLowerCase()
-  if (platform.includes('mac')) return 'macos'
-  if (platform.includes('win')) return 'windows'
-  return 'linux'
-}
-
-function formatTime(iso: string) {
-  try {
-    return new Date(iso).toLocaleString()
-  } catch {
-    return iso
-  }
-}
-
-function formatCell(value: unknown) {
-  if (value === null || value === undefined) return 'NULL'
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}
-
-function getCurrentTheme() {
-  if (typeof document === 'undefined') return 'light'
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-}
-
-function checkIfAppendLimitRequired(sql: string, limit = 0) {
-  const cleanedSql = sql.trim().replaceAll('\n', ' ').replaceAll(/\s+/g, ' ')
-  const regMatch = cleanedSql.matchAll(/[a-zA-Z]*[0-9]*[;]+/g)
-  const queries = [...regMatch]
-  const indexSemiColon = cleanedSql.lastIndexOf(';')
-  const hasComments = cleanedSql.includes('--')
-  const hasMultipleQueries =
-    queries.length > 1 || (indexSemiColon > 0 && indexSemiColon !== cleanedSql.length - 1)
-
-  const appendAutoLimit =
-    limit > 0 &&
-    !hasComments &&
-    !hasMultipleQueries &&
-    cleanedSql.toLowerCase().startsWith('select') &&
-    !cleanedSql.toLowerCase().match(/fetch\s+first/i) &&
-    !cleanedSql.match(/limit$/i) &&
-    !cleanedSql.match(/limit;$/i) &&
-    !cleanedSql.match(/limit [0-9]* offset [0-9]*[;]?$/i) &&
-    !cleanedSql.match(/limit [0-9]*[;]?$/i)
-
-  return { cleanedSql, appendAutoLimit }
-}
-
-function suffixWithLimit(sql: string, limit = 0) {
-  const { cleanedSql, appendAutoLimit } = checkIfAppendLimitRequired(sql, limit)
-  return appendAutoLimit
-    ? cleanedSql.endsWith(';')
-      ? sql.replace(/[;]+$/, ` limit ${limit};`)
-      : `${sql} limit ${limit};`
-    : sql
-}
-
-async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  const body = await response.json()
-  if (!response.ok) throw new Error(body.error || `Request failed: ${response.status}`)
-  return body as T
-}
 
 export default function SqlEditorPage() {
   const [editorRef, setEditorRef] = useState<MonacoEditorNs.IStandaloneCodeEditor | null>(null)
@@ -678,138 +599,20 @@ export default function SqlEditorPage() {
         />
 
         <div className="editor-panel-body">
-          <div className="editor-wrap">
-            <MonacoEditor
-              height="100%"
-              language="pgsql"
-              value={activeQueryTab?.query || ''}
-              onChange={(value) => setActiveTabQuery(value || '')}
-              onMount={(editor, monaco) => {
-                setEditorRef(editor)
-                monaco.editor.defineTheme('supabase-light', {
-                  base: 'vs',
-                  inherit: true,
-                  rules: [
-                    { token: '', background: 'fcfdff' },
-                    { token: '', background: 'fcfdff', foreground: '101827' },
-                    { token: 'string.sql', foreground: '1e9f6e' },
-                    { token: 'comment', foreground: '7d8aa2' },
-                    { token: 'predefined.sql', foreground: '1f2a3a' },
-                  ],
-                  colors: {
-                    'editor.background': '#fcfdff',
-                    'editorLineNumber.foreground': '#9ba9bf',
-                    'editorLineNumber.activeForeground': '#55657f',
-                  },
-                })
-                monaco.editor.defineTheme('supabase-dark', {
-                  base: 'vs-dark',
-                  inherit: true,
-                  rules: [
-                    { token: '', background: '111827', foreground: 'e5e7eb' },
-                    { token: 'string.sql', foreground: '34d399' },
-                    { token: 'comment', foreground: '7c8799' },
-                    { token: 'predefined.sql', foreground: 'e5e7eb' },
-                  ],
-                  colors: {
-                    'editor.background': '#111827',
-                    'editorLineNumber.foreground': '#667085',
-                    'editorLineNumber.activeForeground': '#d0d5dd',
-                  },
-                })
-
-                const keywords = [
-                  'select',
-                  'from',
-                  'where',
-                  'insert',
-                  'update',
-                  'delete',
-                  'join',
-                  'left join',
-                  'group by',
-                  'order by',
-                  'limit',
-                  'offset',
-                  'create table',
-                  'alter table',
-                ]
-
-                const provider = monaco.languages.registerCompletionItemProvider('pgsql', {
-                  provideCompletionItems(
-                    model: MonacoEditorNs.ITextModel,
-                    position: any
-                  ) {
-                    const word = model.getWordUntilPosition(position)
-                    const range = {
-                      startLineNumber: position.lineNumber,
-                      endLineNumber: position.lineNumber,
-                      startColumn: word.startColumn,
-                      endColumn: word.endColumn,
-                    }
-
-                    const tableSuggestions = schemaTablesRef.current.map((item) => ({
-                      label: `${item.schema}.${item.table}`,
-                      kind: monaco.languages.CompletionItemKind.Class,
-                      insertText: `${item.schema}.${item.table}`,
-                      range,
-                    }))
-
-                    const columnSuggestions = Object.values(tableColumnsByKeyRef.current)
-                      .flatMap((columns) => columns)
-                      .filter((v, i, arr) => arr.indexOf(v) === i)
-                      .map((column) => ({
-                        label: column,
-                        kind: monaco.languages.CompletionItemKind.Field,
-                        insertText: column,
-                        range,
-                      }))
-
-                    const keywordSuggestions = keywords.map((keyword) => ({
-                      label: keyword,
-                      kind: monaco.languages.CompletionItemKind.Keyword,
-                      insertText: keyword,
-                      range,
-                    }))
-
-                    return {
-                      suggestions: [...keywordSuggestions, ...tableSuggestions, ...columnSuggestions],
-                    }
-                  },
-                })
-
-                const applyEditorTheme = () => {
-                  monaco.editor.setTheme(getCurrentTheme() === 'dark' ? 'supabase-dark' : 'supabase-light')
-                }
-                applyEditorTheme()
-
-                window.addEventListener('pgstudio:themechange', applyEditorTheme)
-                editor.onDidDispose(() => {
-                  provider.dispose()
-                  window.removeEventListener('pgstudio:themechange', applyEditorTheme)
-                })
-
-                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-                  void runCurrentQuery()
-                })
-                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-                  void saveCurrentAsSnippet()
-                })
-                editor.onDidChangeCursorSelection((event) => setHasSelection(!event.selection.isEmpty()))
-              }}
-              options={{
-                tabSize: 2,
-                fontSize: 13,
-                minimap: { enabled: false },
-                wordWrap: 'on',
-                lineNumbers: 'on',
-                lineNumbersMinChars: 3,
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-              }}
-              theme="supabase-light"
-            />
-          </div>
+          <EditorPane
+            value={activeQueryTab?.query || ''}
+            onChangeValue={(value) => setActiveTabQuery(value)}
+            onMountEditor={setEditorRef}
+            onSelectionChange={setHasSelection}
+            onRunQuery={() => {
+              void runCurrentQuery()
+            }}
+            onSaveSnippet={() => {
+              void saveCurrentAsSnippet()
+            }}
+            schemaTablesRef={schemaTablesRef}
+            tableColumnsByKeyRef={tableColumnsByKeyRef}
+          />
 
           <SqlResultsPanel result={result} formatCell={formatCell} />
 

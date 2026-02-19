@@ -4,16 +4,7 @@ import { InsertPanel } from '../components/table-editor/InsertPanel'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { ColumnInfo, Connection, RowData, TableInfo } from '../components/table-editor/types'
-
-async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  const body = await response.json()
-  if (!response.ok) throw new Error(body.error || `Request failed: ${response.status}`)
-  return body as T
-}
+import { fetchJson } from '../lib/http'
 
 export default function TableEditorPage() {
   const [connections, setConnections] = useState<Connection[]>([])
