@@ -320,6 +320,17 @@ select {
   padding-bottom: 1px;
 }
 
+.snippet-title-input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
 .history-actions {
   margin-top: 4px;
   display: flex;
@@ -773,7 +784,8 @@ pre {
 [data-theme='dark'] .layout-nav-controls select,
 [data-theme='dark'] .editor-header-right select,
 [data-theme='dark'] .insert-panel textarea,
-[data-theme='dark'] .cell-input {
+[data-theme='dark'] .cell-input,
+[data-theme='dark'] .snippet-title-input {
   background: #121925;
 }
 

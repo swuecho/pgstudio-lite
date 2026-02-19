@@ -150,6 +150,8 @@ export default function SqlEditorPage() {
   const [historySearch, setHistorySearch] = useState('')
   const [running, setRunning] = useState(false)
   const [savingSnippet, setSavingSnippet] = useState(false)
+  const [renamingSnippetId, setRenamingSnippetId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
   const [hasSelection, setHasSelection] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
   const [queryTabs, setQueryTabs] = useState<QueryTab[]>([
@@ -498,25 +500,38 @@ export default function SqlEditorPage() {
     }
   }
 
-  async function renameSnippet(item: SnippetItem) {
-    const title = window.prompt('Snippet name', item.title)?.trim()
-    if (!title || title === item.title) return
-    const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-      method: 'PATCH',
-      body: JSON.stringify({ id: item.id, title }),
-    })
-    setStatus({ text: `Renamed snippet: ${payload.item.title}`, tone: 'ok' })
-    setSnippetItems((items) => items.map((entry) => (entry.id === payload.item.id ? payload.item : entry)))
-    setQueryTabs((tabs) =>
-      tabs.map((tab) =>
-        tab.snippetId === payload.item.id
-          ? {
-              ...tab,
-              title: payload.item.title,
-            }
-          : tab
+  async function renameSnippet(item: SnippetItem, nextTitle?: string) {
+    const title = (nextTitle ?? item.title).trim()
+    if (!title || title === item.title) {
+      setRenamingSnippetId(null)
+      setRenameDraft('')
+      return
+    }
+    try {
+      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
+        method: 'PATCH',
+        body: JSON.stringify({ id: item.id, title }),
+      })
+      setStatus({ text: `Renamed snippet: ${payload.item.title}`, tone: 'ok' })
+      setSnippetItems((items) => items.map((entry) => (entry.id === payload.item.id ? payload.item : entry)))
+      setQueryTabs((tabs) =>
+        tabs.map((tab) =>
+          tab.snippetId === payload.item.id
+            ? {
+                ...tab,
+                title: payload.item.title,
+              }
+            : tab
+        )
       )
-    )
+      setRenamingSnippetId(null)
+      setRenameDraft('')
+    } catch (error) {
+      setStatus({
+        text: error instanceof Error ? error.message : 'Failed to rename snippet',
+        tone: 'error',
+      })
+    }
   }
 
   async function duplicateSnippet(item: SnippetItem) {
@@ -532,15 +547,28 @@ export default function SqlEditorPage() {
     setActiveNavTab('snippets')
   }
 
-  async function deleteSnippetById(id: string) {
+  async function deleteSnippet(item: SnippetItem) {
+    const confirmed = window.confirm(`Delete snippet "${item.title}"? This cannot be undone.`)
+    if (!confirmed) return
     await fetchJson<{ ok: boolean }>('/api/snippets', {
       method: 'DELETE',
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id: item.id }),
     })
+    setSnippetItems((items) => items.filter((entry) => entry.id !== item.id))
     setQueryTabs((tabs) =>
-      tabs.map((tab) => (tab.snippetId === id ? { ...tab, snippetId: undefined, dirty: true } : tab))
+      tabs.map((tab) => (tab.snippetId === item.id ? { ...tab, snippetId: undefined, dirty: true } : tab))
     )
-    await loadSnippets()
+    setStatus({ text: `Deleted snippet: ${item.title}`, tone: 'ok' })
+  }
+
+  function beginRenameSnippet(item: SnippetItem) {
+    setRenamingSnippetId(item.id)
+    setRenameDraft(item.title)
+  }
+
+  function cancelRenameSnippet() {
+    setRenamingSnippetId(null)
+    setRenameDraft('')
   }
 
   useEffect(() => {
@@ -713,7 +741,26 @@ export default function SqlEditorPage() {
               <div key={item.id} className="history-item snippet-item">
                 <div className="history-top">
                   <span className="pill ok">snippet</span>
-                  <span>{item.title}</span>
+                  {renamingSnippetId === item.id ? (
+                    <input
+                      className="snippet-title-input"
+                      value={renameDraft}
+                      autoFocus
+                      onChange={(event) => setRenameDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          void renameSnippet(item, renameDraft)
+                        }
+                        if (event.key === 'Escape') cancelRenameSnippet()
+                      }}
+                      onBlur={() => {
+                        void renameSnippet(item, renameDraft)
+                      }}
+                    />
+                  ) : (
+                    <span>{item.title}</span>
+                  )}
                 </div>
                 <div className="history-query snippet-query">{item.query_text.split('\n').join(' ').slice(0, 180)}</div>
                 <div className="history-meta">
@@ -729,10 +776,16 @@ export default function SqlEditorPage() {
                   <button className="btn small" onClick={() => void duplicateSnippet(item)}>
                     Duplicate
                   </button>
-                  <button className="btn small" onClick={() => void renameSnippet(item)}>
-                    Rename
-                  </button>
-                  <button className="btn small danger" onClick={() => void deleteSnippetById(item.id)}>
+                  {renamingSnippetId === item.id ? (
+                    <button className="btn small" onClick={() => void renameSnippet(item, renameDraft)}>
+                      Apply
+                    </button>
+                  ) : (
+                    <button className="btn small" onClick={() => beginRenameSnippet(item)}>
+                      Rename
+                    </button>
+                  )}
+                  <button className="btn small danger" onClick={() => void deleteSnippet(item)}>
                     Delete
                   </button>
                 </div>
