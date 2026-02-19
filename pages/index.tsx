@@ -43,6 +43,7 @@ type QueryTab = {
   title: string
   query: string
   dirty: boolean
+  snippetId?: string
 }
 
 type SchemaTable = {
@@ -148,6 +149,7 @@ export default function SqlEditorPage() {
   const [expandedTables, setExpandedTables] = useState<Record<string, boolean>>({})
   const [historySearch, setHistorySearch] = useState('')
   const [running, setRunning] = useState(false)
+  const [savingSnippet, setSavingSnippet] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
   const [queryTabs, setQueryTabs] = useState<QueryTab[]>([
@@ -237,7 +239,7 @@ export default function SqlEditorPage() {
     if (nextExpanded) void loadColumnsForTable(schema, table)
   }
 
-  function setActiveTabQuery(nextQuery: string, dirty = true) {
+  function setActiveTabQuery(nextQuery: string, dirty = true, snippetId?: string | null) {
     setQueryTabs((tabs) =>
       tabs.map((tab) =>
         tab.id === activeQueryTabId
@@ -245,20 +247,25 @@ export default function SqlEditorPage() {
               ...tab,
               query: nextQuery,
               dirty,
+              snippetId: snippetId === undefined ? tab.snippetId : snippetId || undefined,
             }
           : tab
       )
     )
   }
 
-  function createQueryTab(initialQuery = '-- New query\n') {
+  function createQueryTab(
+    initialQuery = '-- New query\n',
+    options: { title?: string; snippetId?: string; dirty?: boolean } = {}
+  ) {
     const nextIndex = queryTabs.length + 1
     const id = `tab-${Date.now()}-${Math.floor(Math.random() * 1000)}`
     const tab: QueryTab = {
       id,
-      title: `Query ${nextIndex}`,
+      title: options.title || `Query ${nextIndex}`,
       query: initialQuery,
-      dirty: false,
+      dirty: options.dirty ?? false,
+      snippetId: options.snippetId,
     }
     setQueryTabs((tabs) => [...tabs, tab])
     setActiveQueryTabId(id)
@@ -281,6 +288,29 @@ export default function SqlEditorPage() {
     const title = window.prompt('Tab name', current.title)?.trim()
     if (!title) return
     setQueryTabs((tabs) => tabs.map((tab) => (tab.id === tabId ? { ...tab, title } : tab)))
+  }
+
+  function openSnippetInTab(item: SnippetItem) {
+    const existing = queryTabs.find((tab) => tab.snippetId === item.id)
+    if (existing) {
+      setQueryTabs((tabs) =>
+        tabs.map((tab) =>
+          tab.id === existing.id
+            ? {
+                ...tab,
+                title: item.title,
+                query: item.query_text,
+                dirty: false,
+                snippetId: item.id,
+              }
+            : tab
+        )
+      )
+      setActiveQueryTabId(existing.id)
+      return
+    }
+
+    createQueryTab(item.query_text, { title: item.title, snippetId: item.id, dirty: false })
   }
 
   function insertIntoEditor(sqlText: string) {
@@ -364,20 +394,129 @@ export default function SqlEditorPage() {
     await loadHistory()
   }
 
-  async function saveCurrentAsSnippet() {
+  async function saveCurrentAsSnippet(forceCreate = false) {
     const content = (activeQueryTab?.query || '').trim()
     if (!content) {
       setStatus({ text: 'Query is empty', tone: 'warning' })
       return
     }
+
+    if (activeQueryTab?.snippetId && !forceCreate) {
+      const existingSnippet = snippetItems.find((item) => item.id === activeQueryTab.snippetId)
+      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          id: activeQueryTab.snippetId,
+          title: existingSnippet?.title || activeQueryTab.title || 'Snippet',
+          queryText: content,
+        }),
+      })
+      setStatus({ text: `Updated snippet: ${payload.item.title}`, tone: 'ok' })
+      setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
+      setQueryTabs((tabs) =>
+        tabs.map((tab) =>
+          tab.id === activeQueryTab.id
+            ? {
+                ...tab,
+                title: payload.item.title,
+                query: payload.item.query_text,
+                snippetId: payload.item.id,
+                dirty: false,
+              }
+            : tab
+        )
+      )
+      return
+    }
+
     const defaultTitle = content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
     const title = window.prompt('Snippet name', defaultTitle)?.trim()
     if (!title) return
-    await fetchJson<{ item: SnippetItem }>('/api/snippets', {
+    const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
       method: 'POST',
       body: JSON.stringify({ title, queryText: content }),
     })
-    setStatus({ text: `Saved snippet: ${title}`, tone: 'ok' })
+    setStatus({ text: `Saved snippet: ${payload.item.title}`, tone: 'ok' })
+    setQueryTabs((tabs) =>
+      tabs.map((tab) =>
+        tab.id === activeQueryTab?.id
+          ? {
+              ...tab,
+              title: payload.item.title,
+              query: payload.item.query_text,
+              snippetId: payload.item.id,
+              dirty: false,
+            }
+          : tab
+      )
+    )
+    await loadSnippets()
+    setActiveNavTab('snippets')
+  }
+
+  async function autosaveSnippetDraft(tabId: string, snippetId: string, queryText: string) {
+    const content = queryText.trim()
+    if (!content) return
+
+    const existingSnippet = snippetItems.find((item) => item.id === snippetId)
+    setSavingSnippet(true)
+    try {
+      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          id: snippetId,
+          title: existingSnippet?.title || 'Snippet',
+          queryText: content,
+        }),
+      })
+      setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
+      setQueryTabs((tabs) =>
+        tabs.map((tab) =>
+          tab.id === tabId && tab.query.trim() === content
+            ? {
+                ...tab,
+                title: payload.item.title,
+                query: payload.item.query_text,
+                dirty: false,
+              }
+            : tab
+        )
+      )
+    } finally {
+      setSavingSnippet(false)
+    }
+  }
+
+  async function renameSnippet(item: SnippetItem) {
+    const title = window.prompt('Snippet name', item.title)?.trim()
+    if (!title || title === item.title) return
+    const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: item.id, title }),
+    })
+    setStatus({ text: `Renamed snippet: ${payload.item.title}`, tone: 'ok' })
+    setSnippetItems((items) => items.map((entry) => (entry.id === payload.item.id ? payload.item : entry)))
+    setQueryTabs((tabs) =>
+      tabs.map((tab) =>
+        tab.snippetId === payload.item.id
+          ? {
+              ...tab,
+              title: payload.item.title,
+            }
+          : tab
+      )
+    )
+  }
+
+  async function duplicateSnippet(item: SnippetItem) {
+    const suggestedTitle = `${item.title} copy`
+    const title = window.prompt('Duplicate snippet as', suggestedTitle)?.trim()
+    if (!title) return
+    const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
+      method: 'POST',
+      body: JSON.stringify({ title, queryText: item.query_text }),
+    })
+    setStatus({ text: `Duplicated snippet: ${payload.item.title}`, tone: 'ok' })
     await loadSnippets()
     setActiveNavTab('snippets')
   }
@@ -387,6 +526,9 @@ export default function SqlEditorPage() {
       method: 'DELETE',
       body: JSON.stringify({ id }),
     })
+    setQueryTabs((tabs) =>
+      tabs.map((tab) => (tab.snippetId === id ? { ...tab, snippetId: undefined, dirty: true } : tab))
+    )
     await loadSnippets()
   }
 
@@ -427,7 +569,12 @@ export default function SqlEditorPage() {
     try {
       const parsed = JSON.parse(rawTabs) as QueryTab[]
       if (!Array.isArray(parsed) || parsed.length === 0) return
-      const valid = parsed.filter((item) => item && typeof item.id === 'string' && typeof item.query === 'string')
+      const valid = parsed
+        .filter((item) => item && typeof item.id === 'string' && typeof item.query === 'string')
+        .map((item) => ({
+          ...item,
+          snippetId: typeof item.snippetId === 'string' ? item.snippetId : undefined,
+        }))
       if (valid.length === 0) return
       setQueryTabs(valid)
       const hasActive = rawActiveId && valid.some((tab) => tab.id === rawActiveId)
@@ -441,6 +588,14 @@ export default function SqlEditorPage() {
     localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(queryTabs))
     localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeQueryTabId)
   }, [queryTabs, activeQueryTabId])
+
+  useEffect(() => {
+    if (!activeQueryTab?.snippetId || !activeQueryTab.dirty) return
+    const timer = window.setTimeout(() => {
+      void autosaveSnippetDraft(activeQueryTab.id, activeQueryTab.snippetId as string, activeQueryTab.query)
+    }, 1200)
+    return () => window.clearTimeout(timer)
+  }, [activeQueryTab?.id, activeQueryTab?.snippetId, activeQueryTab?.query, activeQueryTab?.dirty])
 
   return (
     <div className="layout-root">
@@ -497,8 +652,14 @@ export default function SqlEditorPage() {
                 Refresh
               </button>
               <button className="btn small" onClick={() => void saveCurrentAsSnippet()}>
-                Save
+                {activeQueryTab?.snippetId ? 'Update' : 'Save'}
               </button>
+              {activeQueryTab?.snippetId && (
+                <button className="btn small" onClick={() => void saveCurrentAsSnippet(true)}>
+                  Save As
+                </button>
+              )}
+              {savingSnippet && <span className="history-meta">Autosaving...</span>}
             </>
           ) : (
             <>
@@ -523,9 +684,9 @@ export default function SqlEditorPage() {
                 className="history-item"
                 role="button"
                 tabIndex={0}
-                onClick={() => setActiveTabQuery(item.query_text, false)}
+                onClick={() => setActiveTabQuery(item.query_text, false, null)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') setActiveTabQuery(item.query_text, false)
+                  if (event.key === 'Enter' || event.key === ' ') setActiveTabQuery(item.query_text, false, null)
                 }}
               >
                 <div className="history-top">
@@ -548,8 +709,17 @@ export default function SqlEditorPage() {
                   <span>{formatTime(item.updated_at)}</span>
                 </div>
                 <div className="history-actions">
-                  <button className="btn small" onClick={() => setActiveTabQuery(item.query_text, false)}>
+                  <button className="btn small" onClick={() => setActiveTabQuery(item.query_text, false, null)}>
                     Load
+                  </button>
+                  <button className="btn small" onClick={() => openSnippetInTab(item)}>
+                    Edit
+                  </button>
+                  <button className="btn small" onClick={() => void duplicateSnippet(item)}>
+                    Duplicate
+                  </button>
+                  <button className="btn small" onClick={() => void renameSnippet(item)}>
+                    Rename
                   </button>
                   <button className="btn small danger" onClick={() => void deleteSnippetById(item.id)}>
                     Delete
@@ -635,7 +805,13 @@ export default function SqlEditorPage() {
             <div key={tab.id} className={`sql-tab ${tab.id === activeQueryTabId ? 'active' : ''}`}>
               <button className="sql-tab-main" onClick={() => setActiveQueryTabId(tab.id)} onDoubleClick={() => renameTab(tab.id)}>
                 {tab.title}
-                {tab.dirty ? '*' : ''}
+                {tab.snippetId && tab.dirty ? (
+                  <span className="tab-unsaved-badge">Unsaved</span>
+                ) : tab.dirty ? (
+                  '*'
+                ) : (
+                  ''
+                )}
               </button>
               <button className="sql-tab-close" onClick={() => closeTab(tab.id)} aria-label={`Close ${tab.title}`}>
                 ×

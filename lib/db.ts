@@ -134,6 +134,18 @@ const selectSnippetsStmt = sqlite.prepare(`
   LIMIT ?
 `)
 
+const selectSnippetByIdStmt = sqlite.prepare(`
+  SELECT
+    id,
+    title,
+    query_text,
+    created_at,
+    updated_at
+  FROM query_snippets
+  WHERE id = ?
+  LIMIT 1
+`)
+
 const insertSnippetStmt = sqlite.prepare(`
   INSERT INTO query_snippets (
     id,
@@ -242,6 +254,48 @@ export function saveSnippet({
   const id = randomUUID()
   insertSnippetStmt.run(id, title.trim(), queryText.trim(), now, now)
   return { id, title: title.trim(), query_text: queryText.trim(), created_at: now, updated_at: now }
+}
+
+export function updateSnippet({
+  id,
+  title,
+  queryText,
+}: {
+  id: string
+  title?: string
+  queryText?: string
+}) {
+  const changes: string[] = []
+  const values: any[] = []
+
+  if (title !== undefined) {
+    changes.push('title = ?')
+    values.push(title.trim())
+  }
+
+  if (queryText !== undefined) {
+    changes.push('query_text = ?')
+    values.push(queryText.trim())
+  }
+
+  if (changes.length === 0) {
+    return (selectSnippetByIdStmt.get(id) as QuerySnippetRow | undefined) || null
+  }
+
+  const now = new Date().toISOString()
+  changes.push('updated_at = ?')
+  values.push(now)
+  values.push(id)
+
+  const statement = sqlite.prepare(`
+    UPDATE query_snippets
+    SET ${changes.join(', ')}
+    WHERE id = ?
+  `)
+  const result = statement.run(...values) as { changes?: number }
+  if (!result.changes) return null
+
+  return (selectSnippetByIdStmt.get(id) as QuerySnippetRow | undefined) || null
 }
 
 export function deleteSnippet(id: string) {
