@@ -13,6 +13,16 @@ PostgreSQL web manager using the same framework style as Supabase Studio:
 - SQL Editor (Studio-like layout)
 - Table Editor (browse tables, edit cells, insert row, delete row)
 
+## SQL snippet features
+
+- Create, update, rename, duplicate, and delete snippets
+- Snippet-bound tabs (`Edit` opens/reuses a tab linked to the snippet)
+- Inline snippet rename in the sidebar
+- `Save` / `Update` / `Save As` flow for snippet-bound vs unbound tabs
+- Autosave for dirty snippet-bound tabs
+- Unsaved badge for snippet-bound tabs with local changes
+- Keyboard shortcut: `Ctrl/Cmd+S` to save/update current snippet
+
 ## Reused from Supabase Studio
 
 - Framework style and page/API split (Next.js pages + API routes)
@@ -46,6 +56,7 @@ PG_CONNECTION_NAME='local-dev'
 - `POST /api/query`
 - `GET /api/history?limit=300`
 - `DELETE /api/history`
+- `GET|POST|PATCH|DELETE /api/snippets`
 - `GET /api/tables`
 - `GET|POST|PATCH|DELETE /api/tables/[table]/rows`
 - `GET /api/monaco/*` and `GET /api/vs/*`
