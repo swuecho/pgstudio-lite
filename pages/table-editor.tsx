@@ -1,23 +1,9 @@
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import ThemeToggle from '../components/theme-toggle'
-
-type TableInfo = {
-  table: string
-  schema: string
-  estimatedRows: number
-}
-
-type ColumnInfo = {
-  name: string
-  dataType: string
-  isNullable: boolean
-  isIdentity: boolean
-}
-
-type RowData = Record<string, unknown> & { _ctid: string }
-
-type Connection = { name: string }
+import { InsertPanel } from '../components/table-editor/InsertPanel'
+import { TableGridPanel } from '../components/table-editor/GridPanel'
+import { TableSidebar } from '../components/table-editor/Sidebar'
+import { ColumnInfo, Connection, RowData, TableInfo } from '../components/table-editor/types'
 
 async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
@@ -158,38 +144,17 @@ export default function TableEditorPage() {
 
   return (
     <div className="layout-root">
-      <aside className="layout-rail">
-        <Link className="rail-btn link-btn" href="/">SQL</Link>
-        <button className="rail-btn active">TB</button>
-      </aside>
-
-      <aside className="layout-nav">
-        <div className="layout-nav-header">
-          <div className="nav-title">Table Editor</div>
-        </div>
-
-        <div className="layout-nav-controls">
-          <select value={connectionName} onChange={(e) => setConnectionName(e.target.value)}>
-            {connections.map((c) => (
-              <option key={c.name} value={c.name}>{c.name}</option>
-            ))}
-          </select>
-          <button className="btn small" onClick={() => void loadTables()}>Refresh</button>
-        </div>
-
-        <div className="layout-nav-list">
-          {tables.map((table) => (
-            <button
-              key={`${table.schema}.${table.table}`}
-              className={`history-item ${activeTable === table.table ? 'active-item' : ''}`}
-              onClick={() => setActiveTable(table.table)}
-            >
-              <div className="history-query">{table.table}</div>
-              <div className="history-meta">~{table.estimatedRows} rows</div>
-            </button>
-          ))}
-        </div>
-      </aside>
+      <TableSidebar
+        connections={connections}
+        connectionName={connectionName}
+        onChangeConnection={setConnectionName}
+        tables={tables}
+        activeTable={activeTable}
+        onSelectTable={setActiveTable}
+        onRefreshTables={() => {
+          void loadTables()
+        }}
+      />
 
       <main className="layout-main">
         <div className="editor-panel-header">
@@ -201,115 +166,41 @@ export default function TableEditorPage() {
         </div>
 
         <div className="table-page">
-          <div className="table-grid-wrap">
-            <div className="table-toolbar">
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="_ctid">Default order</option>
-                {columns.map((col) => (
-                  <option key={`sort-${col.name}`} value={col.name}>
-                    Sort: {col.name}
-                  </option>
-                ))}
-              </select>
-              <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}>
-                <option value="asc">ASC</option>
-                <option value="desc">DESC</option>
-              </select>
-              <select value={filterColumn} onChange={(e) => setFilterColumn(e.target.value)}>
-                <option value="">Filter column</option>
-                {columns.map((col) => (
-                  <option key={`filter-${col.name}`} value={col.name}>
-                    {col.name}
-                  </option>
-                ))}
-              </select>
-              <select value={filterMode} onChange={(e) => setFilterMode(e.target.value as 'contains' | 'equals')}>
-                <option value="contains">contains</option>
-                <option value="equals">equals</option>
-              </select>
-              <input
-                className="cell-input"
-                placeholder="Filter value"
-                value={filterValue}
-                onChange={(e) => setFilterValue(e.target.value)}
-              />
-              <select value={String(pageSize)} onChange={(e) => setPageSize(Number(e.target.value) || 50)}>
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-              </select>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  {columns.map((col) => (
-                    <th key={col.name}>{col.name}</th>
-                  ))}
-                  <th>actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row._ctid}>
-                    {columns.map((col) => {
-                      if (col.name === '_ctid') {
-                        return <td key={col.name}><code>{String(row[col.name] ?? '')}</code></td>
-                      }
-                      const readOnly = !editableColumns.some((c) => c.name === col.name)
-                      return (
-                        <td key={col.name}>
-                          {readOnly ? (
-                            <code>{String(row[col.name] ?? '')}</code>
-                          ) : (
-                            <input
-                              className="cell-input"
-                              defaultValue={String(row[col.name] ?? '')}
-                              onBlur={(e) => {
-                                const newValue = e.target.value
-                                if (String(row[col.name] ?? '') !== newValue) {
-                                  void updateCell(row._ctid, col.name, newValue)
-                                }
-                              }}
-                            />
-                          )}
-                        </td>
-                      )
-                    })}
-                    <td>
-                      <button className="btn small danger" onClick={() => void deleteRow(row._ctid)}>
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="table-pagination">
-              <span className="history-meta">
-                {totalRows} rows total · page {page + 1} / {Math.max(1, Math.ceil(totalRows / pageSize))}
-              </span>
-              <div className="history-actions">
-                <button className="btn small" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
-                  Prev
-                </button>
-                <button
-                  className="btn small"
-                  disabled={(page + 1) * pageSize >= totalRows}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
+          <TableGridPanel
+            columns={columns}
+            rows={rows}
+            editableColumns={editableColumns}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            filterColumn={filterColumn}
+            filterMode={filterMode}
+            filterValue={filterValue}
+            pageSize={pageSize}
+            page={page}
+            totalRows={totalRows}
+            onChangeSortBy={setSortBy}
+            onChangeSortOrder={setSortOrder}
+            onChangeFilterColumn={setFilterColumn}
+            onChangeFilterMode={setFilterMode}
+            onChangeFilterValue={setFilterValue}
+            onChangePageSize={setPageSize}
+            onUpdateCell={(ctid, column, value) => {
+              void updateCell(ctid, column, value)
+            }}
+            onDeleteRow={(ctid) => {
+              void deleteRow(ctid)
+            }}
+            onPrevPage={() => setPage((p) => Math.max(0, p - 1))}
+            onNextPage={() => setPage((p) => p + 1)}
+          />
 
-          <div className="insert-panel">
-            <div className="nav-title">Insert Row (JSON)</div>
-            <textarea value={newRowJson} onChange={(e) => setNewRowJson(e.target.value)} />
-            <button className="btn primary" onClick={() => void insertRow()}>
-              Insert
-            </button>
-          </div>
+          <InsertPanel
+            newRowJson={newRowJson}
+            onChangeNewRowJson={setNewRowJson}
+            onInsertRow={() => {
+              void insertRow()
+            }}
+          />
         </div>
       </main>
     </div>

@@ -1,56 +1,14 @@
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
+import { SqlSidebar } from '../components/sql-editor/Sidebar'
+import { SqlTabsBar } from '../components/sql-editor/TabsBar'
+import { Connection, HistoryItem, QueryResult, QueryTab, SchemaTable, SnippetItem } from '../components/sql-editor/types'
 import ThemeToggle from '../components/theme-toggle'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
-
-type QueryResult = {
-  statements: Array<{
-    command: string
-    rowCount: number
-    fields: string[]
-    rows: Record<string, unknown>[]
-  }>
-  totalRows: number
-  durationMs: number
-}
-
-type HistoryItem = {
-  id: string
-  query_text: string
-  status: 'success' | 'error'
-  duration_ms: number
-  row_count: number | null
-  executed_at: string
-  connection_name: string
-}
-
-type SnippetItem = {
-  id: string
-  title: string
-  query_text: string
-  created_at: string
-  updated_at: string
-}
-
-type Connection = { name: string }
-
-type QueryTab = {
-  id: string
-  title: string
-  query: string
-  dirty: boolean
-  snippetId?: string
-}
-
-type SchemaTable = {
-  schema: string
-  table: string
-  estimatedRows: number
-}
 
 const DEFAULT_QUERY = '-- Write SQL and run with Ctrl/Cmd+Enter\nselect now() as server_time;'
 const TABS_STORAGE_KEY = 'pgstudio-query-tabs-v1'
@@ -638,220 +596,67 @@ export default function SqlEditorPage() {
 
   return (
     <div className="layout-root">
-      <aside className="layout-rail">
-        <button className="rail-btn active">SQL</button>
-        <Link className="rail-btn link-btn" href="/table-editor">
-          TB
-        </Link>
-      </aside>
-
-      <aside className="layout-nav">
-        <div className="layout-nav-header">
-          <div className="nav-title">SQL Editor</div>
-          <button className="btn small" onClick={() => createQueryTab()}>
-            New
-          </button>
-        </div>
-
-        <div className="layout-nav-tabs">
-          <button
-            className={`nav-tab ${activeNavTab === 'explorer' ? 'active' : ''}`}
-            onClick={() => setActiveNavTab('explorer')}
-          >
-            Explorer
-          </button>
-          <button
-            className={`nav-tab ${activeNavTab === 'snippets' ? 'active' : ''}`}
-            onClick={() => setActiveNavTab('snippets')}
-          >
-            Snippets
-          </button>
-          <button
-            className={`nav-tab ${activeNavTab === 'history' ? 'active' : ''}`}
-            onClick={() => setActiveNavTab('history')}
-          >
-            History
-          </button>
-        </div>
-
-        <div className="layout-nav-controls">
-          <input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder="Search" />
-          {activeNavTab === 'history' ? (
-            <>
-              <button className="btn small" onClick={() => void loadHistory()}>
-                Refresh
-              </button>
-              <button className="btn small danger" onClick={() => void clearHistory()}>
-                Clear
-              </button>
-            </>
-          ) : activeNavTab === 'snippets' ? (
-            <>
-              <button className="btn small" onClick={() => void loadSnippets()}>
-                Refresh
-              </button>
-              <button className="btn small" onClick={() => void saveCurrentAsSnippet()}>
-                {activeQueryTab?.snippetId ? 'Update' : 'Save'}
-              </button>
-              {activeQueryTab?.snippetId && (
-                <button className="btn small" onClick={() => void saveCurrentAsSnippet(true)}>
-                  Save As
-                </button>
-              )}
-              {savingSnippet && <span className="history-meta">Autosaving...</span>}
-            </>
-          ) : (
-            <>
-              <button className="btn small" onClick={() => void loadSchema()}>
-                Refresh
-              </button>
-              <button
-                className="btn small"
-                onClick={() => insertIntoEditor('select * from public.your_table limit 100;')}
-              >
-                Insert
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="layout-nav-list">
-          {activeNavTab === 'history' ? (
-            filteredHistory.map((item) => (
-              <div
-                key={item.id}
-                className="history-item"
-                role="button"
-                tabIndex={0}
-                onClick={() => setActiveTabQuery(item.query_text, false, null)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') setActiveTabQuery(item.query_text, false, null)
-                }}
-              >
-                <div className="history-top">
-                  <span className={`pill ${item.status === 'success' ? 'ok' : 'error'}`}>{item.status}</span>
-                  <span>{item.duration_ms}ms</span>
-                </div>
-                <div className="history-query">{item.query_text.split('\n').join(' ').slice(0, 140)}</div>
-                <div className="history-meta">{formatTime(item.executed_at)}</div>
-              </div>
-            ))
-          ) : activeNavTab === 'snippets' ? (
-            filteredSnippets.map((item) => (
-              <div key={item.id} className="history-item snippet-item">
-                <div className="history-top">
-                  <span className="pill ok">snippet</span>
-                  {renamingSnippetId === item.id ? (
-                    <input
-                      className="snippet-title-input"
-                      value={renameDraft}
-                      autoFocus
-                      onChange={(event) => setRenameDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault()
-                          void renameSnippet(item, renameDraft)
-                        }
-                        if (event.key === 'Escape') cancelRenameSnippet()
-                      }}
-                      onBlur={() => {
-                        void renameSnippet(item, renameDraft)
-                      }}
-                    />
-                  ) : (
-                    <span>{item.title}</span>
-                  )}
-                </div>
-                <div className="history-query snippet-query">{item.query_text.split('\n').join(' ').slice(0, 180)}</div>
-                <div className="history-meta">
-                  <span>{formatTime(item.updated_at)}</span>
-                </div>
-                <div className="history-actions">
-                  <button className="btn small" onClick={() => setActiveTabQuery(item.query_text, false, null)}>
-                    Load
-                  </button>
-                  <button className="btn small" onClick={() => openSnippetInTab(item)}>
-                    Edit
-                  </button>
-                  <button className="btn small" onClick={() => void duplicateSnippet(item)}>
-                    Duplicate
-                  </button>
-                  {renamingSnippetId === item.id ? (
-                    <button className="btn small" onClick={() => void renameSnippet(item, renameDraft)}>
-                      Apply
-                    </button>
-                  ) : (
-                    <button className="btn small" onClick={() => beginRenameSnippet(item)}>
-                      Rename
-                    </button>
-                  )}
-                  <button className="btn small danger" onClick={() => void deleteSnippet(item)}>
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            schemaGroups.map(([schema, tables]) => (
-              <div key={schema} className="explorer-group">
-                <button className="explorer-schema explorer-toggle-row" onClick={() => toggleSchema(schema)}>
-                  <span className="explorer-chevron">{expandedSchemas[schema] === false ? '▸' : '▾'}</span>
-                  <span>{schema}</span>
-                </button>
-                {expandedSchemas[schema] !== false &&
-                  tables.map((table) => {
-                    const tableKey = `${schema}.${table.table}`
-                    const isExpanded = expandedTables[tableKey] === true
-                    return (
-                      <div key={tableKey} className="explorer-item">
-                        <button
-                          className="explorer-table explorer-toggle-row"
-                          onClick={() => toggleTable(schema, table.table)}
-                          title={`${isExpanded ? 'Collapse' : 'Expand'} ${schema}.${table.table}`}
-                        >
-                          <span className="explorer-chevron">{isExpanded ? '▾' : '▸'}</span>
-                          <span>{table.table}</span>
-                        </button>
-                        <div className="explorer-actions">
-                          <button
-                            className="explorer-action-btn"
-                            onClick={() => insertIntoEditor(`${schema}.${table.table}`)}
-                            title={`Insert ${schema}.${table.table}`}
-                          >
-                            Insert table
-                          </button>
-                        </div>
-                        {isExpanded && (
-                          <div className="explorer-columns">
-                            {loadingColumnsByKey[tableKey] ? (
-                              <div className="history-meta">Loading columns...</div>
-                            ) : (
-                              (tableColumnsByKey[tableKey] || []).slice(0, 80).map((column) => (
-                                <button
-                                  key={`${schema}.${table.table}.${column}`}
-                                  className="explorer-col"
-                                  onClick={() => insertIntoEditor(column)}
-                                  title={`Insert ${column}`}
-                                >
-                                  {column}
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-              </div>
-            ))
-          )}
-        </div>
-      </aside>
+      <SqlSidebar
+        activeNavTab={activeNavTab}
+        onChangeNavTab={setActiveNavTab}
+        historySearch={historySearch}
+        onChangeHistorySearch={setHistorySearch}
+        onRefreshHistory={() => {
+          void loadHistory()
+        }}
+        onClearHistory={() => {
+          void clearHistory()
+        }}
+        onRefreshSnippets={() => {
+          void loadSnippets()
+        }}
+        onSaveSnippet={(forceCreate) => {
+          void saveCurrentAsSnippet(forceCreate)
+        }}
+        onRefreshSchema={() => {
+          void loadSchema()
+        }}
+        onInsertTemplate={() => insertIntoEditor('select * from public.your_table limit 100;')}
+        canSaveAs={Boolean(activeQueryTab?.snippetId)}
+        savingSnippet={savingSnippet}
+        filteredHistory={filteredHistory}
+        filteredSnippets={filteredSnippets}
+        schemaGroups={schemaGroups}
+        expandedSchemas={expandedSchemas}
+        onToggleSchema={toggleSchema}
+        expandedTables={expandedTables}
+        onToggleTable={toggleTable}
+        loadingColumnsByKey={loadingColumnsByKey}
+        tableColumnsByKey={tableColumnsByKey}
+        onLoadHistoryQuery={(queryText) => setActiveTabQuery(queryText, false, null)}
+        onLoadSnippetQuery={(queryText) => setActiveTabQuery(queryText, false, null)}
+        onEditSnippet={openSnippetInTab}
+        onDuplicateSnippet={(item) => {
+          void duplicateSnippet(item)
+        }}
+        onRenameSnippet={(item, nextTitle) => {
+          void renameSnippet(item, nextTitle)
+        }}
+        onDeleteSnippet={(item) => {
+          void deleteSnippet(item)
+        }}
+        renamingSnippetId={renamingSnippetId}
+        renameDraft={renameDraft}
+        onChangeRenameDraft={setRenameDraft}
+        onBeginRenameSnippet={beginRenameSnippet}
+        onCancelRenameSnippet={cancelRenameSnippet}
+        onInsertTableName={(schema, table) => insertIntoEditor(`${schema}.${table}`)}
+        onInsertColumnName={insertIntoEditor}
+        formatTime={formatTime}
+      />
 
       <main className="layout-main">
         <div className="editor-panel-header">
           <div className="editor-title">SQL Editor</div>
           <div className="editor-header-right">
+            <button className="btn small" onClick={() => createQueryTab()}>
+              New
+            </button>
             <span className={`status-pill ${status.tone}`}>{status.text}</span>
             <ThemeToggle />
             <select value={connectionName} onChange={(e) => setConnectionName(e.target.value)}>
@@ -864,25 +669,13 @@ export default function SqlEditorPage() {
           </div>
         </div>
 
-        <div className="sql-tabs-bar">
-          {queryTabs.map((tab) => (
-            <div key={tab.id} className={`sql-tab ${tab.id === activeQueryTabId ? 'active' : ''}`}>
-              <button className="sql-tab-main" onClick={() => setActiveQueryTabId(tab.id)} onDoubleClick={() => renameTab(tab.id)}>
-                {tab.title}
-                {tab.snippetId && tab.dirty ? (
-                  <span className="tab-unsaved-badge">Unsaved</span>
-                ) : tab.dirty ? (
-                  '*'
-                ) : (
-                  ''
-                )}
-              </button>
-              <button className="sql-tab-close" onClick={() => closeTab(tab.id)} aria-label={`Close ${tab.title}`}>
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
+        <SqlTabsBar
+          queryTabs={queryTabs}
+          activeQueryTabId={activeQueryTabId}
+          onSelectTab={setActiveQueryTabId}
+          onRenameTab={renameTab}
+          onCloseTab={closeTab}
+        />
 
         <div className="editor-panel-body">
           <div className="editor-wrap">
@@ -1018,55 +811,7 @@ export default function SqlEditorPage() {
             />
           </div>
 
-          <div className="results-wrap">
-            <div className="results-head">
-              <span>Results</span>
-              <span className="history-meta">{result ? `${result.totalRows} rows` : ''}</span>
-            </div>
-            <div className="results-body">
-              {!result ? (
-                <div className="empty-state">Run a query to see results.</div>
-              ) : (
-                <div className="results-stack">
-                  {result.statements.map((statement, index) => (
-                    <div key={`${statement.command}-${index}`} className="result-block">
-                      <div className="result-block-head">
-                        <span>#{index + 1}</span>
-                        <span>{statement.command}</span>
-                        <span>{statement.rowCount} rows</span>
-                      </div>
-                      {statement.fields.length > 0 ? (
-                        <div className="table-wrap">
-                          <table>
-                            <thead>
-                              <tr>
-                                {statement.fields.map((field) => (
-                                  <th key={field}>{field}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {statement.rows.map((row, rowIndex) => (
-                                <tr key={rowIndex}>
-                                  {statement.fields.map((field) => (
-                                    <td key={`${rowIndex}-${field}`}>
-                                      <code>{formatCell(row[field])}</code>
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div className="empty-state">Command executed successfully.</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <SqlResultsPanel result={result} formatCell={formatCell} />
 
           <div className="editor-footer">
             <button className="btn primary" disabled={running} onClick={() => void runCurrentQuery()}>
