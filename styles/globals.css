@@ -144,6 +144,7 @@ select {
 }
 
 .layout-nav-controls input,
+.layout-nav-controls select,
 .editor-header-right select {
   border: 1px solid var(--border);
   border-radius: 7px;
@@ -756,6 +757,7 @@ pre {
 }
 
 [data-theme='dark'] .layout-nav-controls input,
+[data-theme='dark'] .layout-nav-controls select,
 [data-theme='dark'] .editor-header-right select,
 [data-theme='dark'] .insert-panel textarea,
 [data-theme='dark'] .cell-input {

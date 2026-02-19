@@ -143,7 +143,7 @@ export default function SqlEditorPage() {
   const [schemaTables, setSchemaTables] = useState<SchemaTable[]>([])
   const [tableColumnsByKey, setTableColumnsByKey] = useState<Record<string, string[]>>({})
   const [loadingColumnsByKey, setLoadingColumnsByKey] = useState<Record<string, boolean>>({})
-  const [activeNavTab, setActiveNavTab] = useState<'history' | 'snippets' | 'explorer'>('history')
+  const [activeNavTab, setActiveNavTab] = useState<'history' | 'snippets' | 'explorer'>('explorer')
   const [expandedSchemas, setExpandedSchemas] = useState<Record<string, boolean>>({})
   const [expandedTables, setExpandedTables] = useState<Record<string, boolean>>({})
   const [historySearch, setHistorySearch] = useState('')
@@ -461,10 +461,10 @@ export default function SqlEditorPage() {
 
         <div className="layout-nav-tabs">
           <button
-            className={`nav-tab ${activeNavTab === 'history' ? 'active' : ''}`}
-            onClick={() => setActiveNavTab('history')}
+            className={`nav-tab ${activeNavTab === 'explorer' ? 'active' : ''}`}
+            onClick={() => setActiveNavTab('explorer')}
           >
-            History
+            Explorer
           </button>
           <button
             className={`nav-tab ${activeNavTab === 'snippets' ? 'active' : ''}`}
@@ -473,10 +473,10 @@ export default function SqlEditorPage() {
             Snippets
           </button>
           <button
-            className={`nav-tab ${activeNavTab === 'explorer' ? 'active' : ''}`}
-            onClick={() => setActiveNavTab('explorer')}
+            className={`nav-tab ${activeNavTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveNavTab('history')}
           >
-            Explorer
+            History
           </button>
         </div>
 
