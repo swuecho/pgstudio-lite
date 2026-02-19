@@ -1,16 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { fetchJson } from '../../lib/http'
-import { SchemaTable } from './types'
+import { useSqlEditorExplorerStore } from './stores/sqlEditorExplorerStore'
 
 export function useSqlEditorExplorer(connectionName: string, historySearch: string) {
-  const [schemaTables, setSchemaTables] = useState<SchemaTable[]>([])
-  const [tableColumnsByKey, setTableColumnsByKey] = useState<Record<string, string[]>>({})
-  const [loadingColumnsByKey, setLoadingColumnsByKey] = useState<Record<string, boolean>>({})
-  const [expandedSchemas, setExpandedSchemas] = useState<Record<string, boolean>>({})
-  const [expandedTables, setExpandedTables] = useState<Record<string, boolean>>({})
+  const schemaTables = useSqlEditorExplorerStore((s) => s.schemaTables)
+  const setSchemaTables = useSqlEditorExplorerStore((s) => s.setSchemaTables)
+  const tableColumnsByKey = useSqlEditorExplorerStore((s) => s.tableColumnsByKey)
+  const setTableColumnsByKey = useSqlEditorExplorerStore((s) => s.setTableColumnsByKey)
+  const loadingColumnsByKey = useSqlEditorExplorerStore((s) => s.loadingColumnsByKey)
+  const setLoadingColumnsByKey = useSqlEditorExplorerStore((s) => s.setLoadingColumnsByKey)
+  const expandedSchemas = useSqlEditorExplorerStore((s) => s.expandedSchemas)
+  const setExpandedSchemas = useSqlEditorExplorerStore((s) => s.setExpandedSchemas)
+  const expandedTables = useSqlEditorExplorerStore((s) => s.expandedTables)
+  const setExpandedTables = useSqlEditorExplorerStore((s) => s.setExpandedTables)
 
-  const schemaTablesRef = useRef<SchemaTable[]>([])
-  const tableColumnsByKeyRef = useRef<Record<string, string[]>>({})
+  const schemaTablesRef = useRef<typeof schemaTables>([])
+  const tableColumnsByKeyRef = useRef<typeof tableColumnsByKey>({})
 
   const filteredSchemaTables = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
@@ -19,7 +24,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
   }, [schemaTables, historySearch])
 
   const schemaGroups = useMemo(() => {
-    const grouped = new Map<string, SchemaTable[]>()
+    const grouped = new Map<string, typeof schemaTables>()
     for (const table of filteredSchemaTables) {
       const existing = grouped.get(table.schema) || []
       existing.push(table)
@@ -60,7 +65,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
   }
 
   async function loadSchema() {
-    const data = await fetchJson<{ tables: SchemaTable[] }>(
+    const data = await fetchJson<{ tables: typeof schemaTables }>(
       `/api/schema?connectionName=${encodeURIComponent(connectionName)}`
     )
     setSchemaTables(data.tables || [])

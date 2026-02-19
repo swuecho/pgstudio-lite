@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { fetchJson } from '../../lib/http'
-import { HistoryItem } from './types'
+import { useSqlEditorHistoryStore } from './stores/sqlEditorHistoryStore'
 
 export function useSqlEditorHistory(historySearch: string) {
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
+  const historyItems = useSqlEditorHistoryStore((s) => s.historyItems)
+  const setHistoryItems = useSqlEditorHistoryStore((s) => s.setHistoryItems)
 
   const filteredHistory = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
@@ -17,7 +18,7 @@ export function useSqlEditorHistory(historySearch: string) {
   }, [historyItems, historySearch])
 
   async function loadHistory() {
-    const data = await fetchJson<{ items: HistoryItem[] }>('/api/history?limit=300')
+    const data = await fetchJson<{ items: typeof historyItems }>('/api/history?limit=300')
     setHistoryItems(data.items || [])
   }
 

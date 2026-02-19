@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { fetchJson } from '../../lib/http'
 import { QueryTab, SnippetItem } from './types'
+import { useSqlEditorSnippetsStore } from './stores/sqlEditorSnippetsStore'
 
 type StatusState = { text: string; tone: string }
 
@@ -18,10 +19,14 @@ export function useSqlEditorSnippets({
   setStatus,
   setActiveNavTab,
 }: UseSqlEditorSnippetsParams) {
-  const [snippetItems, setSnippetItems] = useState<SnippetItem[]>([])
-  const [savingSnippet, setSavingSnippet] = useState(false)
-  const [renamingSnippetId, setRenamingSnippetId] = useState<string | null>(null)
-  const [renameDraft, setRenameDraft] = useState('')
+  const snippetItems = useSqlEditorSnippetsStore((s) => s.snippetItems)
+  const setSnippetItems = useSqlEditorSnippetsStore((s) => s.setSnippetItems)
+  const savingSnippet = useSqlEditorSnippetsStore((s) => s.savingSnippet)
+  const setSavingSnippet = useSqlEditorSnippetsStore((s) => s.setSavingSnippet)
+  const renamingSnippetId = useSqlEditorSnippetsStore((s) => s.renamingSnippetId)
+  const setRenamingSnippetId = useSqlEditorSnippetsStore((s) => s.setRenamingSnippetId)
+  const renameDraft = useSqlEditorSnippetsStore((s) => s.renameDraft)
+  const setRenameDraft = useSqlEditorSnippetsStore((s) => s.setRenameDraft)
 
   async function loadSnippets() {
     const data = await fetchJson<{ items: SnippetItem[] }>('/api/snippets?limit=300')

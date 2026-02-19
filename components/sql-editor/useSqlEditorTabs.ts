@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { QueryTab, SnippetItem } from './types'
-
-const DEFAULT_QUERY = '-- Write SQL and run with Ctrl/Cmd+Enter\nselect now() as server_time;'
-const TABS_STORAGE_KEY = 'pgstudio-query-tabs-v1'
-const ACTIVE_TAB_STORAGE_KEY = 'pgstudio-active-tab-v1'
+import { useSqlEditorTabsStore } from './stores/sqlEditorTabsStore'
 
 export function useSqlEditorTabs() {
-  const [queryTabs, setQueryTabs] = useState<QueryTab[]>([
-    { id: 'tab-1', title: 'Query 1', query: DEFAULT_QUERY, dirty: false },
-  ])
-  const [activeQueryTabId, setActiveQueryTabId] = useState('tab-1')
+  const queryTabs = useSqlEditorTabsStore((s) => s.queryTabs)
+  const setQueryTabs = useSqlEditorTabsStore((s) => s.setQueryTabs)
+  const activeQueryTabId = useSqlEditorTabsStore((s) => s.activeQueryTabId)
+  const setActiveQueryTabId = useSqlEditorTabsStore((s) => s.setActiveQueryTabId)
 
   const activeQueryTab = useMemo(
     () => queryTabs.find((tab) => tab.id === activeQueryTabId) || queryTabs[0],
@@ -89,33 +86,6 @@ export function useSqlEditorTabs() {
 
     createQueryTab(item.query_text, { title: item.title, snippetId: item.id, dirty: false })
   }
-
-  useEffect(() => {
-    const rawTabs = localStorage.getItem(TABS_STORAGE_KEY)
-    const rawActiveId = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY)
-    if (!rawTabs) return
-    try {
-      const parsed = JSON.parse(rawTabs) as QueryTab[]
-      if (!Array.isArray(parsed) || parsed.length === 0) return
-      const valid = parsed
-        .filter((item) => item && typeof item.id === 'string' && typeof item.query === 'string')
-        .map((item) => ({
-          ...item,
-          snippetId: typeof item.snippetId === 'string' ? item.snippetId : undefined,
-        }))
-      if (valid.length === 0) return
-      setQueryTabs(valid)
-      const hasActive = rawActiveId && valid.some((tab) => tab.id === rawActiveId)
-      setActiveQueryTabId(hasActive ? (rawActiveId as string) : valid[0].id)
-    } catch {
-      // ignore invalid local cache
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(queryTabs))
-    localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeQueryTabId)
-  }, [queryTabs, activeQueryTabId])
 
   return {
     queryTabs,
