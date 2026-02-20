@@ -9,6 +9,7 @@ PostgreSQL web manager using the same framework style as Supabase Studio:
 - SQLite for query history metadata
 - Zustand for SQL/Table UI state slices
 - Service layer modules for API interactions (`features/sql`, `features/table`)
+- React Query for server state (`connections`, `history`, `snippets`, `schema`, `table rows`)
 
 ## Included editors
 
@@ -59,6 +60,15 @@ npm run test
 ```
 
 This runs Vitest unit tests for SQL and table service modules.
+
+## State Architecture
+
+- Server state: React Query (`@tanstack/react-query`)
+  - SQL: connections, history, snippets, schema tables/columns
+  - Table editor: connections, tables, rows
+- UI/session state: Zustand
+  - SQL: active tab, tab contents, nav tab, rename draft, panel expansion
+  - Table editor: active table, filter/sort/pagination controls, insert draft, status text
 
 ## API routes
 

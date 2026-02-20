@@ -1,6 +1,9 @@
 import type { AppProps } from 'next/app'
 import { useEffect } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '../styles/globals.css'
+
+const queryClient = new QueryClient()
 
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
@@ -15,5 +18,9 @@ export default function App({ Component, pageProps }: AppProps) {
     document.documentElement.dataset.theme = theme
   }, [])
 
-  return <Component {...pageProps} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Component {...pageProps} />
+    </QueryClientProvider>
+  )
 }

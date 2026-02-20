@@ -1,10 +1,18 @@
 import { useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { clearHistory as clearHistoryService, getHistory } from '../../features/sql/sql.service'
-import { useSqlEditorHistoryStore } from './stores/sqlEditorHistoryStore'
 
 export function useSqlEditorHistory(historySearch: string) {
-  const historyItems = useSqlEditorHistoryStore((s) => s.historyItems)
-  const setHistoryItems = useSqlEditorHistoryStore((s) => s.setHistoryItems)
+  const queryClient = useQueryClient()
+  const historyQuery = useQuery({
+    queryKey: ['sql', 'history', 300],
+    queryFn: () => getHistory(300),
+  })
+  const clearHistoryMutation = useMutation({
+    mutationFn: clearHistoryService,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sql', 'history'] }),
+  })
+  const historyItems = historyQuery.data?.items || []
 
   const filteredHistory = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
@@ -18,18 +26,17 @@ export function useSqlEditorHistory(historySearch: string) {
   }, [historyItems, historySearch])
 
   async function loadHistory() {
-    const data = await getHistory(300)
-    setHistoryItems(data.items || [])
+    await historyQuery.refetch()
   }
 
   async function clearHistory() {
-    await clearHistoryService()
-    await loadHistory()
+    await clearHistoryMutation.mutateAsync()
   }
 
   return {
     filteredHistory,
     loadHistory,
     clearHistory,
+    loadingHistory: historyQuery.isFetching,
   }
 }

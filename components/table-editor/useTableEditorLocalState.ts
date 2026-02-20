@@ -1,21 +1,10 @@
-import { useMemo } from 'react'
 import { useTableEditorLocalStore } from './stores/tableEditorLocalStore'
 
 export function useTableEditorLocalState() {
-  const connections = useTableEditorLocalStore((s) => s.connections)
-  const setConnections = useTableEditorLocalStore((s) => s.setConnections)
   const connectionName = useTableEditorLocalStore((s) => s.connectionName)
   const setConnectionName = useTableEditorLocalStore((s) => s.setConnectionName)
-  const tables = useTableEditorLocalStore((s) => s.tables)
-  const setTables = useTableEditorLocalStore((s) => s.setTables)
   const activeTable = useTableEditorLocalStore((s) => s.activeTable)
   const setActiveTable = useTableEditorLocalStore((s) => s.setActiveTable)
-  const columns = useTableEditorLocalStore((s) => s.columns)
-  const setColumns = useTableEditorLocalStore((s) => s.setColumns)
-  const rows = useTableEditorLocalStore((s) => s.rows)
-  const setRows = useTableEditorLocalStore((s) => s.setRows)
-  const totalRows = useTableEditorLocalStore((s) => s.totalRows)
-  const setTotalRows = useTableEditorLocalStore((s) => s.setTotalRows)
   const newRowJson = useTableEditorLocalStore((s) => s.newRowJson)
   const setNewRowJson = useTableEditorLocalStore((s) => s.setNewRowJson)
   const status = useTableEditorLocalStore((s) => s.status)
@@ -35,26 +24,11 @@ export function useTableEditorLocalState() {
   const filterMode = useTableEditorLocalStore((s) => s.filterMode)
   const setFilterMode = useTableEditorLocalStore((s) => s.setFilterMode)
 
-  const editableColumns = useMemo(
-    () => columns.filter((c) => !c.isIdentity && c.name !== '_ctid'),
-    [columns]
-  )
-
   return {
-    connections,
-    setConnections,
     connectionName,
     setConnectionName,
-    tables,
-    setTables,
     activeTable,
     setActiveTable,
-    columns,
-    setColumns,
-    rows,
-    setRows,
-    totalRows,
-    setTotalRows,
     newRowJson,
     setNewRowJson,
     status,
@@ -73,6 +47,5 @@ export function useTableEditorLocalState() {
     setFilterValue,
     filterMode,
     setFilterMode,
-    editableColumns,
   }
 }

@@ -1,21 +1,25 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSchema, getSchemaColumns } from '../../features/sql/sql.service'
 import { useSqlEditorExplorerStore } from './stores/sqlEditorExplorerStore'
 
 export function useSqlEditorExplorer(connectionName: string, historySearch: string) {
-  const schemaTables = useSqlEditorExplorerStore((s) => s.schemaTables)
-  const setSchemaTables = useSqlEditorExplorerStore((s) => s.setSchemaTables)
-  const tableColumnsByKey = useSqlEditorExplorerStore((s) => s.tableColumnsByKey)
-  const setTableColumnsByKey = useSqlEditorExplorerStore((s) => s.setTableColumnsByKey)
-  const loadingColumnsByKey = useSqlEditorExplorerStore((s) => s.loadingColumnsByKey)
-  const setLoadingColumnsByKey = useSqlEditorExplorerStore((s) => s.setLoadingColumnsByKey)
+  const queryClient = useQueryClient()
   const expandedSchemas = useSqlEditorExplorerStore((s) => s.expandedSchemas)
   const setExpandedSchemas = useSqlEditorExplorerStore((s) => s.setExpandedSchemas)
   const expandedTables = useSqlEditorExplorerStore((s) => s.expandedTables)
   const setExpandedTables = useSqlEditorExplorerStore((s) => s.setExpandedTables)
+  const [loadingColumnsByKey, setLoadingColumnsByKey] = useState<Record<string, boolean>>({})
+
+  const schemaQuery = useQuery({
+    queryKey: ['sql', 'schema', connectionName],
+    queryFn: () => getSchema(connectionName),
+    enabled: Boolean(connectionName),
+  })
+  const schemaTables = schemaQuery.data?.tables || []
 
   const schemaTablesRef = useRef<typeof schemaTables>([])
-  const tableColumnsByKeyRef = useRef<typeof tableColumnsByKey>({})
+  const tableColumnsByKeyRef = useRef<Record<string, string[]>>({})
 
   const filteredSchemaTables = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
@@ -33,17 +37,34 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
     return [...grouped.entries()]
   }, [filteredSchemaTables])
 
+  const tableColumnsByKey = useMemo(() => {
+    const result: Record<string, string[]> = {}
+    for (const [tableKey, isExpanded] of Object.entries(expandedTables)) {
+      if (!isExpanded) continue
+      const [schema, table] = tableKey.split('.')
+      if (!schema || !table) continue
+      const cached = queryClient.getQueryData<{ columns: Array<{ name: string }> }>([
+        'sql',
+        'schema-columns',
+        connectionName,
+        schema,
+        table,
+      ])
+      if (cached?.columns?.length) result[tableKey] = cached.columns.map((c) => c.name)
+    }
+    return result
+  }, [expandedTables, connectionName, loadingColumnsByKey, queryClient])
+
   async function loadColumnsForTable(schema: string, table: string) {
     const key = `${schema}.${table}`
     if (tableColumnsByKeyRef.current[key]?.length) return
     if (loadingColumnsByKey[key]) return
     setLoadingColumnsByKey((prev) => ({ ...prev, [key]: true }))
     try {
-      const data = await getSchemaColumns(connectionName, schema, table)
-      setTableColumnsByKey((prev) => ({
-        ...prev,
-        [key]: (data.columns || []).map((c) => c.name),
-      }))
+      await queryClient.fetchQuery({
+        queryKey: ['sql', 'schema-columns', connectionName, schema, table],
+        queryFn: () => getSchemaColumns(connectionName, schema, table),
+      })
     } finally {
       setLoadingColumnsByKey((prev) => ({ ...prev, [key]: false }))
     }
@@ -61,8 +82,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
   }
 
   async function loadSchema() {
-    const data = await getSchema(connectionName)
-    setSchemaTables(data.tables || [])
+    await schemaQuery.refetch()
   }
 
   useEffect(() => {
@@ -72,6 +92,11 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
   useEffect(() => {
     tableColumnsByKeyRef.current = tableColumnsByKey
   }, [tableColumnsByKey])
+
+  useEffect(() => {
+    setLoadingColumnsByKey({})
+    setExpandedTables({})
+  }, [connectionName, setExpandedTables])
 
   useEffect(() => {
     if (schemaGroups.length === 0) return
@@ -95,5 +120,6 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
     toggleSchema,
     toggleTable,
     loadSchema,
+    loadingSchema: schemaQuery.isFetching,
   }
 }

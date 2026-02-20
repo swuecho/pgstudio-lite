@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { ColumnInfo, Connection, RowData, TableInfo } from './types'
+import { useEffect, useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getConnections as getConnectionsService,
   getRows as getRowsService,
@@ -12,14 +12,8 @@ import {
 type TableEditorState = {
   connectionName: string
   setConnectionName: (value: string) => void
-  tables: TableInfo[]
-  setTables: (value: TableInfo[] | ((prev: TableInfo[]) => TableInfo[])) => void
   activeTable: string
   setActiveTable: (value: string) => void
-  columns: ColumnInfo[]
-  setColumns: (value: ColumnInfo[]) => void
-  setRows: (value: RowData[]) => void
-  setTotalRows: (value: number) => void
   newRowJson: string
   setStatus: (value: string) => void
   page: number
@@ -34,53 +28,102 @@ type TableEditorState = {
   filterMode: 'contains' | 'equals'
 }
 
-export function useTableEditorData(state: TableEditorState & { setConnections: (value: Connection[]) => void }) {
-  async function loadConnections() {
-    const data = await getConnectionsService()
-    state.setConnections(data.connections || [])
-    if (data.connections[0]) state.setConnectionName(data.connections[0].name)
+export function useTableEditorData(state: TableEditorState) {
+  const queryClient = useQueryClient()
+  const connectionsQuery = useQuery({
+    queryKey: ['table', 'connections'],
+    queryFn: getConnectionsService,
+  })
+  const connections = connectionsQuery.data?.connections || []
+
+  const tablesQuery = useQuery({
+    queryKey: ['table', 'tables', state.connectionName],
+    queryFn: () => getTablesService(state.connectionName),
+    enabled: Boolean(state.connectionName),
+  })
+  const tables = tablesQuery.data?.tables || []
+
+  const rowsQuery = useQuery({
+    queryKey: [
+      'table',
+      'rows',
+      state.connectionName,
+      state.activeTable,
+      state.page,
+      state.pageSize,
+      state.sortBy,
+      state.sortOrder,
+      state.filterColumn,
+      state.filterMode,
+      state.filterValue.trim(),
+    ],
+    queryFn: () =>
+      getRowsService({
+        table: state.activeTable,
+        connectionName: state.connectionName,
+        page: state.page,
+        pageSize: state.pageSize,
+        sortBy: state.sortBy,
+        sortOrder: state.sortOrder,
+        filterColumn: state.filterColumn,
+        filterValue: state.filterValue,
+        filterMode: state.filterMode,
+      }),
+    enabled: Boolean(state.connectionName && state.activeTable),
+  })
+  const columns = rowsQuery.data?.columns || []
+  const rows = rowsQuery.data?.rows || []
+  const totalRows = Number(rowsQuery.data?.total || 0)
+  const editableColumns = useMemo(() => columns.filter((c) => !c.isIdentity && c.name !== '_ctid'), [columns])
+
+  function invalidateRows() {
+    return queryClient.invalidateQueries({
+      queryKey: ['table', 'rows', state.connectionName, state.activeTable],
+    })
   }
+
+  const patchRowMutation = useMutation({
+    mutationFn: ({ ctid, column, value }: { ctid: string; column: string; value: string }) =>
+      patchRow(state.activeTable, {
+        connectionName: state.connectionName,
+        ctid,
+        patch: { [column]: value },
+      }),
+    onSuccess: invalidateRows,
+  })
+
+  const deleteRowMutation = useMutation({
+    mutationFn: (ctid: string) => removeRow(state.activeTable, { connectionName: state.connectionName, ctid }),
+    onSuccess: invalidateRows,
+  })
+
+  const insertRowMutation = useMutation({
+    mutationFn: (row: Record<string, unknown>) =>
+      insertRowService(state.activeTable, { connectionName: state.connectionName, row }),
+    onSuccess: invalidateRows,
+  })
 
   async function loadTables(conn = state.connectionName) {
-    const data = await getTablesService(conn)
-    state.setTables(data.tables || [])
-    if (!state.activeTable && data.tables[0]) state.setActiveTable(data.tables[0].table)
+    await tablesQuery.refetch()
+    await queryClient.invalidateQueries({
+      queryKey: ['table', 'tables', conn],
+    })
   }
 
-  async function loadRows(table = state.activeTable, conn = state.connectionName) {
-    if (!table) return
-    const data = await getRowsService({
-      table,
-      connectionName: conn,
-      page: state.page,
-      pageSize: state.pageSize,
-      sortBy: state.sortBy,
-      sortOrder: state.sortOrder,
-      filterColumn: state.filterColumn,
-      filterValue: state.filterValue,
-      filterMode: state.filterMode,
-    })
-    state.setColumns(data.columns || [])
-    state.setRows(data.rows || [])
-    state.setTotalRows(Number(data.total || 0))
+  async function loadRows() {
+    await rowsQuery.refetch()
   }
 
   async function updateCell(ctid: string, column: string, value: string) {
     state.setStatus('Saving...')
-    await patchRow(state.activeTable, {
-      connectionName: state.connectionName,
-      ctid,
-      patch: { [column]: value },
-    })
+    await patchRowMutation.mutateAsync({ ctid, column, value })
     state.setStatus('Saved')
-    await loadRows()
   }
 
   async function deleteRow(ctid: string) {
     state.setStatus('Deleting...')
-    await removeRow(state.activeTable, { connectionName: state.connectionName, ctid })
+    await deleteRowMutation.mutateAsync(ctid)
     state.setStatus('Deleted')
-    await loadRows()
   }
 
   async function insertRow() {
@@ -93,19 +136,26 @@ export function useTableEditorData(state: TableEditorState & { setConnections: (
     }
 
     state.setStatus('Inserting...')
-    await insertRowService(state.activeTable, { connectionName: state.connectionName, row: payload })
+    await insertRowMutation.mutateAsync(payload)
     state.setStatus('Inserted')
-    await loadRows()
   }
 
   useEffect(() => {
-    void loadConnections()
-  }, [])
+    if (!connectionsQuery.data) return
+    if (connectionsQuery.data.connections.length === 0) return
+    const currentExists = connectionsQuery.data.connections.some((connection) => connection.name === state.connectionName)
+    if (!currentExists) state.setConnectionName(connectionsQuery.data.connections[0].name)
+  }, [connectionsQuery.data, state.connectionName, state.setConnectionName])
 
   useEffect(() => {
-    if (!state.connectionName) return
-    void loadTables(state.connectionName)
-  }, [state.connectionName])
+    if (tables.length === 0) {
+      if (state.activeTable) state.setActiveTable('')
+      return
+    }
+    if (!tables.some((table) => table.table === state.activeTable)) {
+      state.setActiveTable(tables[0].table)
+    }
+  }, [tables, state.activeTable, state.setActiveTable])
 
   useEffect(() => {
     if (!state.activeTable) return
@@ -113,24 +163,28 @@ export function useTableEditorData(state: TableEditorState & { setConnections: (
   }, [state.activeTable, state.pageSize, state.sortBy, state.sortOrder, state.filterColumn, state.filterMode, state.filterValue])
 
   useEffect(() => {
-    if (!state.activeTable) return
-    void loadRows(state.activeTable, state.connectionName)
-  }, [state.activeTable, state.connectionName, state.page, state.pageSize, state.sortBy, state.sortOrder, state.filterColumn, state.filterMode, state.filterValue])
-
-  useEffect(() => {
-    if (state.columns.length === 0) return
-    if (state.sortBy !== '_ctid' && !state.columns.some((col) => col.name === state.sortBy)) {
+    if (columns.length === 0) return
+    if (state.sortBy !== '_ctid' && !columns.some((col) => col.name === state.sortBy)) {
       state.setSortBy('_ctid')
     }
-    if (state.filterColumn && !state.columns.some((col) => col.name === state.filterColumn)) {
+    if (state.filterColumn && !columns.some((col) => col.name === state.filterColumn)) {
       state.setFilterColumn('')
     }
-  }, [state.columns, state.filterColumn, state.sortBy])
+  }, [columns, state.filterColumn, state.sortBy, state.setFilterColumn, state.setSortBy])
 
   return {
+    connections,
+    tables,
+    columns,
+    rows,
+    totalRows,
+    editableColumns,
     loadTables,
+    loadRows,
     updateCell,
     deleteRow,
     insertRow,
+    loadingRows: rowsQuery.isFetching,
+    loadingTables: tablesQuery.isFetching,
   }
 }

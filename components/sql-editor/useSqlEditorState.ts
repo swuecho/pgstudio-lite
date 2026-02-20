@@ -1,8 +1,9 @@
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getConnections, runQuery } from '../../features/sql/sql.service'
 import { detectOS, suffixWithLimit } from './utils'
-import { Connection, QueryResult } from './types'
+import { QueryResult } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'
 import { useSqlEditorHistory } from './useSqlEditorHistory'
 import { useSqlEditorSnippets } from './useSqlEditorSnippets'
@@ -10,7 +11,6 @@ import { useSqlEditorTabs } from './useSqlEditorTabs'
 
 export function useSqlEditorState() {
   const [editorRef, setEditorRef] = useState<MonacoEditorNs.IStandaloneCodeEditor | null>(null)
-  const [connections, setConnections] = useState<Connection[]>([])
   const [connectionName, setConnectionName] = useState('default')
   const [status, setStatus] = useState<{ text: string; tone: string }>({ text: 'Ready', tone: 'default' })
   const [activeNavTab, setActiveNavTab] = useState<'history' | 'snippets' | 'explorer'>('explorer')
@@ -57,16 +57,6 @@ export function useSqlEditorState() {
     editorRef.focus()
   }
 
-  async function loadConnections() {
-    const data = await getConnections()
-    setConnections(data.connections || [])
-    if (!data.configured) {
-      setStatus({ text: 'Set PG_CONNECTION_STRING to start', tone: 'warning' })
-      return
-    }
-    if (data.connections[0]) setConnectionName(data.connections[0].name)
-  }
-
   async function runCurrentQuery() {
     if (running || !editorRef || !tabs.activeQueryTab) return
 
@@ -100,15 +90,15 @@ export function useSqlEditorState() {
 
 
   useEffect(() => {
-    void loadConnections()
-    void history.loadHistory()
-    void snippets.loadSnippets()
-  }, [])
-
-  useEffect(() => {
-    if (!connectionName) return
-    void explorer.loadSchema()
-  }, [connectionName])
+    if (!connectionsQuery.data) return
+    if (!connectionsQuery.data.configured) {
+      setStatus({ text: 'Set PG_CONNECTION_STRING to start', tone: 'warning' })
+      return
+    }
+    if (connectionsQuery.data.connections.length === 0) return
+    const currentExists = connectionsQuery.data.connections.some((connection) => connection.name === connectionName)
+    if (!currentExists) setConnectionName(connectionsQuery.data.connections[0].name)
+  }, [connectionsQuery.data, connectionName])
 
   return {
     editorRef,
@@ -163,3 +153,8 @@ export function useSqlEditorState() {
     setHasSelection,
   }
 }
+  const connectionsQuery = useQuery({
+    queryKey: ['sql', 'connections'],
+    queryFn: getConnections,
+  })
+  const connections = connectionsQuery.data?.connections || []
