@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { z } from 'zod'
 import {
   createConnection,
   deleteConnection,
@@ -6,6 +7,35 @@ import {
   setDefaultConnection,
   updateConnection,
 } from '../../lib/db'
+import { nonEmptyStringSchema, parseWithSchema } from './_utils/validation'
+
+const createConnectionSchema = z.object({
+  name: nonEmptyStringSchema,
+  connectionString: nonEmptyStringSchema,
+  isDefault: z.boolean().optional(),
+})
+
+const patchConnectionSchema = z
+  .object({
+    id: nonEmptyStringSchema,
+    setDefault: z.boolean().optional(),
+    name: nonEmptyStringSchema.optional(),
+    connectionString: nonEmptyStringSchema.optional(),
+    isDefault: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.setDefault === true) return
+    if (value.name === undefined && value.connectionString === undefined && value.isDefault === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'name, connectionString, or isDefault is required',
+      })
+    }
+  })
+
+const deleteConnectionSchema = z.object({
+  id: nonEmptyStringSchema,
+})
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -20,12 +50,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === 'POST') {
-      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : ''
-      const connectionString =
-        typeof req.body?.connectionString === 'string' ? req.body.connectionString.trim() : ''
-      const isDefault = req.body?.isDefault === true
-      if (!name) return res.status(400).json({ error: 'name is required' })
-      if (!connectionString) return res.status(400).json({ error: 'connectionString is required' })
+      const { name, connectionString, isDefault } = parseWithSchema(createConnectionSchema, req.body || {})
       const item = createConnection({ name, connectionString, isDefault })
       return res.status(200).json({
         item: { id: item.id, name: item.name, isDefault: item.isDefault },
@@ -33,28 +58,24 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === 'PATCH') {
-      const id = typeof req.body?.id === 'string' ? req.body.id.trim() : ''
-      if (!id) return res.status(400).json({ error: 'id is required' })
-      if (req.body?.setDefault === true) {
+      const payload = parseWithSchema(patchConnectionSchema, req.body || {})
+      if (payload.setDefault === true) {
+        const { id } = payload
         const item = setDefaultConnection(id)
         if (!item) return res.status(404).json({ error: 'connection not found' })
         return res.status(200).json({ item: { id: item.id, name: item.name, isDefault: item.isDefault } })
       }
-      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : undefined
-      const connectionString =
-        typeof req.body?.connectionString === 'string' ? req.body.connectionString.trim() : undefined
-      const isDefault = typeof req.body?.isDefault === 'boolean' ? req.body.isDefault : undefined
-      if (name === undefined && connectionString === undefined && isDefault === undefined) {
-        return res.status(400).json({ error: 'name, connectionString, or isDefault is required' })
-      }
-      const item = updateConnection(id, { name, connectionString, isDefault })
+      const item = updateConnection(payload.id, {
+        name: payload.name,
+        connectionString: payload.connectionString,
+        isDefault: payload.isDefault,
+      })
       if (!item) return res.status(404).json({ error: 'connection not found' })
       return res.status(200).json({ item: { id: item.id, name: item.name, isDefault: item.isDefault } })
     }
 
     if (req.method === 'DELETE') {
-      const id = typeof req.body?.id === 'string' ? req.body.id.trim() : ''
-      if (!id) return res.status(400).json({ error: 'id is required' })
+      const { id } = parseWithSchema(deleteConnectionSchema, req.body || {})
       const deleted = deleteConnection(id)
       if (!deleted) return res.status(404).json({ error: 'connection not found' })
       return res.status(200).json({ ok: true })

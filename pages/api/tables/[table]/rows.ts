@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { z } from 'zod'
 import {
   deleteTableRowByCtid,
   getTableColumns,
@@ -7,28 +8,45 @@ import {
   updateTableRowByCtid,
 } from '../../../../lib/db'
 import { getRequestConnectionName } from '../../_utils/connection'
+import { nonEmptyStringSchema, parseWithSchema } from '../../_utils/validation'
+
+const tableParamSchema = z.object({
+  table: nonEmptyStringSchema,
+})
+
+const rowsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).optional().default(100),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+  sortBy: z.string().trim().optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+  filterColumn: z.string().trim().optional(),
+  filterValue: z.string().trim().optional(),
+  filterMode: z.enum(['contains', 'equals']).optional(),
+})
+
+const createRowBodySchema = z.object({
+  row: z.record(z.string(), z.unknown()).optional().default({}),
+})
+
+const patchRowBodySchema = z.object({
+  ctid: nonEmptyStringSchema,
+  patch: z.record(z.string(), z.unknown()).optional().default({}),
+})
+
+const deleteRowBodySchema = z.object({
+  ctid: nonEmptyStringSchema,
+})
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const table = typeof req.query.table === 'string' ? req.query.table : ''
-  if (!table) return res.status(400).json({ error: 'table is required' })
-
-  const connectionName = getRequestConnectionName(req)
-
   try {
+    const { table } = parseWithSchema(tableParamSchema, req.query)
+    const connectionName = getRequestConnectionName(req)
+
     if (req.method === 'GET') {
-      const limit = Math.max(1, Math.min(500, Number(req.query.limit || 100)))
-      const offset = Math.max(0, Number(req.query.offset || 0))
-      const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : undefined
-      const sortOrder =
-        req.query.sortOrder === 'desc' || req.query.sortOrder === 'asc'
-          ? req.query.sortOrder
-          : undefined
-      const filterColumn = typeof req.query.filterColumn === 'string' ? req.query.filterColumn : undefined
-      const filterValue = typeof req.query.filterValue === 'string' ? req.query.filterValue : undefined
-      const filterMode =
-        req.query.filterMode === 'equals' || req.query.filterMode === 'contains'
-          ? req.query.filterMode
-          : undefined
+      const { limit, offset, sortBy, sortOrder, filterColumn, filterValue, filterMode } = parseWithSchema(
+        rowsQuerySchema,
+        req.query
+      )
       const [columns, rows] = await Promise.all([
         getTableColumns(connectionName, table),
         getTableRows(connectionName, table, {
@@ -45,22 +63,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'POST') {
-      const payload = (req.body?.row || {}) as Record<string, unknown>
+      const { row: payload } = parseWithSchema(createRowBodySchema, req.body || {})
       await insertTableRow(connectionName, table, payload)
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'PATCH') {
-      const ctid = typeof req.body?.ctid === 'string' ? req.body.ctid : ''
-      const patch = (req.body?.patch || {}) as Record<string, unknown>
-      if (!ctid) return res.status(400).json({ error: 'ctid is required for update' })
+      const { ctid, patch } = parseWithSchema(patchRowBodySchema, req.body || {})
       await updateTableRowByCtid(connectionName, table, ctid, patch)
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'DELETE') {
-      const ctid = typeof req.body?.ctid === 'string' ? req.body.ctid : ''
-      if (!ctid) return res.status(400).json({ error: 'ctid is required for delete' })
+      const { ctid } = parseWithSchema(deleteRowBodySchema, req.body || {})
       await deleteTableRowByCtid(connectionName, table, ctid)
       return res.status(200).json({ ok: true })
     }

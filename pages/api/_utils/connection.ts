@@ -1,7 +1,8 @@
 import type { NextApiRequest } from 'next'
+import { parseWithSchema, optionalConnectionNameSchema } from './validation'
 
 export function getRequestConnectionName(req: NextApiRequest) {
-  const fromQuery = typeof req.query.connectionName === 'string' ? req.query.connectionName : undefined
-  const fromBody = typeof req.body?.connectionName === 'string' ? req.body.connectionName : undefined
+  const fromQuery = parseWithSchema(optionalConnectionNameSchema, req.query.connectionName)
+  const fromBody = parseWithSchema(optionalConnectionNameSchema, req.body?.connectionName)
   return fromQuery || fromBody
 }

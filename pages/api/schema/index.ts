@@ -8,9 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const connectionName = getRequestConnectionName(req)
-
   try {
+    const connectionName = getRequestConnectionName(req)
     const tables = await listSchemaObjects(connectionName)
     return res.status(200).json({ tables })
   } catch (error) {
