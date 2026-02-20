@@ -185,6 +185,21 @@ function getPool(connectionString: string) {
   return pool
 }
 
+function closePool(connectionString: string) {
+  const pool = connectionPools.get(connectionString)
+  if (!pool) return
+  connectionPools.delete(connectionString)
+  void pool.end().catch(() => {
+    // Swallow pool shutdown errors during lifecycle cleanup.
+  })
+}
+
+function closePoolIfUnused(connectionString: string) {
+  const stillUsed = getConnections().some((connection) => connection.connectionString === connectionString)
+  if (stillUsed) return
+  closePool(connectionString)
+}
+
 export function getConnections(): DbConnection[] {
   return metaDb.select().from(dbConnections).orderBy(desc(dbConnections.isDefault), dbConnections.name).all().map(mapConnection)
 }
@@ -276,6 +291,9 @@ export function updateConnection(
   })
 
   const updated = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  if (existing.connectionString !== nextConnectionString) {
+    closePoolIfUnused(existing.connectionString)
+  }
   return updated ? mapConnection(updated) : null
 }
 
@@ -310,6 +328,7 @@ export function deleteConnection(id: string) {
       if (first) tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, first.id)).run()
     }
   })
+  closePoolIfUnused(existing.connectionString)
   return true
 }
 
