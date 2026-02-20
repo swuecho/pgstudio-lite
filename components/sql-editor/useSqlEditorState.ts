@@ -28,6 +28,11 @@ export function useSqlEditorState() {
     setStatus,
     setActiveNavTab,
   })
+  const connectionsQuery = useQuery({
+    queryKey: ['sql', 'connections'],
+    queryFn: getConnections,
+  })
+  const connections = connectionsQuery.data?.connections || []
 
   const runLabel = useMemo(() => {
     const shortcut = detectOS() === 'macos' ? '⌘↵' : 'Ctrl↵'
@@ -153,8 +158,3 @@ export function useSqlEditorState() {
     setHasSelection,
   }
 }
-  const connectionsQuery = useQuery({
-    queryKey: ['sql', 'connections'],
-    queryFn: getConnections,
-  })
-  const connections = connectionsQuery.data?.connections || []
