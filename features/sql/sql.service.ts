@@ -12,12 +12,17 @@ export async function runQuery(connectionName: string, query: string) {
   })
 }
 
-export async function getHistory(limit = 300) {
-  return fetchJson<{ items: HistoryItem[] }>(`/api/history?limit=${limit}`)
+export async function getHistory(limit = 300, connectionName?: string) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (connectionName) params.set('connectionName', connectionName)
+  return fetchJson<{ items: HistoryItem[] }>(`/api/history?${params.toString()}`)
 }
 
-export async function clearHistory() {
-  return fetchJson<{ ok: boolean }>('/api/history', { method: 'DELETE' })
+export async function clearHistory(connectionName?: string) {
+  const params = new URLSearchParams()
+  if (connectionName) params.set('connectionName', connectionName)
+  const suffix = params.toString()
+  return fetchJson<{ ok: boolean }>(`/api/history${suffix ? `?${suffix}` : ''}`, { method: 'DELETE' })
 }
 
 export async function getSnippets(limit = 300) {

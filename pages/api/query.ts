@@ -1,5 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { z } from 'zod'
 import { executeQuery } from '../../lib/db'
+import { getRequestConnectionName } from './_utils/connection'
+import { parseWithSchema } from './_utils/validation'
+
+const queryBodySchema = z.object({
+  query: z.string().trim().min(1, 'query is required'),
+})
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -7,13 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const query = typeof req.body?.query === 'string' ? req.body.query.trim() : ''
-  const connectionName =
-    typeof req.body?.connectionName === 'string' ? req.body.connectionName : 'default'
-
-  if (!query) return res.status(400).json({ error: 'query is required' })
-
   try {
+    const { query } = parseWithSchema(queryBodySchema, req.body || {})
+    const connectionName = getRequestConnectionName(req)
     const result = await executeQuery({ query, connectionName })
     return res.status(200).json(result)
   } catch (error) {

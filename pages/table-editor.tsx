@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import ThemeToggle from '../components/theme-toggle'
 import { InsertPanel } from '../components/table-editor/InsertPanel'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
@@ -6,6 +8,7 @@ import { useTableEditorState } from '../components/table-editor/useTableEditorSt
 
 export default function TableEditorPage() {
   const state = useTableEditorState()
+  const [managingConnections, setManagingConnections] = useState(false)
 
   return (
     <div className="layout-root">
@@ -13,12 +16,21 @@ export default function TableEditorPage() {
         connections={state.connections}
         connectionName={state.connectionName}
         onChangeConnection={state.setConnectionName}
+        onOpenConnectionManager={() => setManagingConnections(true)}
         tables={state.tables}
         activeTable={state.activeTable}
         onSelectTable={state.setActiveTable}
         onRefreshTables={() => {
           void state.loadTables()
         }}
+      />
+
+      <ConnectionManagerModal
+        open={managingConnections}
+        onClose={() => setManagingConnections(false)}
+        connections={state.connections}
+        connectionName={state.connectionName}
+        onChangeConnection={state.setConnectionName}
       />
 
       <main className="layout-main">
