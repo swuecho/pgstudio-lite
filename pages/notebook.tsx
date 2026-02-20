@@ -1,6 +1,9 @@
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 import ThemeToggle from '../components/theme-toggle'
 import { formatCell } from '../components/sql-editor/utils'
 import type { QueryResult } from '../components/sql-editor/types'
@@ -452,7 +455,9 @@ export default function NotebookPage() {
                         </div>
                       ) : null}
                       {cell.collapsed || previewMarkdown[cell.id] ? (
-                        <div className={`notebook-markdown-preview ${cell.collapsed ? 'compact' : ''}`}>{renderMarkdown(draft)}</div>
+                        <div className={`notebook-markdown-preview ${cell.collapsed ? 'compact' : ''}`}>
+                          <MarkdownPreview source={draft} />
+                        </div>
                       ) : (
                         <textarea
                           className="notebook-markdown"
@@ -520,72 +525,29 @@ function toCompactSqlPreview(sql: string) {
   return flattened.length > 180 ? `${flattened.slice(0, 180)}...` : flattened
 }
 
-function renderMarkdown(source: string): ReactNode {
-  const lines = source.replace(/\r\n/g, '\n').split('\n')
-  const blocks: ReactNode[] = []
-  const codeBuffer: string[] = []
-  let inCodeBlock = false
-
-  function flushCodeBlock(key: string) {
-    if (!codeBuffer.length) return
-    blocks.push(
-      <pre key={key} className="notebook-markdown-code">
-        <code>{codeBuffer.join('\n')}</code>
-      </pre>
-    )
-    codeBuffer.length = 0
-  }
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]
-    const trimmed = line.trim()
-
-    if (trimmed.startsWith('```')) {
-      if (inCodeBlock) {
-        flushCodeBlock(`code-${i}`)
-      }
-      inCodeBlock = !inCodeBlock
-      continue
-    }
-
-    if (inCodeBlock) {
-      codeBuffer.push(line)
-      continue
-    }
-
-    if (!trimmed) {
-      blocks.push(<div key={`gap-${i}`} className="notebook-markdown-gap" />)
-      continue
-    }
-
-    if (trimmed.startsWith('### ')) {
-      blocks.push(<h3 key={`h3-${i}`}>{trimmed.slice(4)}</h3>)
-      continue
-    }
-
-    if (trimmed.startsWith('## ')) {
-      blocks.push(<h2 key={`h2-${i}`}>{trimmed.slice(3)}</h2>)
-      continue
-    }
-
-    if (trimmed.startsWith('# ')) {
-      blocks.push(<h1 key={`h1-${i}`}>{trimmed.slice(2)}</h1>)
-      continue
-    }
-
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      blocks.push(
-        <p key={`li-${i}`} className="notebook-markdown-list-item">
-          • {trimmed.slice(2)}
-        </p>
-      )
-      continue
-    }
-
-    blocks.push(<p key={`p-${i}`}>{trimmed}</p>)
-  }
-
-  if (inCodeBlock) flushCodeBlock('code-final')
-
-  return <div className="notebook-markdown-render">{blocks}</div>
+function MarkdownPreview({ source }: { source: string }) {
+  return (
+    <div className="notebook-markdown-render">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSanitize]}
+        components={{
+          a: ({ ...props }) => <a {...props} target="_blank" rel="noreferrer noopener" />,
+          code: ({ className, children, ...props }) => {
+            const isBlock = Boolean(className)
+            if (!isBlock) return <code {...props}>{children}</code>
+            return (
+              <pre className="notebook-markdown-code">
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
+            )
+          },
+        }}
+      >
+        {source}
+      </ReactMarkdown>
+    </div>
+  )
 }
