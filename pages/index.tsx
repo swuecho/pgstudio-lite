@@ -85,13 +85,14 @@ export default function SqlEditorPage() {
             </button>
             <span className={`status-pill ${state.status.tone}`}>{state.status.text}</span>
             <ThemeToggle />
-            <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
-              {state.connections.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
+                {state.connections.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                    {c.readOnly ? ' (read-only)' : ''}
+                  </option>
+                ))}
+              </select>
             <button className="btn small" onClick={() => setManagingConnections(true)}>
               Manage
             </button>

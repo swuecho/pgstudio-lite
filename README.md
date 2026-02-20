@@ -51,14 +51,15 @@ Optional:
 
 ```bash
 PG_CONNECTION_NAME='local-dev'
+PG_CONNECTION_READ_ONLY='true' # optional, defaults to false
 ```
 
 Multiple connections:
 
 ```bash
 PG_CONNECTIONS_JSON='[
-  {"name":"local","connectionString":"postgres://user:password@localhost:5432/postgres","isDefault":true},
-  {"name":"staging","connectionString":"postgres://user:password@localhost:5432/postgres_staging"}
+  {"name":"local","connectionString":"postgres://user:password@localhost:5432/postgres","isDefault":true,"readOnly":false},
+  {"name":"staging","connectionString":"postgres://user:password@localhost:5432/postgres_staging","readOnly":true}
 ]'
 ```
 
@@ -66,6 +67,8 @@ Notes:
 - On first boot, connections are seeded from `PG_CONNECTIONS_JSON` (or `PG_CONNECTION_STRING` fallback).
 - Connections are persisted in `data/history.db` (`db_connections` table).
 - `GET|POST|PATCH|DELETE /api/connections` is available for runtime connection management.
+- Connections support `readOnly` mode.
+- Read-only connections allow SELECT/read flows but block write SQL and table row mutations (insert/update/delete).
 
 ## Test
 
@@ -105,6 +108,20 @@ Migrations also run automatically on server startup via `/Users/hwu/dev/pgstudio
 - `GET /api/tables`
 - `GET|POST|PATCH|DELETE /api/tables/[table]/rows`
 - `GET /api/monaco/*` and `GET /api/vs/*`
+
+## Read-only connection mode
+
+- Connections can be marked `readOnly: true` in:
+  - `PG_CONNECTIONS_JSON` seed objects
+  - `POST /api/connections` payload
+  - `PATCH /api/connections` payload
+- The `GET /api/connections` response includes `readOnly` for each connection.
+- Enforcement:
+  - `POST /api/query` rejects write statements for read-only connections with `403`.
+  - `POST|PATCH|DELETE /api/tables/[table]/rows` reject writes for read-only connections with `403`.
+- UI behavior:
+  - Connection selectors show `(read-only)` labels.
+  - Table editor disables inline edit/delete/insert controls for read-only connections.
 
 ## Connection management UI
 

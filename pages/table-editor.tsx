@@ -37,6 +37,7 @@ export default function TableEditorPage() {
         <div className="editor-panel-header">
           <div className="editor-title">Table Editor · {state.activeTable || '-'}</div>
           <div className="editor-header-right">
+            {state.connectionReadOnly ? <span className="pill">Read-only connection</span> : null}
             <span className="status-pill">{state.status}</span>
             <ThemeToggle />
           </div>
@@ -55,6 +56,7 @@ export default function TableEditorPage() {
             pageSize={state.pageSize}
             page={state.page}
             totalRows={state.totalRows}
+            readOnlyConnection={state.connectionReadOnly}
             onChangeSortBy={state.setSortBy}
             onChangeSortOrder={state.setSortOrder}
             onChangeFilterColumn={state.setFilterColumn}
@@ -73,6 +75,7 @@ export default function TableEditorPage() {
 
           <InsertPanel
             newRowJson={state.newRowJson}
+            readOnlyConnection={state.connectionReadOnly}
             onChangeNewRowJson={state.setNewRowJson}
             onInsertRow={() => {
               void state.insertRow()

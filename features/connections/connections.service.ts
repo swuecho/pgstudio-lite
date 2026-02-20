@@ -4,6 +4,7 @@ export type ConnectionItem = {
   id: string
   name: string
   isDefault: boolean
+  readOnly: boolean
 }
 
 export async function listConnections() {
@@ -18,6 +19,7 @@ export async function createConnection(input: {
   name: string
   connectionString: string
   isDefault?: boolean
+  readOnly?: boolean
 }) {
   return fetchJson<{ item: ConnectionItem }>('/api/connections', {
     method: 'POST',
@@ -30,6 +32,7 @@ export async function updateConnection(input: {
   name?: string
   connectionString?: string
   isDefault?: boolean
+  readOnly?: boolean
 }) {
   return fetchJson<{ item: ConnectionItem }>('/api/connections', {
     method: 'PATCH',

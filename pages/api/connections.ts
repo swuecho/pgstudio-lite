@@ -13,6 +13,7 @@ const createConnectionSchema = z.object({
   name: nonEmptyStringSchema,
   connectionString: nonEmptyStringSchema,
   isDefault: z.boolean().optional(),
+  readOnly: z.boolean().optional(),
 })
 
 const patchConnectionSchema = z
@@ -22,13 +23,19 @@ const patchConnectionSchema = z
     name: nonEmptyStringSchema.optional(),
     connectionString: nonEmptyStringSchema.optional(),
     isDefault: z.boolean().optional(),
+    readOnly: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.setDefault === true) return
-    if (value.name === undefined && value.connectionString === undefined && value.isDefault === undefined) {
+    if (
+      value.name === undefined &&
+      value.connectionString === undefined &&
+      value.isDefault === undefined &&
+      value.readOnly === undefined
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'name, connectionString, or isDefault is required',
+        message: 'name, connectionString, isDefault, or readOnly is required',
       })
     }
   })
@@ -50,10 +57,10 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === 'POST') {
-      const { name, connectionString, isDefault } = parseWithSchema(createConnectionSchema, req.body || {})
-      const item = createConnection({ name, connectionString, isDefault })
+      const { name, connectionString, isDefault, readOnly } = parseWithSchema(createConnectionSchema, req.body || {})
+      const item = createConnection({ name, connectionString, isDefault, readOnly })
       return res.status(200).json({
-        item: { id: item.id, name: item.name, isDefault: item.isDefault },
+        item: { id: item.id, name: item.name, isDefault: item.isDefault, readOnly: item.readOnly },
       })
     }
 
@@ -63,15 +70,20 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         const { id } = payload
         const item = setDefaultConnection(id)
         if (!item) return res.status(404).json({ error: 'connection not found' })
-        return res.status(200).json({ item: { id: item.id, name: item.name, isDefault: item.isDefault } })
+        return res.status(200).json({
+          item: { id: item.id, name: item.name, isDefault: item.isDefault, readOnly: item.readOnly },
+        })
       }
       const item = updateConnection(payload.id, {
         name: payload.name,
         connectionString: payload.connectionString,
         isDefault: payload.isDefault,
+        readOnly: payload.readOnly,
       })
       if (!item) return res.status(404).json({ error: 'connection not found' })
-      return res.status(200).json({ item: { id: item.id, name: item.name, isDefault: item.isDefault } })
+      return res.status(200).json({
+        item: { id: item.id, name: item.name, isDefault: item.isDefault, readOnly: item.readOnly },
+      })
     }
 
     if (req.method === 'DELETE') {

@@ -7,6 +7,7 @@ export const dbConnections = sqliteTable(
     name: text('name').notNull(),
     connectionString: text('connection_string').notNull(),
     isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+    readOnly: integer('read_only', { mode: 'boolean' }).notNull().default(false),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
