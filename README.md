@@ -6,7 +6,7 @@ PostgreSQL web manager using the same framework style as Supabase Studio:
 - React + TypeScript
 - Monaco editor
 - API routes for SQL execution and table editing
-- SQLite for query history metadata
+- SQLite + Drizzle ORM for query history/snippets/connections metadata
 - Zustand for SQL/Table UI state slices
 - Service layer modules for API interactions (`features/sql`, `features/table`)
 - React Query for server state (`connections`, `history`, `snippets`, `schema`, `table rows`)
@@ -74,6 +74,16 @@ npm run test
 ```
 
 This runs Vitest unit tests for SQL and table service modules.
+
+## Database migrations
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+Drizzle config: `/Users/hwu/dev/pgstudio/pgstudio-lite/drizzle.config.ts`.
+Migrations also run automatically on server startup via `/Users/hwu/dev/pgstudio/pgstudio-lite/lib/meta-db.ts`.
 
 ## State Architecture
 

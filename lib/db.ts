@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
+import { desc, eq } from 'drizzle-orm'
 import pg from 'pg'
+import { dbConnections, queryHistory, querySnippets } from '../drizzle/schema'
+import { metaDb } from './meta-db'
 
 const { Pool } = pg
 
@@ -13,15 +13,6 @@ type DbConnection = {
   isDefault: boolean
   createdAt: string
   updatedAt: string
-}
-
-type DbConnectionRow = {
-  id: string
-  name: string
-  connection_string: string
-  is_default: number
-  created_at: string
-  updated_at: string
 }
 
 type QueryHistoryRow = {
@@ -64,234 +55,8 @@ export type SchemaTable = {
   estimatedRows: number
 }
 
-const DATA_DIR = join(process.cwd(), 'data')
-const DB_PATH = join(DATA_DIR, 'history.db')
-
-if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-
-const sqlite = new DatabaseSync(DB_PATH)
-sqlite.exec(`
-  PRAGMA journal_mode = WAL;
-
-  CREATE TABLE IF NOT EXISTS db_connections (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    connection_string TEXT NOT NULL,
-    is_default INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_db_connections_default
-  ON db_connections(is_default)
-  WHERE is_default = 1;
-
-  CREATE TABLE IF NOT EXISTS query_history (
-    id TEXT PRIMARY KEY,
-    connection_name TEXT NOT NULL,
-    query_text TEXT NOT NULL,
-    status TEXT NOT NULL,
-    duration_ms INTEGER NOT NULL,
-    row_count INTEGER,
-    error_text TEXT,
-    executed_at TEXT NOT NULL,
-    started_at TEXT NOT NULL,
-    metadata_json TEXT
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_query_history_executed_at
-  ON query_history(executed_at DESC);
-
-  CREATE TABLE IF NOT EXISTS query_snippets (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    query_text TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_query_snippets_updated_at
-  ON query_snippets(updated_at DESC);
-`)
-
-const selectConnectionsStmt = sqlite.prepare(`
-  SELECT
-    id,
-    name,
-    connection_string,
-    is_default,
-    created_at,
-    updated_at
-  FROM db_connections
-  ORDER BY is_default DESC, name ASC
-`)
-
-const selectConnectionByNameStmt = sqlite.prepare(`
-  SELECT
-    id,
-    name,
-    connection_string,
-    is_default,
-    created_at,
-    updated_at
-  FROM db_connections
-  WHERE name = ?
-  LIMIT 1
-`)
-
-const selectConnectionByIdStmt = sqlite.prepare(`
-  SELECT
-    id,
-    name,
-    connection_string,
-    is_default,
-    created_at,
-    updated_at
-  FROM db_connections
-  WHERE id = ?
-  LIMIT 1
-`)
-
-const insertConnectionStmt = sqlite.prepare(`
-  INSERT INTO db_connections (
-    id,
-    name,
-    connection_string,
-    is_default,
-    created_at,
-    updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?)
-`)
-
-const updateConnectionStmt = sqlite.prepare(`
-  UPDATE db_connections
-  SET
-    name = ?,
-    connection_string = ?,
-    is_default = ?,
-    updated_at = ?
-  WHERE id = ?
-`)
-
-const deleteConnectionStmt = sqlite.prepare('DELETE FROM db_connections WHERE id = ?')
-const clearDefaultConnectionStmt = sqlite.prepare('UPDATE db_connections SET is_default = 0 WHERE is_default = 1')
-const setDefaultConnectionByIdStmt = sqlite.prepare(
-  'UPDATE db_connections SET is_default = 1, updated_at = ? WHERE id = ?'
-)
-
-const insertHistoryStmt = sqlite.prepare(`
-  INSERT INTO query_history (
-    id,
-    connection_name,
-    query_text,
-    status,
-    duration_ms,
-    row_count,
-    error_text,
-    executed_at,
-    started_at,
-    metadata_json
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`)
-
-const selectHistoryStmt = sqlite.prepare(`
-  SELECT
-    id,
-    connection_name,
-    query_text,
-    status,
-    duration_ms,
-    row_count,
-    error_text,
-    executed_at,
-    started_at,
-    metadata_json
-  FROM query_history
-  ORDER BY executed_at DESC
-  LIMIT ?
-`)
-
-const selectHistoryByConnectionStmt = sqlite.prepare(`
-  SELECT
-    id,
-    connection_name,
-    query_text,
-    status,
-    duration_ms,
-    row_count,
-    error_text,
-    executed_at,
-    started_at,
-    metadata_json
-  FROM query_history
-  WHERE connection_name = ?
-  ORDER BY executed_at DESC
-  LIMIT ?
-`)
-
-const deleteHistoryStmt = sqlite.prepare('DELETE FROM query_history')
-const deleteHistoryByConnectionStmt = sqlite.prepare('DELETE FROM query_history WHERE connection_name = ?')
-
-const selectSnippetsStmt = sqlite.prepare(`
-  SELECT
-    id,
-    title,
-    query_text,
-    created_at,
-    updated_at
-  FROM query_snippets
-  ORDER BY updated_at DESC
-  LIMIT ?
-`)
-
-const selectSnippetByIdStmt = sqlite.prepare(`
-  SELECT
-    id,
-    title,
-    query_text,
-    created_at,
-    updated_at
-  FROM query_snippets
-  WHERE id = ?
-  LIMIT 1
-`)
-
-const insertSnippetStmt = sqlite.prepare(`
-  INSERT INTO query_snippets (
-    id,
-    title,
-    query_text,
-    created_at,
-    updated_at
-  ) VALUES (?, ?, ?, ?, ?)
-`)
-
-const deleteSnippetStmt = sqlite.prepare('DELETE FROM query_snippets WHERE id = ?')
-
 function sqlIdent(value: string): string {
   return `"${value.replaceAll('"', '""')}"`
-}
-
-function runTransaction(fn: () => void) {
-  sqlite.exec('BEGIN')
-  try {
-    fn()
-    sqlite.exec('COMMIT')
-  } catch (error) {
-    sqlite.exec('ROLLBACK')
-    throw error
-  }
-}
-
-function normalizeConnectionRow(row: DbConnectionRow): DbConnection {
-  return {
-    id: row.id,
-    name: row.name,
-    connectionString: row.connection_string,
-    isDefault: row.is_default === 1,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }
 }
 
 function parseEnvConnections(): Array<{ name: string; connectionString: string; isDefault: boolean }> {
@@ -312,7 +77,7 @@ function parseEnvConnections(): Array<{ name: string; connectionString: string; 
         parsed.push({ name, connectionString, isDefault: value.isDefault === true })
       }
     } catch {
-      // Ignore invalid JSON and fallback to single connection env vars.
+      // Ignore malformed JSON and fallback to single-connection env vars.
     }
   }
 
@@ -320,11 +85,7 @@ function parseEnvConnections(): Array<{ name: string; connectionString: string; 
   if (singleConnectionString) {
     const singleName = process.env.PG_CONNECTION_NAME?.trim() || 'default'
     if (!parsed.some((item) => item.name === singleName)) {
-      parsed.push({
-        name: singleName,
-        connectionString: singleConnectionString,
-        isDefault: parsed.length === 0,
-      })
+      parsed.push({ name: singleName, connectionString: singleConnectionString, isDefault: parsed.length === 0 })
     }
   }
 
@@ -332,69 +93,68 @@ function parseEnvConnections(): Array<{ name: string; connectionString: string; 
   return parsed
 }
 
-function bootstrapConnectionsFromEnv() {
-  const existing = selectConnectionsStmt.all() as DbConnectionRow[]
-  if (existing.length > 0) return
+function seedConnectionsIfEmpty() {
+  const hasConnections = metaDb.select({ id: dbConnections.id }).from(dbConnections).limit(1).get()
+  if (hasConnections) return
   const seeded = parseEnvConnections()
   if (seeded.length === 0) return
   const now = new Date().toISOString()
-  runTransaction(() => {
-    for (const [index, item] of seeded.entries()) {
-      insertConnectionStmt.run(
-        randomUUID(),
-        item.name,
-        item.connectionString,
-        item.isDefault || index === 0 ? 1 : 0,
-        now,
-        now
-      )
+  metaDb.transaction((tx) => {
+    for (const [index, connection] of seeded.entries()) {
+      tx.insert(dbConnections)
+        .values({
+          id: randomUUID(),
+          name: connection.name,
+          connectionString: connection.connectionString,
+          isDefault: connection.isDefault || index === 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run()
     }
   })
 }
 
-bootstrapConnectionsFromEnv()
+seedConnectionsIfEmpty()
 
-export function getConnections(): DbConnection[] {
-  return (selectConnectionsStmt.all() as DbConnectionRow[]).map(normalizeConnectionRow)
+function mapConnection(row: typeof dbConnections.$inferSelect): DbConnection {
+  return {
+    id: row.id,
+    name: row.name,
+    connectionString: row.connectionString,
+    isDefault: row.isDefault,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
 }
 
-export function getPublicConnections() {
-  return getConnections().map((connection) => ({
-    id: connection.id,
-    name: connection.name,
-    isDefault: connection.isDefault,
-  }))
-}
-
-export function getDefaultConnectionName(): string | null {
-  const all = getConnections()
-  if (all.length === 0) return null
-  const explicitDefault = all.find((connection) => connection.isDefault)
-  return explicitDefault?.name || all[0].name
-}
-
-export function resolveConnectionName(connectionName?: string): string {
+function getResolvedConnectionName(connectionName?: string) {
   const trimmed = connectionName?.trim() || ''
   if (trimmed) return trimmed
-  const fallback = getDefaultConnectionName()
-  if (!fallback) {
-    const error = new Error('No database connections configured. Add one in Connections.') as Error & {
+  const defaultConnection = getConnections().find((connection) => connection.isDefault)
+  if (defaultConnection) return defaultConnection.name
+  const first = getConnections()[0]?.name
+  if (!first) {
+    const error = new Error('No database connection configured. Use Manage Connections to add one.') as Error & {
       statusCode?: number
     }
     error.statusCode = 400
     throw error
   }
-  return fallback
+  return first
+}
+
+function resolveConnectionName(connectionName?: string) {
+  return getResolvedConnectionName(connectionName)
 }
 
 function getConnectionByName(connectionName?: string): DbConnection {
-  const resolvedName = resolveConnectionName(connectionName)
-  const row = selectConnectionByNameStmt.get(resolvedName) as DbConnectionRow | undefined
-  const connection = row ? normalizeConnectionRow(row) : null
+  const resolved = resolveConnectionName(connectionName)
+  const connection = getConnections().find((c) => c.name === resolved)
   if (!connection) {
-    const error = new Error(`Connection '${resolvedName}' not found. Configure it in Connections.`) as Error & {
-      statusCode?: number
-    }
+    const error = new Error(
+      `Connection '${resolved}' not found. Set PG_CONNECTION_STRING and optional PG_CONNECTION_NAME.`
+    ) as Error & { statusCode?: number }
     error.statusCode = 400
     throw error
   }
@@ -416,6 +176,18 @@ async function withClient<T>(connectionName: string | undefined, fn: (client: an
   }
 }
 
+export function getConnections(): DbConnection[] {
+  return metaDb.select().from(dbConnections).orderBy(desc(dbConnections.isDefault), dbConnections.name).all().map(mapConnection)
+}
+
+export function getPublicConnections() {
+  return getConnections().map((connection) => ({
+    id: connection.id,
+    name: connection.name,
+    isDefault: connection.isDefault,
+  }))
+}
+
 export function createConnection(input: {
   name: string
   connectionString: string
@@ -430,33 +202,41 @@ export function createConnection(input: {
     error.statusCode = 409
     throw error
   }
-  const now = new Date().toISOString()
+
   const id = randomUUID()
+  const now = new Date().toISOString()
   const shouldBeDefault = input.isDefault === true || getConnections().length === 0
-  runTransaction(() => {
-    if (shouldBeDefault) clearDefaultConnectionStmt.run()
-    insertConnectionStmt.run(id, name, connectionString, shouldBeDefault ? 1 : 0, now, now)
+
+  metaDb.transaction((tx) => {
+    if (shouldBeDefault) tx.update(dbConnections).set({ isDefault: false }).run()
+    tx.insert(dbConnections)
+      .values({
+        id,
+        name,
+        connectionString,
+        isDefault: shouldBeDefault,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run()
   })
-  const row = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
-  if (!row) throw new Error('failed to create connection')
-  return normalizeConnectionRow(row)
+
+  const created = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  if (!created) throw new Error('failed to create connection')
+  return mapConnection(created)
 }
 
 export function updateConnection(
   id: string,
-  input: {
-    name?: string
-    connectionString?: string
-    isDefault?: boolean
-  }
+  input: { name?: string; connectionString?: string; isDefault?: boolean }
 ) {
-  const existing = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  const existing = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return null
 
   const nextName = input.name === undefined ? existing.name : input.name.trim()
   const nextConnectionString =
-    input.connectionString === undefined ? existing.connection_string : input.connectionString.trim()
-  const nextDefault = input.isDefault === undefined ? existing.is_default === 1 : input.isDefault
+    input.connectionString === undefined ? existing.connectionString : input.connectionString.trim()
+  const nextDefault = input.isDefault === undefined ? existing.isDefault : input.isDefault
 
   if (!nextName) throw new Error('name cannot be empty')
   if (!nextConnectionString) throw new Error('connectionString cannot be empty')
@@ -469,34 +249,42 @@ export function updateConnection(
   }
 
   const now = new Date().toISOString()
-  runTransaction(() => {
-    if (nextDefault) clearDefaultConnectionStmt.run()
-    updateConnectionStmt.run(nextName, nextConnectionString, nextDefault ? 1 : 0, now, id)
-    if (!nextDefault && getConnections().length > 0 && !getConnections().some((connection) => connection.isDefault)) {
-      setDefaultConnectionByIdStmt.run(now, id)
+  metaDb.transaction((tx) => {
+    if (nextDefault) tx.update(dbConnections).set({ isDefault: false }).run()
+    tx.update(dbConnections)
+      .set({
+        name: nextName,
+        connectionString: nextConnectionString,
+        isDefault: nextDefault,
+        updatedAt: now,
+      })
+      .where(eq(dbConnections.id, id))
+      .run()
+    const hasDefault = tx.select({ id: dbConnections.id }).from(dbConnections).where(eq(dbConnections.isDefault, true)).get()
+    if (!hasDefault) {
+      tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, id)).run()
     }
   })
 
-  const updated = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
-  return updated ? normalizeConnectionRow(updated) : null
+  const updated = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  return updated ? mapConnection(updated) : null
 }
 
 export function setDefaultConnection(id: string) {
-  const existing = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  const existing = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return null
   const now = new Date().toISOString()
-  runTransaction(() => {
-    clearDefaultConnectionStmt.run()
-    setDefaultConnectionByIdStmt.run(now, id)
+  metaDb.transaction((tx) => {
+    tx.update(dbConnections).set({ isDefault: false }).run()
+    tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, id)).run()
   })
-  const updated = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
-  return updated ? normalizeConnectionRow(updated) : null
+  const updated = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  return updated ? mapConnection(updated) : null
 }
 
 export function deleteConnection(id: string) {
-  const existing = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  const existing = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return false
-
   const all = getConnections()
   if (all.length <= 1) {
     const error = new Error('Cannot delete the last connection') as Error & { statusCode?: number }
@@ -505,11 +293,12 @@ export function deleteConnection(id: string) {
   }
 
   const now = new Date().toISOString()
-  runTransaction(() => {
-    deleteConnectionStmt.run(id)
-    const remaining = getConnections()
-    if (!remaining.some((connection) => connection.isDefault) && remaining[0]) {
-      setDefaultConnectionByIdStmt.run(now, remaining[0].id)
+  metaDb.transaction((tx) => {
+    tx.delete(dbConnections).where(eq(dbConnections.id, id)).run()
+    const hasDefault = tx.select({ id: dbConnections.id }).from(dbConnections).where(eq(dbConnections.isDefault, true)).get()
+    if (!hasDefault) {
+      const first = tx.select({ id: dbConnections.id }).from(dbConnections).orderBy(dbConnections.name).limit(1).get()
+      if (first) tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, first.id)).run()
     }
   })
   return true
@@ -546,27 +335,64 @@ function parseHistoryRow(row: QueryHistoryRow) {
   }
 }
 
+function toHistoryRow(row: typeof queryHistory.$inferSelect): QueryHistoryRow {
+  return {
+    id: row.id,
+    connection_name: row.connectionName,
+    query_text: row.queryText,
+    status: row.status as 'success' | 'error',
+    duration_ms: row.durationMs,
+    row_count: row.rowCount,
+    error_text: row.errorText,
+    executed_at: row.executedAt,
+    started_at: row.startedAt,
+    metadata_json: row.metadataJson,
+  }
+}
+
+function toSnippetRow(row: typeof querySnippets.$inferSelect): QuerySnippetRow {
+  return {
+    id: row.id,
+    title: row.title,
+    query_text: row.queryText,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt,
+  }
+}
+
 export function getHistory(limit = 100, connectionName?: string) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100))
-  if (connectionName && connectionName.trim()) {
-    const resolved = resolveConnectionName(connectionName)
-    return (selectHistoryByConnectionStmt.all(resolved, safeLimit) as QueryHistoryRow[]).map(parseHistoryRow)
-  }
-  return (selectHistoryStmt.all(safeLimit) as QueryHistoryRow[]).map(parseHistoryRow)
+  const resolved = connectionName?.trim()
+  const rows = resolved
+    ? metaDb
+        .select()
+        .from(queryHistory)
+        .where(eq(queryHistory.connectionName, resolved))
+        .orderBy(desc(queryHistory.executedAt))
+        .limit(safeLimit)
+        .all()
+    : metaDb.select().from(queryHistory).orderBy(desc(queryHistory.executedAt)).limit(safeLimit).all()
+  return rows.map((row) => parseHistoryRow(toHistoryRow(row)))
 }
 
 export function clearHistory(connectionName?: string) {
-  if (connectionName && connectionName.trim()) {
-    const resolved = resolveConnectionName(connectionName)
-    deleteHistoryByConnectionStmt.run(resolved)
+  const resolved = connectionName?.trim()
+  if (!resolved) {
+    metaDb.delete(queryHistory).run()
     return
   }
-  deleteHistoryStmt.run()
+  metaDb.delete(queryHistory).where(eq(queryHistory.connectionName, resolved)).run()
 }
 
 export function getSnippets(limit = 100) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100))
-  return selectSnippetsStmt.all(safeLimit) as QuerySnippetRow[]
+  return metaDb
+    .select()
+    .from(querySnippets)
+    .orderBy(desc(querySnippets.updatedAt))
+    .limit(safeLimit)
+    .all()
+    .map(toSnippetRow)
 }
 
 export function saveSnippet({
@@ -578,7 +404,10 @@ export function saveSnippet({
 }) {
   const now = new Date().toISOString()
   const id = randomUUID()
-  insertSnippetStmt.run(id, title.trim(), queryText.trim(), now, now)
+  metaDb
+    .insert(querySnippets)
+    .values({ id, title: title.trim(), queryText: queryText.trim(), createdAt: now, updatedAt: now })
+    .run()
   return { id, title: title.trim(), query_text: queryText.trim(), created_at: now, updated_at: now }
 }
 
@@ -591,41 +420,26 @@ export function updateSnippet({
   title?: string
   queryText?: string
 }) {
-  const changes: string[] = []
-  const values: any[] = []
-
-  if (title !== undefined) {
-    changes.push('title = ?')
-    values.push(title.trim())
+  if (title === undefined && queryText === undefined) {
+    const row = metaDb.select().from(querySnippets).where(eq(querySnippets.id, id)).get()
+    return row ? toSnippetRow(row) : null
   }
 
-  if (queryText !== undefined) {
-    changes.push('query_text = ?')
-    values.push(queryText.trim())
+  const values: Partial<typeof querySnippets.$inferInsert> = {
+    updatedAt: new Date().toISOString(),
   }
+  if (title !== undefined) values.title = title.trim()
+  if (queryText !== undefined) values.queryText = queryText.trim()
 
-  if (changes.length === 0) {
-    return (selectSnippetByIdStmt.get(id) as QuerySnippetRow | undefined) || null
-  }
-
-  const now = new Date().toISOString()
-  changes.push('updated_at = ?')
-  values.push(now)
-  values.push(id)
-
-  const statement = sqlite.prepare(`
-    UPDATE query_snippets
-    SET ${changes.join(', ')}
-    WHERE id = ?
-  `)
-  const result = statement.run(...values) as { changes?: number }
+  const result = metaDb.update(querySnippets).set(values).where(eq(querySnippets.id, id)).run()
   if (!result.changes) return null
 
-  return (selectSnippetByIdStmt.get(id) as QuerySnippetRow | undefined) || null
+  const row = metaDb.select().from(querySnippets).where(eq(querySnippets.id, id)).get()
+  return row ? toSnippetRow(row) : null
 }
 
 export function deleteSnippet(id: string) {
-  deleteSnippetStmt.run(id)
+  metaDb.delete(querySnippets).where(eq(querySnippets.id, id)).run()
 }
 
 export async function executeQuery({
@@ -667,18 +481,21 @@ export async function executeQuery({
       const durationMs = Date.now() - startedTs
       const totalRows = results.reduce((sum, r) => sum + (r.rowCount || 0), 0)
 
-      insertHistoryStmt.run(
-        historyId,
-        connection.name,
-        query,
-        'success',
-        durationMs,
-        totalRows,
-        null,
-        finishedAt.toISOString(),
-        startedAt.toISOString(),
-        JSON.stringify({ statements: statements.length })
-      )
+      metaDb
+        .insert(queryHistory)
+        .values({
+          id: historyId,
+          connectionName: connection.name,
+          queryText: query,
+          status: 'success',
+          durationMs,
+          rowCount: totalRows,
+          errorText: null,
+          executedAt: finishedAt.toISOString(),
+          startedAt: startedAt.toISOString(),
+          metadataJson: JSON.stringify({ statements: statements.length }),
+        })
+        .run()
 
       return {
         id: historyId,
@@ -696,18 +513,21 @@ export async function executeQuery({
     const durationMs = Date.now() - startedTs
     const message = error instanceof Error ? error.message : String(error)
 
-    insertHistoryStmt.run(
-      historyId,
-      connection.name,
-      query,
-      'error',
-      durationMs,
-      0,
-      message,
-      finishedAt.toISOString(),
-      startedAt.toISOString(),
-      JSON.stringify({})
-    )
+    metaDb
+      .insert(queryHistory)
+      .values({
+        id: historyId,
+        connectionName: connection.name,
+        queryText: query,
+        status: 'error',
+        durationMs,
+        rowCount: 0,
+        errorText: message,
+        executedAt: finishedAt.toISOString(),
+        startedAt: startedAt.toISOString(),
+        metadataJson: JSON.stringify({}),
+      })
+      .run()
 
     const err = new Error(message) as Error & { statusCode?: number }
     err.statusCode = 400
