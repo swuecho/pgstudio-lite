@@ -27,7 +27,7 @@ export type SnippetItem = {
   updated_at: string
 }
 
-export type Connection = { name: string }
+export type Connection = { id?: string; name: string; isDefault?: boolean }
 
 export type QueryTab = {
   id: string

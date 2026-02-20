@@ -5,6 +5,7 @@ type TableSidebarProps = {
   connections: Connection[]
   connectionName: string
   onChangeConnection: (name: string) => void
+  onOpenConnectionManager: () => void
   tables: TableInfo[]
   activeTable: string
   onSelectTable: (table: string) => void
@@ -15,6 +16,7 @@ export function TableSidebar({
   connections,
   connectionName,
   onChangeConnection,
+  onOpenConnectionManager,
   tables,
   activeTable,
   onSelectTable,
@@ -44,6 +46,9 @@ export function TableSidebar({
           </select>
           <button className="btn small" onClick={onRefreshTables}>
             Refresh
+          </button>
+          <button className="btn small" onClick={onOpenConnectionManager}>
+            Manage
           </button>
         </div>
 

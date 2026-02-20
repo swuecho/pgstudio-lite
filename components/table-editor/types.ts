@@ -13,4 +13,4 @@ export type ColumnInfo = {
 
 export type RowData = Record<string, unknown> & { _ctid: string }
 
-export type Connection = { name: string }
+export type Connection = { id?: string; name: string; isDefault?: boolean }

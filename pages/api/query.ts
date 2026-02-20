@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { executeQuery } from '../../lib/db'
+import { getRequestConnectionName } from './_utils/connection'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -8,8 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const query = typeof req.body?.query === 'string' ? req.body.query.trim() : ''
-  const connectionName =
-    typeof req.body?.connectionName === 'string' ? req.body.connectionName : 'default'
+  const connectionName = getRequestConnectionName(req)
 
   if (!query) return res.status(400).json({ error: 'query is required' })
 

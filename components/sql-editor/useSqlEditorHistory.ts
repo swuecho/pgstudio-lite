@@ -2,15 +2,16 @@ import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { clearHistory as clearHistoryService, getHistory } from '../../features/sql/sql.service'
 
-export function useSqlEditorHistory(historySearch: string) {
+export function useSqlEditorHistory(historySearch: string, connectionName: string) {
   const queryClient = useQueryClient()
   const historyQuery = useQuery({
-    queryKey: ['sql', 'history', 300],
-    queryFn: () => getHistory(300),
+    queryKey: ['sql', 'history', connectionName, 300],
+    queryFn: () => getHistory(300, connectionName),
+    enabled: Boolean(connectionName),
   })
   const clearHistoryMutation = useMutation({
-    mutationFn: clearHistoryService,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sql', 'history'] }),
+    mutationFn: () => clearHistoryService(connectionName),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sql', 'history', connectionName] }),
   })
   const historyItems = historyQuery.data?.items || []
 

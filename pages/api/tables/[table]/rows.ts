@@ -6,18 +6,13 @@ import {
   insertTableRow,
   updateTableRowByCtid,
 } from '../../../../lib/db'
-
-function getConnectionName(req: NextApiRequest) {
-  if (typeof req.query.connectionName === 'string') return req.query.connectionName
-  if (typeof req.body?.connectionName === 'string') return req.body.connectionName
-  return 'default'
-}
+import { getRequestConnectionName } from '../../_utils/connection'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const table = typeof req.query.table === 'string' ? req.query.table : ''
   if (!table) return res.status(400).json({ error: 'table is required' })
 
-  const connectionName = getConnectionName(req)
+  const connectionName = getRequestConnectionName(req)
 
   try {
     if (req.method === 'GET') {

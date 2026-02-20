@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { listTables } from '../../../lib/db'
+import { getRequestConnectionName } from '../_utils/connection'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -7,8 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const connectionName =
-    typeof req.query.connectionName === 'string' ? req.query.connectionName : 'default'
+  const connectionName = getRequestConnectionName(req)
 
   try {
     const tables = await listTables(connectionName)

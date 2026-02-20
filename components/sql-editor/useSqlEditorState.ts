@@ -21,7 +21,7 @@ export function useSqlEditorState() {
 
   const tabs = useSqlEditorTabs()
   const explorer = useSqlEditorExplorer(connectionName, historySearch)
-  const history = useSqlEditorHistory(historySearch)
+  const history = useSqlEditorHistory(historySearch, connectionName)
   const snippets = useSqlEditorSnippets({
     activeQueryTab: tabs.activeQueryTab,
     setQueryTabs: tabs.setQueryTabs,
@@ -102,7 +102,12 @@ export function useSqlEditorState() {
     }
     if (connectionsQuery.data.connections.length === 0) return
     const currentExists = connectionsQuery.data.connections.some((connection) => connection.name === connectionName)
-    if (!currentExists) setConnectionName(connectionsQuery.data.connections[0].name)
+    if (!currentExists) {
+      const preferred =
+        connectionsQuery.data.connections.find((connection) => connection.isDefault)?.name ||
+        connectionsQuery.data.connections[0].name
+      setConnectionName(preferred)
+    }
   }, [connectionsQuery.data, connectionName])
 
   return {

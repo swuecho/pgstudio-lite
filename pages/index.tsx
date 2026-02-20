@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
 import { SqlSidebar } from '../components/sql-editor/Sidebar'
@@ -8,6 +10,7 @@ import ThemeToggle from '../components/theme-toggle'
 
 export default function SqlEditorPage() {
   const state = useSqlEditorState()
+  const [managingConnections, setManagingConnections] = useState(false)
 
   return (
     <div className="layout-root">
@@ -65,6 +68,14 @@ export default function SqlEditorPage() {
         formatTime={formatTime}
       />
 
+      <ConnectionManagerModal
+        open={managingConnections}
+        onClose={() => setManagingConnections(false)}
+        connections={state.connections}
+        connectionName={state.connectionName}
+        onChangeConnection={state.setConnectionName}
+      />
+
       <main className="layout-main">
         <div className="editor-panel-header">
           <div className="editor-title">SQL Editor</div>
@@ -81,6 +92,9 @@ export default function SqlEditorPage() {
                 </option>
               ))}
             </select>
+            <button className="btn small" onClick={() => setManagingConnections(true)}>
+              Manage
+            </button>
           </div>
         </div>
 

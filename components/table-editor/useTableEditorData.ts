@@ -144,7 +144,12 @@ export function useTableEditorData(state: TableEditorState) {
     if (!connectionsQuery.data) return
     if (connectionsQuery.data.connections.length === 0) return
     const currentExists = connectionsQuery.data.connections.some((connection) => connection.name === state.connectionName)
-    if (!currentExists) state.setConnectionName(connectionsQuery.data.connections[0].name)
+    if (!currentExists) {
+      const preferred =
+        connectionsQuery.data.connections.find((connection) => connection.isDefault)?.name ||
+        connectionsQuery.data.connections[0].name
+      state.setConnectionName(preferred)
+    }
   }, [connectionsQuery.data, state.connectionName, state.setConnectionName])
 
   useEffect(() => {
