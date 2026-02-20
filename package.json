@@ -8,8 +8,8 @@
     "build": "next build",
     "start": "next start -p 4180",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run tests/**/*.test.ts",
-    "test:watch": "vitest tests/**/*.test.ts"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
