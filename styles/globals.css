@@ -995,3 +995,147 @@ pre {
   background: #2a171c;
   color: #ff9bab;
 }
+
+.notebook-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: 10px;
+}
+
+.notebook-cell {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.notebook-cell.compact {
+  padding: 8px;
+  gap: 6px;
+}
+
+.notebook-cell-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notebook-cell.compact .notebook-cell-head {
+  gap: 6px;
+}
+
+.notebook-cell-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.notebook-sql,
+.notebook-markdown {
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 10px;
+}
+
+.notebook-markdown-preview {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.notebook-markdown-render h1,
+.notebook-markdown-render h2,
+.notebook-markdown-render h3,
+.notebook-markdown-render p {
+  margin: 0;
+}
+
+.notebook-markdown-render h1 {
+  font-size: 20px;
+}
+
+.notebook-markdown-render h2 {
+  font-size: 17px;
+}
+
+.notebook-markdown-render h3 {
+  font-size: 14px;
+}
+
+.notebook-markdown-gap {
+  height: 6px;
+}
+
+.notebook-markdown-list-item {
+  margin-left: 2px;
+}
+
+.notebook-markdown-code {
+  margin: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 8px;
+  overflow: auto;
+}
+
+.notebook-run-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notebook-compact-sql {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 6px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.notebook-compact-result {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.notebook-markdown-preview.compact {
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px;
+}
+
+[data-theme='dark'] .notebook-cell {
+  background: #141c2a;
+}
+
+[data-theme='dark'] .notebook-sql,
+[data-theme='dark'] .notebook-markdown {
+  background: #111827;
+}
+
+[data-theme='dark'] .notebook-markdown-code {
+  background: #0d1422;
+}
