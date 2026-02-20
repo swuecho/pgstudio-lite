@@ -22,6 +22,8 @@ export function TableSidebar({
   onSelectTable,
   onRefreshTables,
 }: TableSidebarProps) {
+  const toActiveTableKey = (schema: string, table: string) => `${schema}.${table}`
+
   return (
     <>
       <aside className="layout-rail">
@@ -56,10 +58,10 @@ export function TableSidebar({
           {tables.map((table) => (
             <button
               key={`${table.schema}.${table.table}`}
-              className={`history-item ${activeTable === table.table ? 'active-item' : ''}`}
-              onClick={() => onSelectTable(table.table)}
+              className={`history-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
+              onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
             >
-              <div className="history-query">{table.table}</div>
+              <div className="history-query">{table.schema}.{table.table}</div>
               <div className="history-meta">~{table.estimatedRows} rows</div>
             </button>
           ))}

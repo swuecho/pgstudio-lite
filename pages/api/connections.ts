@@ -7,7 +7,7 @@ import {
   setDefaultConnection,
   updateConnection,
 } from '../../lib/db'
-import { nonEmptyStringSchema, parseWithSchema } from './_utils/validation'
+import { nonEmptyStringSchema, parseWithSchema } from '../../lib/api/validation'
 
 const createConnectionSchema = z.object({
   name: nonEmptyStringSchema,

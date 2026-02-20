@@ -5,6 +5,7 @@ import { dbConnections, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 
 const { Pool } = pg
+const connectionPools = new Map<string, InstanceType<typeof Pool>>()
 
 type DbConnection = {
   id: string
@@ -163,7 +164,7 @@ function getConnectionByName(connectionName?: string): DbConnection {
 
 async function withClient<T>(connectionName: string | undefined, fn: (client: any) => Promise<T>) {
   const connection = getConnectionByName(connectionName)
-  const pool = new Pool({ connectionString: connection.connectionString })
+  const pool = getPool(connection.connectionString)
   try {
     const client = await pool.connect()
     try {
@@ -172,8 +173,16 @@ async function withClient<T>(connectionName: string | undefined, fn: (client: an
       client.release()
     }
   } finally {
-    await pool.end()
+    // Pools are intentionally reused across requests.
   }
+}
+
+function getPool(connectionString: string) {
+  const existing = connectionPools.get(connectionString)
+  if (existing) return existing
+  const pool = new Pool({ connectionString })
+  connectionPools.set(connectionString, pool)
+  return pool
 }
 
 export function getConnections(): DbConnection[] {
@@ -307,20 +316,94 @@ export function deleteConnection(id: string) {
 function splitStatements(sql: string): string[] {
   const out: string[] = []
   let current = ''
-  let quote: string | null = null
+  let quote: "'" | '"' | null = null
+  let dollarTag: string | null = null
+  let blockCommentDepth = 0
+  let lineComment = false
+
   for (let i = 0; i < sql.length; i += 1) {
     const ch = sql[i]
-    if ((ch === "'" || ch === '"') && sql[i - 1] !== '\\') {
-      if (quote === ch) quote = null
-      else if (!quote) quote = ch
+    const next = sql[i + 1]
+
+    if (lineComment) {
+      current += ch
+      if (ch === '\n') lineComment = false
+      continue
+    }
+
+    if (blockCommentDepth > 0) {
+      current += ch
+      if (ch === '/' && next === '*') {
+        current += next
+        blockCommentDepth += 1
+        i += 1
+        continue
+      }
+      if (ch === '*' && next === '/') {
+        current += next
+        blockCommentDepth -= 1
+        i += 1
+      }
+      continue
+    }
+
+    if (quote) {
+      current += ch
+      if (quote === "'" && ch === "'" && next === "'") {
+        current += next
+        i += 1
+        continue
+      }
+      if (ch === quote) quote = null
+      continue
+    }
+
+    if (dollarTag) {
+      current += ch
+      if (ch === '$') {
+        const candidate = sql.slice(i - dollarTag.length + 1, i + 1)
+        if (candidate === dollarTag) dollarTag = null
+      }
+      continue
+    }
+
+    if (ch === '-' && next === '-') {
+      current += ch + next
+      lineComment = true
+      i += 1
+      continue
+    }
+
+    if (ch === '/' && next === '*') {
+      current += ch + next
+      blockCommentDepth = 1
+      i += 1
+      continue
+    }
+
+    if (ch === "'" || ch === '"') {
+      quote = ch
       current += ch
       continue
     }
-    if (ch === ';' && !quote) {
+
+    if (ch === '$') {
+      const rest = sql.slice(i)
+      const match = rest.match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)
+      if (match) {
+        dollarTag = match[0]
+        current += dollarTag
+        i += dollarTag.length - 1
+        continue
+      }
+    }
+
+    if (ch === ';') {
       if (current.trim()) out.push(current.trim())
       current = ''
       continue
     }
+
     current += ch
   }
   if (current.trim()) out.push(current.trim())
@@ -454,7 +537,7 @@ export async function executeQuery({
   const startedTs = Date.now()
   const historyId = randomUUID()
 
-  const pool = new Pool({ connectionString: connection.connectionString })
+  const pool = getPool(connection.connectionString)
 
   try {
     const client = await pool.connect()
@@ -533,7 +616,7 @@ export async function executeQuery({
     err.statusCode = 400
     throw err
   } finally {
-    await pool.end()
+    // Pools are intentionally reused across requests.
   }
 }
 
@@ -589,6 +672,7 @@ export async function getTableColumns(
 
 export async function getTableRows(
   connectionName: string | undefined,
+  schema: string,
   table: string,
   options: {
     limit?: number
@@ -609,7 +693,7 @@ export async function getTableRows(
     const filterColumn = options.filterColumn ? sqlIdent(options.filterColumn) : ''
     const filterValue = (options.filterValue || '').trim()
 
-    const qTable = `${sqlIdent('public')}.${sqlIdent(table)}`
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const whereClause =
       filterColumn && filterValue
         ? filterMode === 'equals'
@@ -664,6 +748,7 @@ export async function listSchemaObjects(connectionName?: string): Promise<Schema
 
 export async function updateTableRowByCtid(
   connectionName: string | undefined,
+  schema: string,
   table: string,
   ctid: string,
   patch: Record<string, unknown>
@@ -672,7 +757,7 @@ export async function updateTableRowByCtid(
   if (keys.length === 0) return
 
   return withClient(connectionName, async (client) => {
-    const qTable = `${sqlIdent('public')}.${sqlIdent(table)}`
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const setClause = keys.map((k, i) => `${sqlIdent(k)} = $${i + 1}`).join(', ')
     const values = keys.map((k) => patch[k])
     const sql = `update ${qTable} set ${setClause} where ctid::text = $${keys.length + 1}`
@@ -682,6 +767,7 @@ export async function updateTableRowByCtid(
 
 export async function insertTableRow(
   connectionName: string | undefined,
+  schema: string,
   table: string,
   payload: Record<string, unknown>
 ) {
@@ -689,7 +775,7 @@ export async function insertTableRow(
   if (keys.length === 0) return
 
   return withClient(connectionName, async (client) => {
-    const qTable = `${sqlIdent('public')}.${sqlIdent(table)}`
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const columns = keys.map((k) => sqlIdent(k)).join(', ')
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
     const values = keys.map((k) => payload[k])
@@ -698,9 +784,14 @@ export async function insertTableRow(
   })
 }
 
-export async function deleteTableRowByCtid(connectionName: string | undefined, table: string, ctid: string) {
+export async function deleteTableRowByCtid(
+  connectionName: string | undefined,
+  schema: string,
+  table: string,
+  ctid: string
+) {
   return withClient(connectionName, async (client) => {
-    const qTable = `${sqlIdent('public')}.${sqlIdent(table)}`
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const sql = `delete from ${qTable} where ctid::text = $1`
     await client.query(sql, [ctid])
   })

@@ -7,14 +7,15 @@ import {
   insertTableRow,
   updateTableRowByCtid,
 } from '../../../../lib/db'
-import { getRequestConnectionName } from '../../_utils/connection'
-import { nonEmptyStringSchema, parseWithSchema } from '../../_utils/validation'
+import { getRequestConnectionName } from '../../../../lib/api/connection'
+import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '../../../../lib/api/validation'
 
 const tableParamSchema = z.object({
   table: nonEmptyStringSchema,
 })
 
 const rowsQuerySchema = z.object({
+  schema: optionalSchemaNameSchema.default('public'),
   limit: z.coerce.number().int().min(1).max(500).optional().default(100),
   offset: z.coerce.number().int().min(0).optional().default(0),
   sortBy: z.string().trim().optional(),
@@ -25,15 +26,18 @@ const rowsQuerySchema = z.object({
 })
 
 const createRowBodySchema = z.object({
+  schema: optionalSchemaNameSchema.default('public'),
   row: z.record(z.string(), z.unknown()).optional().default({}),
 })
 
 const patchRowBodySchema = z.object({
+  schema: optionalSchemaNameSchema.default('public'),
   ctid: nonEmptyStringSchema,
   patch: z.record(z.string(), z.unknown()).optional().default({}),
 })
 
 const deleteRowBodySchema = z.object({
+  schema: optionalSchemaNameSchema.default('public'),
   ctid: nonEmptyStringSchema,
 })
 
@@ -43,13 +47,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const connectionName = getRequestConnectionName(req)
 
     if (req.method === 'GET') {
-      const { limit, offset, sortBy, sortOrder, filterColumn, filterValue, filterMode } = parseWithSchema(
+      const { schema, limit, offset, sortBy, sortOrder, filterColumn, filterValue, filterMode } = parseWithSchema(
         rowsQuerySchema,
         req.query
       )
       const [columns, rows] = await Promise.all([
-        getTableColumns(connectionName, table),
-        getTableRows(connectionName, table, {
+        getTableColumns(connectionName, table, schema),
+        getTableRows(connectionName, schema, table, {
           limit,
           offset,
           sortBy,
@@ -59,24 +63,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           filterMode,
         }),
       ])
-      return res.status(200).json({ table, columns, rows: rows.rows, total: rows.total })
+      return res.status(200).json({ schema, table, columns, rows: rows.rows, total: rows.total })
     }
 
     if (req.method === 'POST') {
-      const { row: payload } = parseWithSchema(createRowBodySchema, req.body || {})
-      await insertTableRow(connectionName, table, payload)
+      const { schema, row: payload } = parseWithSchema(createRowBodySchema, req.body || {})
+      await insertTableRow(connectionName, schema, table, payload)
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'PATCH') {
-      const { ctid, patch } = parseWithSchema(patchRowBodySchema, req.body || {})
-      await updateTableRowByCtid(connectionName, table, ctid, patch)
+      const { schema, ctid, patch } = parseWithSchema(patchRowBodySchema, req.body || {})
+      await updateTableRowByCtid(connectionName, schema, table, ctid, patch)
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'DELETE') {
-      const { ctid } = parseWithSchema(deleteRowBodySchema, req.body || {})
-      await deleteTableRowByCtid(connectionName, table, ctid)
+      const { schema, ctid } = parseWithSchema(deleteRowBodySchema, req.body || {})
+      await deleteTableRowByCtid(connectionName, schema, table, ctid)
       return res.status(200).json({ ok: true })
     }
 

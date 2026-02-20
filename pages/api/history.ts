@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { clearHistory, getHistory } from '../../lib/db'
-import { getRequestConnectionName } from './_utils/connection'
-import { parseWithSchema } from './_utils/validation'
+import { getRequestConnectionName } from '../../lib/api/connection'
+import { parseWithSchema } from '../../lib/api/validation'
 
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional().default(100),
