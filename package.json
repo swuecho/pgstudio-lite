@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
+    "@tanstack/react-query": "^5.90.21",
     "next": "~16.0.0",
     "pg": "^8.13.1",
     "react": "^19.0.0",
