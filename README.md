@@ -7,6 +7,8 @@ PostgreSQL web manager using the same framework style as Supabase Studio:
 - Monaco editor
 - API routes for SQL execution and table editing
 - SQLite for query history metadata
+- Zustand for SQL/Table UI state slices
+- Service layer modules for API interactions (`features/sql`, `features/table`)
 
 ## Included editors
 
@@ -49,6 +51,14 @@ Optional:
 ```bash
 PG_CONNECTION_NAME='local-dev'
 ```
+
+## Test
+
+```bash
+npm run test
+```
+
+This runs Vitest unit tests for SQL and table service modules.
 
 ## API routes
 

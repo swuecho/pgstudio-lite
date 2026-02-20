@@ -1,6 +1,11 @@
 import { useEffect } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { fetchJson } from '../../lib/http'
+import {
+  createSnippet,
+  deleteSnippet as deleteSnippetService,
+  getSnippets,
+  updateSnippet,
+} from '../../features/sql/sql.service'
 import { QueryTab, SnippetItem } from './types'
 import { useSqlEditorSnippetsStore } from './stores/sqlEditorSnippetsStore'
 
@@ -29,7 +34,7 @@ export function useSqlEditorSnippets({
   const setRenameDraft = useSqlEditorSnippetsStore((s) => s.setRenameDraft)
 
   async function loadSnippets() {
-    const data = await fetchJson<{ items: SnippetItem[] }>('/api/snippets?limit=300')
+    const data = await getSnippets(300)
     setSnippetItems(data.items || [])
   }
 
@@ -43,13 +48,7 @@ export function useSqlEditorSnippets({
     try {
       setSavingSnippet(true)
       if (activeQueryTab?.snippetId && !forceCreate) {
-        const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-          method: 'PATCH',
-          body: JSON.stringify({
-            id: activeQueryTab.snippetId,
-            queryText: content,
-          }),
-        })
+        const payload = await updateSnippet(activeQueryTab.snippetId, { queryText: content })
         setStatus({ text: `Updated snippet: ${payload.item.title}`, tone: 'ok' })
         setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
         setQueryTabs((all) =>
@@ -71,10 +70,7 @@ export function useSqlEditorSnippets({
       const defaultTitle = content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
       const title = window.prompt('Snippet name', defaultTitle)?.trim()
       if (!title) return
-      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-        method: 'POST',
-        body: JSON.stringify({ title, queryText: content }),
-      })
+      const payload = await createSnippet(title, content)
       setStatus({ text: `Saved snippet: ${payload.item.title}`, tone: 'ok' })
       setQueryTabs((all) =>
         all.map((tab) =>
@@ -107,13 +103,7 @@ export function useSqlEditorSnippets({
 
     setSavingSnippet(true)
     try {
-      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          id: snippetId,
-          queryText: content,
-        }),
-      })
+      const payload = await updateSnippet(snippetId, { queryText: content })
       setSnippetItems((items) => items.map((item) => (item.id === payload.item.id ? payload.item : item)))
       setQueryTabs((all) =>
         all.map((tab) =>
@@ -145,10 +135,7 @@ export function useSqlEditorSnippets({
       return
     }
     try {
-      const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-        method: 'PATCH',
-        body: JSON.stringify({ id: item.id, title }),
-      })
+      const payload = await updateSnippet(item.id, { title })
       setStatus({ text: `Renamed snippet: ${payload.item.title}`, tone: 'ok' })
       setSnippetItems((items) => items.map((entry) => (entry.id === payload.item.id ? payload.item : entry)))
       setQueryTabs((all) =>
@@ -175,10 +162,7 @@ export function useSqlEditorSnippets({
     const suggestedTitle = `${item.title} copy`
     const title = window.prompt('Duplicate snippet as', suggestedTitle)?.trim()
     if (!title) return
-    const payload = await fetchJson<{ item: SnippetItem }>('/api/snippets', {
-      method: 'POST',
-      body: JSON.stringify({ title, queryText: item.query_text }),
-    })
+    const payload = await createSnippet(title, item.query_text)
     setStatus({ text: `Duplicated snippet: ${payload.item.title}`, tone: 'ok' })
     await loadSnippets()
     setActiveNavTab('snippets')
@@ -187,10 +171,7 @@ export function useSqlEditorSnippets({
   async function deleteSnippet(item: SnippetItem) {
     const confirmed = window.confirm(`Delete snippet "${item.title}"? This cannot be undone.`)
     if (!confirmed) return
-    await fetchJson<{ ok: boolean }>('/api/snippets', {
-      method: 'DELETE',
-      body: JSON.stringify({ id: item.id }),
-    })
+    await deleteSnippetService(item.id)
     setSnippetItems((items) => items.filter((entry) => entry.id !== item.id))
     setQueryTabs((all) =>
       all.map((tab) => (tab.snippetId === item.id ? { ...tab, snippetId: undefined, dirty: true } : tab))

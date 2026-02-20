@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { fetchJson } from '../../lib/http'
+import { clearHistory as clearHistoryService, getHistory } from '../../features/sql/sql.service'
 import { useSqlEditorHistoryStore } from './stores/sqlEditorHistoryStore'
 
 export function useSqlEditorHistory(historySearch: string) {
@@ -18,12 +18,12 @@ export function useSqlEditorHistory(historySearch: string) {
   }, [historyItems, historySearch])
 
   async function loadHistory() {
-    const data = await fetchJson<{ items: typeof historyItems }>('/api/history?limit=300')
+    const data = await getHistory(300)
     setHistoryItems(data.items || [])
   }
 
   async function clearHistory() {
-    await fetchJson<{ ok: boolean }>('/api/history', { method: 'DELETE' })
+    await clearHistoryService()
     await loadHistory()
   }
 

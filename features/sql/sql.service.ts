@@ -1,0 +1,60 @@
+import { fetchJson } from '../../lib/http'
+import type { Connection, HistoryItem, QueryResult, SchemaTable, SnippetItem } from '../../components/sql-editor/types'
+
+export async function getConnections() {
+  return fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
+}
+
+export async function runQuery(connectionName: string, query: string) {
+  return fetchJson<QueryResult>('/api/query', {
+    method: 'POST',
+    body: JSON.stringify({ connectionName, query }),
+  })
+}
+
+export async function getHistory(limit = 300) {
+  return fetchJson<{ items: HistoryItem[] }>(`/api/history?limit=${limit}`)
+}
+
+export async function clearHistory() {
+  return fetchJson<{ ok: boolean }>('/api/history', { method: 'DELETE' })
+}
+
+export async function getSnippets(limit = 300) {
+  return fetchJson<{ items: SnippetItem[] }>(`/api/snippets?limit=${limit}`)
+}
+
+export async function createSnippet(title: string, queryText: string) {
+  return fetchJson<{ item: SnippetItem }>('/api/snippets', {
+    method: 'POST',
+    body: JSON.stringify({ title, queryText }),
+  })
+}
+
+export async function updateSnippet(id: string, payload: { title?: string; queryText?: string }) {
+  return fetchJson<{ item: SnippetItem }>('/api/snippets', {
+    method: 'PATCH',
+    body: JSON.stringify({ id, ...payload }),
+  })
+}
+
+export async function deleteSnippet(id: string) {
+  return fetchJson<{ ok: boolean }>('/api/snippets', {
+    method: 'DELETE',
+    body: JSON.stringify({ id }),
+  })
+}
+
+export async function getSchema(connectionName: string) {
+  return fetchJson<{ tables: SchemaTable[] }>(
+    `/api/schema?connectionName=${encodeURIComponent(connectionName)}`
+  )
+}
+
+export async function getSchemaColumns(connectionName: string, schema: string, table: string) {
+  return fetchJson<{ columns: Array<{ name: string }> }>(
+    `/api/schema/columns?connectionName=${encodeURIComponent(connectionName)}&schema=${encodeURIComponent(
+      schema
+    )}&table=${encodeURIComponent(table)}`
+  )
+}

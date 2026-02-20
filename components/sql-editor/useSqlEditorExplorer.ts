@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { fetchJson } from '../../lib/http'
+import { getSchema, getSchemaColumns } from '../../features/sql/sql.service'
 import { useSqlEditorExplorerStore } from './stores/sqlEditorExplorerStore'
 
 export function useSqlEditorExplorer(connectionName: string, historySearch: string) {
@@ -39,11 +39,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
     if (loadingColumnsByKey[key]) return
     setLoadingColumnsByKey((prev) => ({ ...prev, [key]: true }))
     try {
-      const data = await fetchJson<{ columns: Array<{ name: string }> }>(
-        `/api/schema/columns?connectionName=${encodeURIComponent(connectionName)}&schema=${encodeURIComponent(
-          schema
-        )}&table=${encodeURIComponent(table)}`
-      )
+      const data = await getSchemaColumns(connectionName, schema, table)
       setTableColumnsByKey((prev) => ({
         ...prev,
         [key]: (data.columns || []).map((c) => c.name),
@@ -65,9 +61,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
   }
 
   async function loadSchema() {
-    const data = await fetchJson<{ tables: typeof schemaTables }>(
-      `/api/schema?connectionName=${encodeURIComponent(connectionName)}`
-    )
+    const data = await getSchema(connectionName)
     setSchemaTables(data.tables || [])
   }
 

@@ -1,6 +1,6 @@
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchJson } from '../../lib/http'
+import { getConnections, runQuery } from '../../features/sql/sql.service'
 import { detectOS, suffixWithLimit } from './utils'
 import { Connection, QueryResult } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'
@@ -58,7 +58,7 @@ export function useSqlEditorState() {
   }
 
   async function loadConnections() {
-    const data = await fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
+    const data = await getConnections()
     setConnections(data.connections || [])
     if (!data.configured) {
       setStatus({ text: 'Set PG_CONNECTION_STRING to start', tone: 'warning' })
@@ -84,10 +84,7 @@ export function useSqlEditorState() {
     setStatus({ text: 'Running query...', tone: 'running' })
 
     try {
-      const payload = await fetchJson<QueryResult>('/api/query', {
-        method: 'POST',
-        body: JSON.stringify({ connectionName, query: suffixWithLimit(current, 100) }),
-      })
+      const payload = await runQuery(connectionName, suffixWithLimit(current, 100))
       setResult(payload)
       setStatus({ text: `Success in ${payload.durationMs} ms`, tone: 'ok' })
       tabs.setQueryTabs((all) => all.map((t) => (t.id === tabs.activeQueryTab?.id ? { ...t, dirty: false } : t)))

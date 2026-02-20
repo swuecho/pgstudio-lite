@@ -7,7 +7,9 @@
     "dev": "next dev -p 4180",
     "build": "next build",
     "start": "next start -p 4180",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests/**/*.test.ts",
+    "test:watch": "vitest tests/**/*.test.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
@@ -21,6 +23,7 @@
     "@types/node": "^22.13.10",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.4",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
   }
 }

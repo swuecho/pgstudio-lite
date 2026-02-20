@@ -1,6 +1,13 @@
 import { useEffect } from 'react'
-import { fetchJson } from '../../lib/http'
 import { ColumnInfo, Connection, RowData, TableInfo } from './types'
+import {
+  getConnections as getConnectionsService,
+  getRows as getRowsService,
+  getTables as getTablesService,
+  insertRow as insertRowService,
+  patchRow,
+  removeRow,
+} from '../../features/table/table.service'
 
 type TableEditorState = {
   connectionName: string
@@ -29,37 +36,30 @@ type TableEditorState = {
 
 export function useTableEditorData(state: TableEditorState & { setConnections: (value: Connection[]) => void }) {
   async function loadConnections() {
-    const data = await fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
+    const data = await getConnectionsService()
     state.setConnections(data.connections || [])
     if (data.connections[0]) state.setConnectionName(data.connections[0].name)
   }
 
   async function loadTables(conn = state.connectionName) {
-    const data = await fetchJson<{ tables: TableInfo[] }>(
-      `/api/tables?connectionName=${encodeURIComponent(conn)}`
-    )
+    const data = await getTablesService(conn)
     state.setTables(data.tables || [])
     if (!state.activeTable && data.tables[0]) state.setActiveTable(data.tables[0].table)
   }
 
   async function loadRows(table = state.activeTable, conn = state.connectionName) {
     if (!table) return
-    const params = new URLSearchParams({
+    const data = await getRowsService({
+      table,
       connectionName: conn,
-      limit: String(state.pageSize),
-      offset: String(state.page * state.pageSize),
+      page: state.page,
+      pageSize: state.pageSize,
       sortBy: state.sortBy,
       sortOrder: state.sortOrder,
+      filterColumn: state.filterColumn,
+      filterValue: state.filterValue,
+      filterMode: state.filterMode,
     })
-    if (state.filterColumn && state.filterValue.trim()) {
-      params.set('filterColumn', state.filterColumn)
-      params.set('filterValue', state.filterValue.trim())
-      params.set('filterMode', state.filterMode)
-    }
-
-    const data = await fetchJson<{ columns: ColumnInfo[]; rows: RowData[]; total: number }>(
-      `/api/tables/${encodeURIComponent(table)}/rows?${params.toString()}`
-    )
     state.setColumns(data.columns || [])
     state.setRows(data.rows || [])
     state.setTotalRows(Number(data.total || 0))
@@ -67,9 +67,10 @@ export function useTableEditorData(state: TableEditorState & { setConnections: (
 
   async function updateCell(ctid: string, column: string, value: string) {
     state.setStatus('Saving...')
-    await fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(state.activeTable)}/rows`, {
-      method: 'PATCH',
-      body: JSON.stringify({ connectionName: state.connectionName, ctid, patch: { [column]: value } }),
+    await patchRow(state.activeTable, {
+      connectionName: state.connectionName,
+      ctid,
+      patch: { [column]: value },
     })
     state.setStatus('Saved')
     await loadRows()
@@ -77,10 +78,7 @@ export function useTableEditorData(state: TableEditorState & { setConnections: (
 
   async function deleteRow(ctid: string) {
     state.setStatus('Deleting...')
-    await fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(state.activeTable)}/rows`, {
-      method: 'DELETE',
-      body: JSON.stringify({ connectionName: state.connectionName, ctid }),
-    })
+    await removeRow(state.activeTable, { connectionName: state.connectionName, ctid })
     state.setStatus('Deleted')
     await loadRows()
   }
@@ -95,10 +93,7 @@ export function useTableEditorData(state: TableEditorState & { setConnections: (
     }
 
     state.setStatus('Inserting...')
-    await fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(state.activeTable)}/rows`, {
-      method: 'POST',
-      body: JSON.stringify({ connectionName: state.connectionName, row: payload }),
-    })
+    await insertRowService(state.activeTable, { connectionName: state.connectionName, row: payload })
     state.setStatus('Inserted')
     await loadRows()
   }
