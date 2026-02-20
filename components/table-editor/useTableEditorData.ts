@@ -54,6 +54,8 @@ export function useTableEditorData(state: TableEditorState) {
     enabled: Boolean(state.connectionName),
   })
   const tables = tablesQuery.data?.tables || []
+  const activeConnection = connections.find((connection) => connection.name === state.connectionName)
+  const connectionReadOnly = activeConnection?.readOnly === true
 
   const rowsQuery = useQuery({
     queryKey: [
@@ -134,6 +136,10 @@ export function useTableEditorData(state: TableEditorState) {
   }
 
   async function updateCell(ctid: string, column: string, value: string) {
+    if (connectionReadOnly) {
+      state.setStatus('Connection is read-only')
+      return
+    }
     state.setStatus('Saving...')
     try {
       await patchRowMutation.mutateAsync({ ctid, column, value })
@@ -144,6 +150,10 @@ export function useTableEditorData(state: TableEditorState) {
   }
 
   async function deleteRow(ctid: string) {
+    if (connectionReadOnly) {
+      state.setStatus('Connection is read-only')
+      return
+    }
     state.setStatus('Deleting...')
     try {
       await deleteRowMutation.mutateAsync(ctid)
@@ -154,6 +164,10 @@ export function useTableEditorData(state: TableEditorState) {
   }
 
   async function insertRow() {
+    if (connectionReadOnly) {
+      state.setStatus('Connection is read-only')
+      return
+    }
     let payload: Record<string, unknown>
     try {
       payload = JSON.parse(state.newRowJson)
@@ -222,5 +236,6 @@ export function useTableEditorData(state: TableEditorState) {
     insertRow,
     loadingRows: rowsQuery.isFetching,
     loadingTables: tablesQuery.isFetching,
+    connectionReadOnly,
   }
 }

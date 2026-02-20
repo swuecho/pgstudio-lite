@@ -43,6 +43,7 @@ export function TableSidebar({
             {connections.map((c) => (
               <option key={c.name} value={c.name}>
                 {c.name}
+                {c.readOnly ? ' (read-only)' : ''}
               </option>
             ))}
           </select>

@@ -12,6 +12,7 @@ type DbConnection = {
   name: string
   connectionString: string
   isDefault: boolean
+  readOnly: boolean
   createdAt: string
   updatedAt: string
 }
@@ -60,8 +61,13 @@ function sqlIdent(value: string): string {
   return `"${value.replaceAll('"', '""')}"`
 }
 
-function parseEnvConnections(): Array<{ name: string; connectionString: string; isDefault: boolean }> {
-  const parsed: Array<{ name: string; connectionString: string; isDefault: boolean }> = []
+function parseEnvConnections(): Array<{
+  name: string
+  connectionString: string
+  isDefault: boolean
+  readOnly: boolean
+}> {
+  const parsed: Array<{ name: string; connectionString: string; isDefault: boolean; readOnly: boolean }> = []
   const rawJson = process.env.PG_CONNECTIONS_JSON?.trim()
   if (rawJson) {
     try {
@@ -69,13 +75,19 @@ function parseEnvConnections(): Array<{ name: string; connectionString: string; 
         name?: unknown
         connectionString?: unknown
         isDefault?: unknown
+        readOnly?: unknown
       }>
       for (const value of values || []) {
         const name = typeof value.name === 'string' ? value.name.trim() : ''
         const connectionString =
           typeof value.connectionString === 'string' ? value.connectionString.trim() : ''
         if (!name || !connectionString) continue
-        parsed.push({ name, connectionString, isDefault: value.isDefault === true })
+        parsed.push({
+          name,
+          connectionString,
+          isDefault: value.isDefault === true,
+          readOnly: value.readOnly === true,
+        })
       }
     } catch {
       // Ignore malformed JSON and fallback to single-connection env vars.
@@ -84,10 +96,16 @@ function parseEnvConnections(): Array<{ name: string; connectionString: string; 
 
   const singleConnectionString = process.env.PG_CONNECTION_STRING?.trim() || ''
   if (singleConnectionString) {
-    const singleName = process.env.PG_CONNECTION_NAME?.trim() || 'default'
-    if (!parsed.some((item) => item.name === singleName)) {
-      parsed.push({ name: singleName, connectionString: singleConnectionString, isDefault: parsed.length === 0 })
-    }
+      const singleName = process.env.PG_CONNECTION_NAME?.trim() || 'default'
+      const singleReadOnly = process.env.PG_CONNECTION_READ_ONLY?.trim() === 'true'
+      if (!parsed.some((item) => item.name === singleName)) {
+        parsed.push({
+          name: singleName,
+          connectionString: singleConnectionString,
+          isDefault: parsed.length === 0,
+          readOnly: singleReadOnly,
+        })
+      }
   }
 
   if (parsed.length > 0 && !parsed.some((item) => item.isDefault)) parsed[0].isDefault = true
@@ -108,6 +126,7 @@ function seedConnectionsIfEmpty() {
           name: connection.name,
           connectionString: connection.connectionString,
           isDefault: connection.isDefault || index === 0,
+          readOnly: connection.readOnly,
           createdAt: now,
           updatedAt: now,
         })
@@ -124,6 +143,7 @@ function mapConnection(row: typeof dbConnections.$inferSelect): DbConnection {
     name: row.name,
     connectionString: row.connectionString,
     isDefault: row.isDefault,
+    readOnly: row.readOnly,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -209,6 +229,7 @@ export function getPublicConnections() {
     id: connection.id,
     name: connection.name,
     isDefault: connection.isDefault,
+    readOnly: connection.readOnly,
   }))
 }
 
@@ -216,6 +237,7 @@ export function createConnection(input: {
   name: string
   connectionString: string
   isDefault?: boolean
+  readOnly?: boolean
 }) {
   const name = input.name.trim()
   const connectionString = input.connectionString.trim()
@@ -230,6 +252,7 @@ export function createConnection(input: {
   const id = randomUUID()
   const now = new Date().toISOString()
   const shouldBeDefault = input.isDefault === true || getConnections().length === 0
+  const readOnly = input.readOnly === true
 
   metaDb.transaction((tx) => {
     if (shouldBeDefault) tx.update(dbConnections).set({ isDefault: false }).run()
@@ -239,6 +262,7 @@ export function createConnection(input: {
         name,
         connectionString,
         isDefault: shouldBeDefault,
+        readOnly,
         createdAt: now,
         updatedAt: now,
       })
@@ -252,7 +276,7 @@ export function createConnection(input: {
 
 export function updateConnection(
   id: string,
-  input: { name?: string; connectionString?: string; isDefault?: boolean }
+  input: { name?: string; connectionString?: string; isDefault?: boolean; readOnly?: boolean }
 ) {
   const existing = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return null
@@ -261,6 +285,7 @@ export function updateConnection(
   const nextConnectionString =
     input.connectionString === undefined ? existing.connectionString : input.connectionString.trim()
   const nextDefault = input.isDefault === undefined ? existing.isDefault : input.isDefault
+  const nextReadOnly = input.readOnly === undefined ? existing.readOnly : input.readOnly
 
   if (!nextName) throw new Error('name cannot be empty')
   if (!nextConnectionString) throw new Error('connectionString cannot be empty')
@@ -280,6 +305,7 @@ export function updateConnection(
         name: nextName,
         connectionString: nextConnectionString,
         isDefault: nextDefault,
+        readOnly: nextReadOnly,
         updatedAt: now,
       })
       .where(eq(dbConnections.id, id))
@@ -429,6 +455,38 @@ function splitStatements(sql: string): string[] {
   return out
 }
 
+function stripLeadingCommentsAndWhitespace(sql: string) {
+  let out = sql.trimStart()
+  while (out.startsWith('--') || out.startsWith('/*')) {
+    if (out.startsWith('--')) {
+      const idx = out.indexOf('\n')
+      if (idx < 0) return ''
+      out = out.slice(idx + 1).trimStart()
+      continue
+    }
+    const end = out.indexOf('*/')
+    if (end < 0) return ''
+    out = out.slice(end + 2).trimStart()
+  }
+  return out
+}
+
+function isWriteStatement(sql: string) {
+  const normalized = stripLeadingCommentsAndWhitespace(sql).toLowerCase()
+  if (!normalized) return false
+  if (
+    /^(insert|update|delete|merge|create|alter|drop|truncate|grant|revoke|comment|vacuum|reindex|cluster|refresh|call|do|copy)\b/.test(
+      normalized
+    )
+  ) {
+    return true
+  }
+  if (normalized.startsWith('with ')) {
+    return /\b(insert|update|delete|merge)\b/.test(normalized)
+  }
+  return false
+}
+
 function parseHistoryRow(row: QueryHistoryRow) {
   return {
     ...row,
@@ -562,6 +620,13 @@ export async function executeQuery({
     const client = await pool.connect()
     try {
       const statements = splitStatements(query)
+      if (connection.readOnly && statements.some((statement) => isWriteStatement(statement))) {
+        const error = new Error(`Connection '${connection.name}' is read-only`) as Error & {
+          statusCode?: number
+        }
+        error.statusCode = 403
+        throw error
+      }
       const results: Array<{
         command: string
         rowCount: number
@@ -632,7 +697,7 @@ export async function executeQuery({
       .run()
 
     const err = new Error(message) as Error & { statusCode?: number }
-    err.statusCode = 400
+    err.statusCode = (error as { statusCode?: number })?.statusCode || 400
     throw err
   } finally {
     // Pools are intentionally reused across requests.
@@ -772,6 +837,12 @@ export async function updateTableRowByCtid(
   ctid: string,
   patch: Record<string, unknown>
 ) {
+  const connection = getConnectionByName(connectionName)
+  if (connection.readOnly) {
+    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
+    error.statusCode = 403
+    throw error
+  }
   const keys = Object.keys(patch)
   if (keys.length === 0) return
 
@@ -790,6 +861,12 @@ export async function insertTableRow(
   table: string,
   payload: Record<string, unknown>
 ) {
+  const connection = getConnectionByName(connectionName)
+  if (connection.readOnly) {
+    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
+    error.statusCode = 403
+    throw error
+  }
   const keys = Object.keys(payload)
   if (keys.length === 0) return
 
@@ -809,6 +886,12 @@ export async function deleteTableRowByCtid(
   table: string,
   ctid: string
 ) {
+  const connection = getConnectionByName(connectionName)
+  if (connection.readOnly) {
+    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
+    error.statusCode = 403
+    throw error
+  }
   return withClient(connectionName, async (client) => {
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const sql = `delete from ${qTable} where ctid::text = $1`

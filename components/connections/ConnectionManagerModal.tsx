@@ -11,6 +11,7 @@ type ConnectionItem = {
   id?: string
   name: string
   isDefault?: boolean
+  readOnly?: boolean
 }
 
 type ConnectionManagerModalProps = {
@@ -33,10 +34,12 @@ export function ConnectionManagerModal({
   const [newName, setNewName] = useState('')
   const [newConnectionString, setNewConnectionString] = useState('')
   const [newIsDefault, setNewIsDefault] = useState(false)
+  const [newReadOnly, setNewReadOnly] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editConnectionString, setEditConnectionString] = useState('')
   const [editIsDefault, setEditIsDefault] = useState(false)
+  const [editReadOnly, setEditReadOnly] = useState(false)
 
   const sortedConnections = useMemo(
     () =>
@@ -62,6 +65,7 @@ export function ConnectionManagerModal({
       setNewName('')
       setNewConnectionString('')
       setNewIsDefault(false)
+      setNewReadOnly(false)
       setErrorText('')
     },
     onError: (error) => setErrorText(error instanceof Error ? error.message : 'Failed to create connection'),
@@ -79,6 +83,7 @@ export function ConnectionManagerModal({
       setEditName('')
       setEditConnectionString('')
       setEditIsDefault(false)
+      setEditReadOnly(false)
       setErrorText('')
     },
     onError: (error) => setErrorText(error instanceof Error ? error.message : 'Failed to update connection'),
@@ -138,6 +143,7 @@ export function ConnectionManagerModal({
                   <div className="modal-row-main">
                     <div className="history-query">{connection.name}</div>
                     {connection.isDefault ? <span className="pill ok">default</span> : null}
+                    {connection.readOnly ? <span className="pill">read-only</span> : null}
                   </div>
                   <div className="history-actions">
                     <button
@@ -148,6 +154,7 @@ export function ConnectionManagerModal({
                         setEditName(connection.name)
                         setEditConnectionString('')
                         setEditIsDefault(Boolean(connection.isDefault))
+                        setEditReadOnly(Boolean(connection.readOnly))
                       }}
                     >
                       Edit
@@ -200,6 +207,14 @@ export function ConnectionManagerModal({
                   />
                   Set as default
                 </label>
+                <label className="modal-check">
+                  <input
+                    type="checkbox"
+                    checked={editReadOnly}
+                    onChange={(event) => setEditReadOnly(event.target.checked)}
+                  />
+                  Read-only mode
+                </label>
                 <div className="history-actions">
                   <button
                     className="btn small"
@@ -211,6 +226,7 @@ export function ConnectionManagerModal({
                         name: editName.trim(),
                         connectionString: editConnectionString.trim() || undefined,
                         isDefault: editIsDefault,
+                        readOnly: editReadOnly,
                       })
                     }
                   >
@@ -224,6 +240,7 @@ export function ConnectionManagerModal({
                       setEditName('')
                       setEditConnectionString('')
                       setEditIsDefault(false)
+                      setEditReadOnly(false)
                     }}
                   >
                     Cancel
@@ -254,6 +271,14 @@ export function ConnectionManagerModal({
                 />
                 Set as default
               </label>
+              <label className="modal-check">
+                <input
+                  type="checkbox"
+                  checked={newReadOnly}
+                  onChange={(event) => setNewReadOnly(event.target.checked)}
+                />
+                Read-only mode
+              </label>
               <div className="history-actions">
                 <button
                   className="btn small primary"
@@ -263,6 +288,7 @@ export function ConnectionManagerModal({
                       name: newName.trim(),
                       connectionString: newConnectionString.trim(),
                       isDefault: newIsDefault,
+                      readOnly: newReadOnly,
                     })
                   }
                 >

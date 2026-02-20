@@ -12,6 +12,7 @@ type TableGridPanelProps = {
   pageSize: number
   page: number
   totalRows: number
+  readOnlyConnection: boolean
   onChangeSortBy: (value: string) => void
   onChangeSortOrder: (value: 'asc' | 'desc') => void
   onChangeFilterColumn: (value: string) => void
@@ -36,6 +37,7 @@ export function TableGridPanel({
   pageSize,
   page,
   totalRows,
+  readOnlyConnection,
   onChangeSortBy,
   onChangeSortOrder,
   onChangeFilterColumn,
@@ -106,7 +108,7 @@ export function TableGridPanel({
                     </td>
                   )
                 }
-                const readOnly = !editableColumns.some((c) => c.name === col.name)
+                const readOnly = readOnlyConnection || !editableColumns.some((c) => c.name === col.name)
                 return (
                   <td key={col.name}>
                     {readOnly ? (
@@ -127,7 +129,11 @@ export function TableGridPanel({
                 )
               })}
               <td>
-                <button className="btn small danger" onClick={() => onDeleteRow(row._ctid)}>
+                <button
+                  className="btn small danger"
+                  disabled={readOnlyConnection}
+                  onClick={() => onDeleteRow(row._ctid)}
+                >
                   Delete
                 </button>
               </td>
