@@ -756,6 +756,53 @@ pre {
   font-size: 12px;
 }
 
+.table-cell-editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+}
+
+.table-cell-kind {
+  align-self: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--panel-2);
+  letter-spacing: 0.03em;
+}
+
+.table-typed-input {
+  min-height: 28px;
+}
+
+.table-json-input {
+  min-height: 72px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.table-bool-toggle {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--muted);
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.table-bool-toggle.on {
+  color: var(--accent);
+  border-color: #9ddfc1;
+  background: linear-gradient(180deg, #f0fff7, #e6faef);
+}
+
 @media (max-width: 1200px) {
   .table-page {
     grid-template-columns: 1fr;
@@ -854,6 +901,11 @@ pre {
   overflow: hidden;
   display: grid;
   grid-template-rows: auto 1fr;
+}
+
+.table-confirm-modal {
+  width: min(560px, 100%);
+  max-height: min(72vh, 520px);
 }
 
 .modal-head {

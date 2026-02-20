@@ -98,7 +98,7 @@ export function useTableEditorData(state: TableEditorState) {
   }
 
   const patchRowMutation = useMutation({
-    mutationFn: ({ ctid, column, value }: { ctid: string; column: string; value: string }) =>
+    mutationFn: ({ ctid, column, value }: { ctid: string; column: string; value: unknown }) =>
       patchRow(selectedTarget.table, {
         connectionName: state.connectionName,
         schema: selectedTarget.schema,
@@ -135,7 +135,7 @@ export function useTableEditorData(state: TableEditorState) {
     await rowsQuery.refetch()
   }
 
-  async function updateCell(ctid: string, column: string, value: string) {
+  async function updateCell(ctid: string, column: string, value: unknown) {
     if (connectionReadOnly) {
       state.setStatus('Connection is read-only')
       return
