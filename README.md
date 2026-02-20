@@ -53,6 +53,20 @@ Optional:
 PG_CONNECTION_NAME='local-dev'
 ```
 
+Multiple connections:
+
+```bash
+PG_CONNECTIONS_JSON='[
+  {"name":"local","connectionString":"postgres://user:password@localhost:5432/postgres","isDefault":true},
+  {"name":"staging","connectionString":"postgres://user:password@localhost:5432/postgres_staging"}
+]'
+```
+
+Notes:
+- On first boot, connections are seeded from `PG_CONNECTIONS_JSON` (or `PG_CONNECTION_STRING` fallback).
+- Connections are persisted in `data/history.db` (`db_connections` table).
+- `GET|POST|PATCH|DELETE /api/connections` is available for runtime connection management.
+
 ## Test
 
 ```bash
@@ -73,6 +87,7 @@ This runs Vitest unit tests for SQL and table service modules.
 ## API routes
 
 - `GET /api/connections`
+- `POST|PATCH|DELETE /api/connections`
 - `POST /api/query`
 - `GET /api/history?limit=300`
 - `DELETE /api/history`
@@ -80,3 +95,11 @@ This runs Vitest unit tests for SQL and table service modules.
 - `GET /api/tables`
 - `GET|POST|PATCH|DELETE /api/tables/[table]/rows`
 - `GET /api/monaco/*` and `GET /api/vs/*`
+
+## Connection management UI
+
+- Use `Manage` in SQL editor header or Table editor sidebar to:
+  - add a connection
+  - rename / rotate connection string
+  - set default connection
+  - delete connection

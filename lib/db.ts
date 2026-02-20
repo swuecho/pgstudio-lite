@@ -7,8 +7,21 @@ import pg from 'pg'
 const { Pool } = pg
 
 type DbConnection = {
+  id: string
   name: string
   connectionString: string
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+type DbConnectionRow = {
+  id: string
+  name: string
+  connection_string: string
+  is_default: number
+  created_at: string
+  updated_at: string
 }
 
 type QueryHistoryRow = {
@@ -60,6 +73,19 @@ const sqlite = new DatabaseSync(DB_PATH)
 sqlite.exec(`
   PRAGMA journal_mode = WAL;
 
+  CREATE TABLE IF NOT EXISTS db_connections (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    connection_string TEXT NOT NULL,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_db_connections_default
+  ON db_connections(is_default)
+  WHERE is_default = 1;
+
   CREATE TABLE IF NOT EXISTS query_history (
     id TEXT PRIMARY KEY,
     connection_name TEXT NOT NULL,
@@ -87,6 +113,71 @@ sqlite.exec(`
   CREATE INDEX IF NOT EXISTS idx_query_snippets_updated_at
   ON query_snippets(updated_at DESC);
 `)
+
+const selectConnectionsStmt = sqlite.prepare(`
+  SELECT
+    id,
+    name,
+    connection_string,
+    is_default,
+    created_at,
+    updated_at
+  FROM db_connections
+  ORDER BY is_default DESC, name ASC
+`)
+
+const selectConnectionByNameStmt = sqlite.prepare(`
+  SELECT
+    id,
+    name,
+    connection_string,
+    is_default,
+    created_at,
+    updated_at
+  FROM db_connections
+  WHERE name = ?
+  LIMIT 1
+`)
+
+const selectConnectionByIdStmt = sqlite.prepare(`
+  SELECT
+    id,
+    name,
+    connection_string,
+    is_default,
+    created_at,
+    updated_at
+  FROM db_connections
+  WHERE id = ?
+  LIMIT 1
+`)
+
+const insertConnectionStmt = sqlite.prepare(`
+  INSERT INTO db_connections (
+    id,
+    name,
+    connection_string,
+    is_default,
+    created_at,
+    updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?)
+`)
+
+const updateConnectionStmt = sqlite.prepare(`
+  UPDATE db_connections
+  SET
+    name = ?,
+    connection_string = ?,
+    is_default = ?,
+    updated_at = ?
+  WHERE id = ?
+`)
+
+const deleteConnectionStmt = sqlite.prepare('DELETE FROM db_connections WHERE id = ?')
+const clearDefaultConnectionStmt = sqlite.prepare('UPDATE db_connections SET is_default = 0 WHERE is_default = 1')
+const setDefaultConnectionByIdStmt = sqlite.prepare(
+  'UPDATE db_connections SET is_default = 1, updated_at = ? WHERE id = ?'
+)
 
 const insertHistoryStmt = sqlite.prepare(`
   INSERT INTO query_history (
@@ -120,7 +211,26 @@ const selectHistoryStmt = sqlite.prepare(`
   LIMIT ?
 `)
 
+const selectHistoryByConnectionStmt = sqlite.prepare(`
+  SELECT
+    id,
+    connection_name,
+    query_text,
+    status,
+    duration_ms,
+    row_count,
+    error_text,
+    executed_at,
+    started_at,
+    metadata_json
+  FROM query_history
+  WHERE connection_name = ?
+  ORDER BY executed_at DESC
+  LIMIT ?
+`)
+
 const deleteHistoryStmt = sqlite.prepare('DELETE FROM query_history')
+const deleteHistoryByConnectionStmt = sqlite.prepare('DELETE FROM query_history WHERE connection_name = ?')
 
 const selectSnippetsStmt = sqlite.prepare(`
   SELECT
@@ -162,19 +272,136 @@ function sqlIdent(value: string): string {
   return `"${value.replaceAll('"', '""')}"`
 }
 
-function getConnectionByName(connectionName: string): DbConnection {
-  const connection = getConnections().find((c) => c.name === connectionName)
+function runTransaction(fn: () => void) {
+  sqlite.exec('BEGIN')
+  try {
+    fn()
+    sqlite.exec('COMMIT')
+  } catch (error) {
+    sqlite.exec('ROLLBACK')
+    throw error
+  }
+}
+
+function normalizeConnectionRow(row: DbConnectionRow): DbConnection {
+  return {
+    id: row.id,
+    name: row.name,
+    connectionString: row.connection_string,
+    isDefault: row.is_default === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function parseEnvConnections(): Array<{ name: string; connectionString: string; isDefault: boolean }> {
+  const parsed: Array<{ name: string; connectionString: string; isDefault: boolean }> = []
+  const rawJson = process.env.PG_CONNECTIONS_JSON?.trim()
+  if (rawJson) {
+    try {
+      const values = JSON.parse(rawJson) as Array<{
+        name?: unknown
+        connectionString?: unknown
+        isDefault?: unknown
+      }>
+      for (const value of values || []) {
+        const name = typeof value.name === 'string' ? value.name.trim() : ''
+        const connectionString =
+          typeof value.connectionString === 'string' ? value.connectionString.trim() : ''
+        if (!name || !connectionString) continue
+        parsed.push({ name, connectionString, isDefault: value.isDefault === true })
+      }
+    } catch {
+      // Ignore invalid JSON and fallback to single connection env vars.
+    }
+  }
+
+  const singleConnectionString = process.env.PG_CONNECTION_STRING?.trim() || ''
+  if (singleConnectionString) {
+    const singleName = process.env.PG_CONNECTION_NAME?.trim() || 'default'
+    if (!parsed.some((item) => item.name === singleName)) {
+      parsed.push({
+        name: singleName,
+        connectionString: singleConnectionString,
+        isDefault: parsed.length === 0,
+      })
+    }
+  }
+
+  if (parsed.length > 0 && !parsed.some((item) => item.isDefault)) parsed[0].isDefault = true
+  return parsed
+}
+
+function bootstrapConnectionsFromEnv() {
+  const existing = selectConnectionsStmt.all() as DbConnectionRow[]
+  if (existing.length > 0) return
+  const seeded = parseEnvConnections()
+  if (seeded.length === 0) return
+  const now = new Date().toISOString()
+  runTransaction(() => {
+    for (const [index, item] of seeded.entries()) {
+      insertConnectionStmt.run(
+        randomUUID(),
+        item.name,
+        item.connectionString,
+        item.isDefault || index === 0 ? 1 : 0,
+        now,
+        now
+      )
+    }
+  })
+}
+
+bootstrapConnectionsFromEnv()
+
+export function getConnections(): DbConnection[] {
+  return (selectConnectionsStmt.all() as DbConnectionRow[]).map(normalizeConnectionRow)
+}
+
+export function getPublicConnections() {
+  return getConnections().map((connection) => ({
+    id: connection.id,
+    name: connection.name,
+    isDefault: connection.isDefault,
+  }))
+}
+
+export function getDefaultConnectionName(): string | null {
+  const all = getConnections()
+  if (all.length === 0) return null
+  const explicitDefault = all.find((connection) => connection.isDefault)
+  return explicitDefault?.name || all[0].name
+}
+
+export function resolveConnectionName(connectionName?: string): string {
+  const trimmed = connectionName?.trim() || ''
+  if (trimmed) return trimmed
+  const fallback = getDefaultConnectionName()
+  if (!fallback) {
+    const error = new Error('No database connections configured. Add one in Connections.') as Error & {
+      statusCode?: number
+    }
+    error.statusCode = 400
+    throw error
+  }
+  return fallback
+}
+
+function getConnectionByName(connectionName?: string): DbConnection {
+  const resolvedName = resolveConnectionName(connectionName)
+  const row = selectConnectionByNameStmt.get(resolvedName) as DbConnectionRow | undefined
+  const connection = row ? normalizeConnectionRow(row) : null
   if (!connection) {
-    const error = new Error(
-      `Connection '${connectionName}' not found. Set PG_CONNECTION_STRING and optional PG_CONNECTION_NAME.`
-    ) as Error & { statusCode?: number }
+    const error = new Error(`Connection '${resolvedName}' not found. Configure it in Connections.`) as Error & {
+      statusCode?: number
+    }
     error.statusCode = 400
     throw error
   }
   return connection
 }
 
-async function withClient<T>(connectionName: string, fn: (client: any) => Promise<T>) {
+async function withClient<T>(connectionName: string | undefined, fn: (client: any) => Promise<T>) {
   const connection = getConnectionByName(connectionName)
   const pool = new Pool({ connectionString: connection.connectionString })
   try {
@@ -189,13 +416,103 @@ async function withClient<T>(connectionName: string, fn: (client: any) => Promis
   }
 }
 
-export function getConnections(): DbConnection[] {
-  return [
-    {
-      name: process.env.PG_CONNECTION_NAME || 'default',
-      connectionString: process.env.PG_CONNECTION_STRING || '',
-    },
-  ].filter((c) => c.connectionString.length > 0)
+export function createConnection(input: {
+  name: string
+  connectionString: string
+  isDefault?: boolean
+}) {
+  const name = input.name.trim()
+  const connectionString = input.connectionString.trim()
+  if (!name) throw new Error('name is required')
+  if (!connectionString) throw new Error('connectionString is required')
+  if (getConnections().some((connection) => connection.name === name)) {
+    const error = new Error(`Connection '${name}' already exists`) as Error & { statusCode?: number }
+    error.statusCode = 409
+    throw error
+  }
+  const now = new Date().toISOString()
+  const id = randomUUID()
+  const shouldBeDefault = input.isDefault === true || getConnections().length === 0
+  runTransaction(() => {
+    if (shouldBeDefault) clearDefaultConnectionStmt.run()
+    insertConnectionStmt.run(id, name, connectionString, shouldBeDefault ? 1 : 0, now, now)
+  })
+  const row = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  if (!row) throw new Error('failed to create connection')
+  return normalizeConnectionRow(row)
+}
+
+export function updateConnection(
+  id: string,
+  input: {
+    name?: string
+    connectionString?: string
+    isDefault?: boolean
+  }
+) {
+  const existing = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  if (!existing) return null
+
+  const nextName = input.name === undefined ? existing.name : input.name.trim()
+  const nextConnectionString =
+    input.connectionString === undefined ? existing.connection_string : input.connectionString.trim()
+  const nextDefault = input.isDefault === undefined ? existing.is_default === 1 : input.isDefault
+
+  if (!nextName) throw new Error('name cannot be empty')
+  if (!nextConnectionString) throw new Error('connectionString cannot be empty')
+
+  const duplicate = getConnections().find((connection) => connection.name === nextName && connection.id !== id)
+  if (duplicate) {
+    const error = new Error(`Connection '${nextName}' already exists`) as Error & { statusCode?: number }
+    error.statusCode = 409
+    throw error
+  }
+
+  const now = new Date().toISOString()
+  runTransaction(() => {
+    if (nextDefault) clearDefaultConnectionStmt.run()
+    updateConnectionStmt.run(nextName, nextConnectionString, nextDefault ? 1 : 0, now, id)
+    if (!nextDefault && getConnections().length > 0 && !getConnections().some((connection) => connection.isDefault)) {
+      setDefaultConnectionByIdStmt.run(now, id)
+    }
+  })
+
+  const updated = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  return updated ? normalizeConnectionRow(updated) : null
+}
+
+export function setDefaultConnection(id: string) {
+  const existing = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  if (!existing) return null
+  const now = new Date().toISOString()
+  runTransaction(() => {
+    clearDefaultConnectionStmt.run()
+    setDefaultConnectionByIdStmt.run(now, id)
+  })
+  const updated = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  return updated ? normalizeConnectionRow(updated) : null
+}
+
+export function deleteConnection(id: string) {
+  const existing = selectConnectionByIdStmt.get(id) as DbConnectionRow | undefined
+  if (!existing) return false
+
+  const all = getConnections()
+  if (all.length <= 1) {
+    const error = new Error('Cannot delete the last connection') as Error & { statusCode?: number }
+    error.statusCode = 400
+    throw error
+  }
+
+  const now = new Date().toISOString()
+  runTransaction(() => {
+    deleteConnectionStmt.run(id)
+    const remaining = getConnections()
+    if (!remaining.some((connection) => connection.isDefault) && remaining[0]) {
+      setDefaultConnectionByIdStmt.run(now, remaining[0].id)
+    }
+  })
+  return true
 }
 
 function splitStatements(sql: string): string[] {
@@ -229,12 +546,21 @@ function parseHistoryRow(row: QueryHistoryRow) {
   }
 }
 
-export function getHistory(limit = 100) {
+export function getHistory(limit = 100, connectionName?: string) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100))
+  if (connectionName && connectionName.trim()) {
+    const resolved = resolveConnectionName(connectionName)
+    return (selectHistoryByConnectionStmt.all(resolved, safeLimit) as QueryHistoryRow[]).map(parseHistoryRow)
+  }
   return (selectHistoryStmt.all(safeLimit) as QueryHistoryRow[]).map(parseHistoryRow)
 }
 
-export function clearHistory() {
+export function clearHistory(connectionName?: string) {
+  if (connectionName && connectionName.trim()) {
+    const resolved = resolveConnectionName(connectionName)
+    deleteHistoryByConnectionStmt.run(resolved)
+    return
+  }
   deleteHistoryStmt.run()
 }
 
@@ -307,7 +633,7 @@ export async function executeQuery({
   connectionName,
 }: {
   query: string
-  connectionName: string
+  connectionName?: string
 }) {
   const connection = getConnectionByName(connectionName)
   const startedAt = new Date()
@@ -391,7 +717,7 @@ export async function executeQuery({
   }
 }
 
-export async function listTables(connectionName: string): Promise<TableInfo[]> {
+export async function listTables(connectionName?: string): Promise<TableInfo[]> {
   return withClient(connectionName, async (client) => {
     const sql = `
       select
@@ -415,7 +741,7 @@ export async function listTables(connectionName: string): Promise<TableInfo[]> {
 }
 
 export async function getTableColumns(
-  connectionName: string,
+  connectionName: string | undefined,
   table: string,
   schema = 'public'
 ): Promise<TableColumn[]> {
@@ -442,7 +768,7 @@ export async function getTableColumns(
 }
 
 export async function getTableRows(
-  connectionName: string,
+  connectionName: string | undefined,
   table: string,
   options: {
     limit?: number
@@ -493,7 +819,7 @@ export async function getTableRows(
   })
 }
 
-export async function listSchemaObjects(connectionName: string): Promise<SchemaTable[]> {
+export async function listSchemaObjects(connectionName?: string): Promise<SchemaTable[]> {
   return withClient(connectionName, async (client) => {
     const sql = `
       select
@@ -517,7 +843,7 @@ export async function listSchemaObjects(connectionName: string): Promise<SchemaT
 }
 
 export async function updateTableRowByCtid(
-  connectionName: string,
+  connectionName: string | undefined,
   table: string,
   ctid: string,
   patch: Record<string, unknown>
@@ -535,7 +861,7 @@ export async function updateTableRowByCtid(
 }
 
 export async function insertTableRow(
-  connectionName: string,
+  connectionName: string | undefined,
   table: string,
   payload: Record<string, unknown>
 ) {
@@ -552,7 +878,7 @@ export async function insertTableRow(
   })
 }
 
-export async function deleteTableRowByCtid(connectionName: string, table: string, ctid: string) {
+export async function deleteTableRowByCtid(connectionName: string | undefined, table: string, ctid: string) {
   return withClient(connectionName, async (client) => {
     const qTable = `${sqlIdent('public')}.${sqlIdent(table)}`
     const sql = `delete from ${qTable} where ctid::text = $1`

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { listSchemaObjects } from '../../../lib/db'
+import { getRequestConnectionName } from '../_utils/connection'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -7,10 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const connectionName =
-    typeof req.query.connectionName === 'string' ? req.query.connectionName : 'default'
-
   try {
+    const connectionName = getRequestConnectionName(req)
     const tables = await listSchemaObjects(connectionName)
     return res.status(200).json({ tables })
   } catch (error) {
