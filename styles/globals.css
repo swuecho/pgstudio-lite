@@ -1068,6 +1068,11 @@ pre {
   margin: 0;
 }
 
+.notebook-markdown-render {
+  display: grid;
+  gap: 6px;
+}
+
 .notebook-markdown-render h1 {
   font-size: 20px;
 }
@@ -1086,6 +1091,47 @@ pre {
 
 .notebook-markdown-list-item {
   margin-left: 2px;
+}
+
+.notebook-markdown-render ul,
+.notebook-markdown-render ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.notebook-markdown-render li {
+  margin: 0;
+}
+
+.notebook-markdown-render a {
+  color: #1864d6;
+  text-decoration: underline;
+}
+
+.notebook-markdown-render table {
+  min-width: 0;
+  width: auto;
+  border-collapse: collapse;
+  display: block;
+  overflow: auto;
+}
+
+.notebook-markdown-render th,
+.notebook-markdown-render td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.notebook-markdown-render p code,
+.notebook-markdown-render li code,
+.notebook-markdown-render td code,
+.notebook-markdown-render th code {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 1px 4px;
 }
 
 .notebook-markdown-code {
@@ -1138,4 +1184,8 @@ pre {
 
 [data-theme='dark'] .notebook-markdown-code {
   background: #0d1422;
+}
+
+[data-theme='dark'] .notebook-markdown-render a {
+  color: #7fb2ff;
 }
