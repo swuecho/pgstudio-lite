@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { executeQuery } from '../../lib/db'
-import { getRequestConnectionName } from './_utils/connection'
-import { parseWithSchema } from './_utils/validation'
+import { getRequestConnectionName } from '../../lib/api/connection'
+import { parseWithSchema } from '../../lib/api/validation'
 
 const queryBodySchema = z.object({
   query: z.string().trim().min(1, 'query is required'),

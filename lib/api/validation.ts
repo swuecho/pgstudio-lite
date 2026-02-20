@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const nonEmptyStringSchema = z.string().trim().min(1)
 
-export const optionalConnectionNameSchema = z.preprocess(
+export const optionalSchemaNameSchema = z.preprocess(
   (value) => {
     if (typeof value !== 'string') return undefined
     const trimmed = value.trim()
@@ -10,6 +10,8 @@ export const optionalConnectionNameSchema = z.preprocess(
   },
   z.string().min(1).optional()
 )
+
+export const optionalConnectionNameSchema = optionalSchemaNameSchema
 
 export function parseWithSchema<T extends z.ZodTypeAny>(schema: T, input: unknown): z.infer<T> {
   const result = schema.safeParse(input)
