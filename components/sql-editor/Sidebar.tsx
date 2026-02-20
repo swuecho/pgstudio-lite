@@ -83,6 +83,9 @@ export function SqlSidebar({
         <Link className="rail-btn link-btn" href="/table-editor">
           TB
         </Link>
+        <Link className="rail-btn link-btn" href="/notebook">
+          NB
+        </Link>
       </aside>
 
       <aside className="layout-nav">

@@ -15,6 +15,10 @@ PostgreSQL web manager using the same framework style as Supabase Studio:
 
 - SQL Editor (Studio-like layout)
 - Table Editor (browse tables, edit cells, insert row, delete row)
+- Notebook (mixed SQL + Markdown cells with per-cell execution)
+  - Run single SQL cell or run all SQL cells in order
+  - Markdown edit/preview mode with formatted headings/lists/code blocks
+  - Collapsible cells with persisted collapsed state
 
 ## SQL snippet features
 
@@ -46,6 +50,7 @@ Open:
 
 - SQL Editor: [http://localhost:4180](http://localhost:4180)
 - Table Editor: [http://localhost:4180/table-editor](http://localhost:4180/table-editor)
+- Notebook: [http://localhost:4180/notebook](http://localhost:4180/notebook)
 
 Optional:
 
@@ -105,6 +110,10 @@ Migrations also run automatically on server startup via `/Users/hwu/dev/pgstudio
 - `GET /api/history?limit=300`
 - `DELETE /api/history`
 - `GET|POST|PATCH|DELETE /api/snippets`
+- `GET|POST|PATCH|DELETE /api/notebooks`
+- `GET /api/notebooks/[id]`
+- `POST|PATCH|DELETE /api/notebooks/[id]/cells`
+- `POST /api/notebooks/[id]/run-cell`
 - `GET /api/tables`
 - `GET|POST|PATCH|DELETE /api/tables/[table]/rows`
 - `GET /api/monaco/*` and `GET /api/vs/*`
