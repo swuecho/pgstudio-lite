@@ -49,3 +49,40 @@ export const querySnippets = sqliteTable(
     updatedAtIdx: index('idx_query_snippets_updated_at').on(table.updatedAt),
   })
 )
+
+export const notebooks = sqliteTable(
+  'notebooks',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    connectionName: text('connection_name').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => ({
+    updatedAtIdx: index('idx_notebooks_updated_at').on(table.updatedAt),
+  })
+)
+
+export const notebookCells = sqliteTable(
+  'notebook_cells',
+  {
+    id: text('id').primaryKey(),
+    notebookId: text('notebook_id').notNull(),
+    position: integer('position').notNull(),
+    type: text('type').notNull(),
+    content: text('content').notNull(),
+    collapsed: integer('collapsed', { mode: 'boolean' }).notNull().default(false),
+    lastRunStatus: text('last_run_status'),
+    lastRunAt: text('last_run_at'),
+    lastDurationMs: integer('last_duration_ms'),
+    lastRowCount: integer('last_row_count'),
+    lastResultJson: text('last_result_json'),
+    lastError: text('last_error'),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => ({
+    notebookPositionIdx: uniqueIndex('idx_notebook_cells_notebook_position').on(table.notebookId, table.position),
+    notebookUpdatedAtIdx: index('idx_notebook_cells_updated_at').on(table.updatedAt),
+  })
+)
