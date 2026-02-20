@@ -31,6 +31,9 @@ export function TableSidebar({
           SQL
         </Link>
         <button className="rail-btn active">TB</button>
+        <Link className="rail-btn link-btn" href="/notebook">
+          NB
+        </Link>
       </aside>
 
       <aside className="layout-nav">
