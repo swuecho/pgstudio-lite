@@ -29,6 +29,18 @@ type TableEditorState = {
 }
 
 export function useTableEditorData(state: TableEditorState) {
+  function parseActiveTableKey(activeTableKey: string) {
+    const [schema, ...tableParts] = activeTableKey.split('.')
+    const table = tableParts.join('.')
+    if (!schema || !table) return { schema: 'public', table: activeTableKey }
+    return { schema, table }
+  }
+
+  function toActiveTableKey(schema: string, table: string) {
+    return `${schema}.${table}`
+  }
+
+  const selectedTarget = parseActiveTableKey(state.activeTable)
   const queryClient = useQueryClient()
   const connectionsQuery = useQuery({
     queryKey: ['table', 'connections'],
@@ -59,7 +71,8 @@ export function useTableEditorData(state: TableEditorState) {
     ],
     queryFn: () =>
       getRowsService({
-        table: state.activeTable,
+        schema: selectedTarget.schema,
+        table: selectedTarget.table,
         connectionName: state.connectionName,
         page: state.page,
         pageSize: state.pageSize,
@@ -69,7 +82,7 @@ export function useTableEditorData(state: TableEditorState) {
         filterValue: state.filterValue,
         filterMode: state.filterMode,
       }),
-    enabled: Boolean(state.connectionName && state.activeTable),
+    enabled: Boolean(state.connectionName && selectedTarget.table),
   })
   const columns = rowsQuery.data?.columns || []
   const rows = rowsQuery.data?.rows || []
@@ -84,8 +97,9 @@ export function useTableEditorData(state: TableEditorState) {
 
   const patchRowMutation = useMutation({
     mutationFn: ({ ctid, column, value }: { ctid: string; column: string; value: string }) =>
-      patchRow(state.activeTable, {
+      patchRow(selectedTarget.table, {
         connectionName: state.connectionName,
+        schema: selectedTarget.schema,
         ctid,
         patch: { [column]: value },
       }),
@@ -93,13 +107,18 @@ export function useTableEditorData(state: TableEditorState) {
   })
 
   const deleteRowMutation = useMutation({
-    mutationFn: (ctid: string) => removeRow(state.activeTable, { connectionName: state.connectionName, ctid }),
+    mutationFn: (ctid: string) =>
+      removeRow(selectedTarget.table, { connectionName: state.connectionName, schema: selectedTarget.schema, ctid }),
     onSuccess: invalidateRows,
   })
 
   const insertRowMutation = useMutation({
     mutationFn: (row: Record<string, unknown>) =>
-      insertRowService(state.activeTable, { connectionName: state.connectionName, row }),
+      insertRowService(selectedTarget.table, {
+        connectionName: state.connectionName,
+        schema: selectedTarget.schema,
+        row,
+      }),
     onSuccess: invalidateRows,
   })
 
@@ -116,14 +135,22 @@ export function useTableEditorData(state: TableEditorState) {
 
   async function updateCell(ctid: string, column: string, value: string) {
     state.setStatus('Saving...')
-    await patchRowMutation.mutateAsync({ ctid, column, value })
-    state.setStatus('Saved')
+    try {
+      await patchRowMutation.mutateAsync({ ctid, column, value })
+      state.setStatus('Saved')
+    } catch (error) {
+      state.setStatus(error instanceof Error ? error.message : 'Failed to save row')
+    }
   }
 
   async function deleteRow(ctid: string) {
     state.setStatus('Deleting...')
-    await deleteRowMutation.mutateAsync(ctid)
-    state.setStatus('Deleted')
+    try {
+      await deleteRowMutation.mutateAsync(ctid)
+      state.setStatus('Deleted')
+    } catch (error) {
+      state.setStatus(error instanceof Error ? error.message : 'Failed to delete row')
+    }
   }
 
   async function insertRow() {
@@ -136,8 +163,12 @@ export function useTableEditorData(state: TableEditorState) {
     }
 
     state.setStatus('Inserting...')
-    await insertRowMutation.mutateAsync(payload)
-    state.setStatus('Inserted')
+    try {
+      await insertRowMutation.mutateAsync(payload)
+      state.setStatus('Inserted')
+    } catch (error) {
+      state.setStatus(error instanceof Error ? error.message : 'Failed to insert row')
+    }
   }
 
   useEffect(() => {
@@ -157,8 +188,8 @@ export function useTableEditorData(state: TableEditorState) {
       if (state.activeTable) state.setActiveTable('')
       return
     }
-    if (!tables.some((table) => table.table === state.activeTable)) {
-      state.setActiveTable(tables[0].table)
+    if (!tables.some((table) => toActiveTableKey(table.schema, table.table) === state.activeTable)) {
+      state.setActiveTable(toActiveTableKey(tables[0].schema, tables[0].table))
     }
   }, [tables, state.activeTable, state.setActiveTable])
 

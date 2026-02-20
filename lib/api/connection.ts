@@ -1,5 +1,5 @@
 import type { NextApiRequest } from 'next'
-import { parseWithSchema, optionalConnectionNameSchema } from './validation'
+import { optionalConnectionNameSchema, parseWithSchema } from './validation'
 
 export function getRequestConnectionName(req: NextApiRequest) {
   const fromQuery = parseWithSchema(optionalConnectionNameSchema, req.query.connectionName)

@@ -12,6 +12,7 @@ export async function getTables(connectionName: string) {
 }
 
 export async function getRows(args: {
+  schema?: string
   table: string
   connectionName: string
   page: number
@@ -24,6 +25,7 @@ export async function getRows(args: {
 }) {
   const params = new URLSearchParams({
     connectionName: args.connectionName,
+    schema: args.schema || 'public',
     limit: String(args.pageSize),
     offset: String(args.page * args.pageSize),
     sortBy: args.sortBy,
@@ -40,23 +42,32 @@ export async function getRows(args: {
   )
 }
 
-export async function patchRow(table: string, payload: { connectionName: string; ctid: string; patch: Record<string, unknown> }) {
+export async function patchRow(
+  table: string,
+  payload: { connectionName: string; schema?: string; ctid: string; patch: Record<string, unknown> }
+) {
+  const body = { ...payload, schema: payload.schema || 'public' }
   return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
     method: 'PATCH',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   })
 }
 
-export async function removeRow(table: string, payload: { connectionName: string; ctid: string }) {
+export async function removeRow(table: string, payload: { connectionName: string; schema?: string; ctid: string }) {
+  const body = { ...payload, schema: payload.schema || 'public' }
   return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
     method: 'DELETE',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   })
 }
 
-export async function insertRow(table: string, payload: { connectionName: string; row: Record<string, unknown> }) {
+export async function insertRow(
+  table: string,
+  payload: { connectionName: string; schema?: string; row: Record<string, unknown> }
+) {
+  const body = { ...payload, schema: payload.schema || 'public' }
   return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   })
 }

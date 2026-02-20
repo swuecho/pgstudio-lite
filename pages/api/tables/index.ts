@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { listTables } from '../../../lib/db'
-import { getRequestConnectionName } from '../_utils/connection'
+import { getRequestConnectionName } from '../../../lib/api/connection'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {

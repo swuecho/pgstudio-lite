@@ -36,6 +36,7 @@ describe('table service', () => {
 
     await tableService.getRows({
       table: 'notes list',
+      schema: 'public',
       connectionName: 'default',
       page: 2,
       pageSize: 25,
@@ -47,7 +48,7 @@ describe('table service', () => {
     })
 
     expect(calls[0].path).toBe(
-      '/api/tables/notes%20list/rows?connectionName=default&limit=25&offset=50&sortBy=id&sortOrder=desc&filterColumn=title&filterValue=todo&filterMode=contains'
+      '/api/tables/notes%20list/rows?connectionName=default&schema=public&limit=25&offset=50&sortBy=id&sortOrder=desc&filterColumn=title&filterValue=todo&filterMode=contains'
     )
   })
 
@@ -56,6 +57,7 @@ describe('table service', () => {
 
     await tableService.getRows({
       table: 'notes',
+      schema: 'public',
       connectionName: 'default',
       page: 0,
       pageSize: 10,
@@ -67,6 +69,7 @@ describe('table service', () => {
     })
 
     expect(calls[0].path).toMatch(/^\/api\/tables\/notes\/rows\?/)
+    expect(calls[0].path.includes('schema=public')).toBe(true)
     expect(calls[0].path.includes('filterColumn=')).toBe(false)
     expect(calls[0].path.includes('filterValue=')).toBe(false)
     expect(calls[0].path.includes('filterMode=')).toBe(false)
@@ -77,6 +80,7 @@ describe('table service', () => {
 
     await tableService.patchRow('notes', {
       connectionName: 'default',
+      schema: 'public',
       ctid: '(0,1)',
       patch: { title: 'new' },
     })
@@ -84,7 +88,7 @@ describe('table service', () => {
     expect(calls[0].path).toBe('/api/tables/notes/rows')
     expect(calls[0].options?.method).toBe('PATCH')
     expect(calls[0].options?.body).toBe(
-      JSON.stringify({ connectionName: 'default', ctid: '(0,1)', patch: { title: 'new' } })
+      JSON.stringify({ connectionName: 'default', schema: 'public', ctid: '(0,1)', patch: { title: 'new' } })
     )
   })
 })
