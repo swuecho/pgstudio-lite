@@ -11,31 +11,33 @@ export default function TableEditorPage() {
   const state = useTableEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
   const filterValueInputRef = useRef<HTMLInputElement>(null)
+  const didInitUrlSyncRef = useRef(false)
+
+  const takeFirst = (value: string | string[] | undefined) => {
+    if (!value) return ''
+    return Array.isArray(value) ? value[0] || '' : value
+  }
 
   useEffect(() => {
     if (!router.isReady) return
-    const takeFirst = (value: string | string[] | undefined) => {
-      if (!value) return ''
-      return Array.isArray(value) ? value[0] || '' : value
-    }
 
     const nextConnectionName = takeFirst(router.query.connectionName)
     const nextSchema = takeFirst(router.query.schema) || 'public'
     const nextTable = takeFirst(router.query.table)
+    const nextActiveTable = nextTable ? `${nextSchema}.${nextTable}` : ''
 
-    if (nextConnectionName) state.setConnectionName(nextConnectionName)
-    if (nextTable) {
-      state.setActiveTable(`${nextSchema}.${nextTable}`)
+    if (nextConnectionName && nextConnectionName !== state.connectionName) {
+      state.setConnectionName(nextConnectionName)
+    }
+    if (nextActiveTable && nextActiveTable !== state.activeTable) {
+      state.setActiveTable(nextActiveTable)
       state.setPage(0)
     }
+    didInitUrlSyncRef.current = true
   }, [router.isReady, router.query.connectionName, router.query.schema, router.query.table, state.setActiveTable, state.setConnectionName, state.setPage])
 
   useEffect(() => {
-    if (!router.isReady) return
-    const takeFirst = (value: string | string[] | undefined) => {
-      if (!value) return ''
-      return Array.isArray(value) ? value[0] || '' : value
-    }
+    if (!router.isReady || !didInitUrlSyncRef.current) return
 
     const [schema = 'public', ...tableParts] = state.activeTable.split('.')
     const table = tableParts.join('.')
