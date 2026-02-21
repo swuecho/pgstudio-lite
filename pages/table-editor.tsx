@@ -31,6 +31,39 @@ export default function TableEditorPage() {
   }, [router.isReady, router.query.connectionName, router.query.schema, router.query.table, state.setActiveTable, state.setConnectionName, state.setPage])
 
   useEffect(() => {
+    if (!router.isReady) return
+    const takeFirst = (value: string | string[] | undefined) => {
+      if (!value) return ''
+      return Array.isArray(value) ? value[0] || '' : value
+    }
+
+    const [schema = 'public', ...tableParts] = state.activeTable.split('.')
+    const table = tableParts.join('.')
+    const currentConnection = takeFirst(router.query.connectionName)
+    const currentSchema = takeFirst(router.query.schema)
+    const currentTable = takeFirst(router.query.table)
+
+    const nextConnection = state.connectionName || ''
+    const nextSchema = table ? schema : ''
+    const nextTable = table || ''
+
+    if (
+      currentConnection === nextConnection &&
+      currentSchema === nextSchema &&
+      currentTable === nextTable
+    ) {
+      return
+    }
+
+    const nextQuery: Record<string, string> = {}
+    if (nextConnection) nextQuery.connectionName = nextConnection
+    if (nextSchema) nextQuery.schema = nextSchema
+    if (nextTable) nextQuery.table = nextTable
+
+    void router.replace({ pathname: '/table-editor', query: nextQuery }, undefined, { shallow: true })
+  }, [router, router.isReady, router.query.connectionName, router.query.schema, router.query.table, state.activeTable, state.connectionName])
+
+  useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false
       if (target.isContentEditable) return true
