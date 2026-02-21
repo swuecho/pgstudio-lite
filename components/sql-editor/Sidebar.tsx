@@ -1,7 +1,9 @@
 import Link from 'next/link'
+import type { RefObject } from 'react'
 import { HistoryItem, SchemaTable, SnippetItem } from './types'
 
 type SqlSidebarProps = {
+  searchInputRef: RefObject<HTMLInputElement | null>
   connectionName: string
   activeNavTab: 'history' | 'snippets' | 'explorer'
   onChangeNavTab: (tab: 'history' | 'snippets' | 'explorer') => void
@@ -15,6 +17,9 @@ type SqlSidebarProps = {
   onInsertTemplate: () => void
   canSaveAs: boolean
   savingSnippet: boolean
+  loadingHistory: boolean
+  loadingSnippets: boolean
+  loadingSchema: boolean
   filteredHistory: HistoryItem[]
   filteredSnippets: SnippetItem[]
   schemaGroups: Array<[string, SchemaTable[]]>
@@ -41,6 +46,7 @@ type SqlSidebarProps = {
 }
 
 export function SqlSidebar({
+  searchInputRef,
   connectionName,
   activeNavTab,
   onChangeNavTab,
@@ -54,6 +60,9 @@ export function SqlSidebar({
   onInsertTemplate,
   canSaveAs,
   savingSnippet,
+  loadingHistory,
+  loadingSnippets,
+  loadingSchema,
   filteredHistory,
   filteredSnippets,
   schemaGroups,
@@ -78,6 +87,13 @@ export function SqlSidebar({
   onInsertColumnName,
   formatTime,
 }: SqlSidebarProps) {
+  const searchPlaceholder =
+    activeNavTab === 'history'
+      ? 'Search history'
+      : activeNavTab === 'snippets'
+        ? 'Search snippets'
+        : 'Search schema.table'
+
   return (
     <>
       <aside className="layout-rail">
@@ -117,19 +133,24 @@ export function SqlSidebar({
         </div>
 
         <div className="layout-nav-controls">
-          <input value={historySearch} onChange={(e) => onChangeHistorySearch(e.target.value)} placeholder="Search" />
+          <input
+            ref={searchInputRef}
+            value={historySearch}
+            onChange={(e) => onChangeHistorySearch(e.target.value)}
+            placeholder={searchPlaceholder}
+          />
           {activeNavTab === 'history' ? (
             <>
-              <button className="btn small" onClick={onRefreshHistory}>
+              <button className="btn small" onClick={onRefreshHistory} disabled={loadingHistory}>
                 Refresh
               </button>
-              <button className="btn small danger" onClick={onClearHistory}>
+              <button className="btn small danger" onClick={onClearHistory} disabled={filteredHistory.length === 0}>
                 Clear
               </button>
             </>
           ) : activeNavTab === 'snippets' ? (
             <>
-              <button className="btn small" onClick={onRefreshSnippets}>
+              <button className="btn small" onClick={onRefreshSnippets} disabled={loadingSnippets}>
                 Refresh
               </button>
               <button className="btn small" onClick={() => onSaveSnippet(false)}>
@@ -144,7 +165,7 @@ export function SqlSidebar({
             </>
           ) : (
             <>
-              <button className="btn small" onClick={onRefreshSchema}>
+              <button className="btn small" onClick={onRefreshSchema} disabled={loadingSchema}>
                 Refresh
               </button>
               <button className="btn small" onClick={onInsertTemplate}>
@@ -156,6 +177,11 @@ export function SqlSidebar({
 
         <div className="layout-nav-list">
           {activeNavTab === 'history' ? (
+            filteredHistory.length === 0 ? (
+              <div className="empty-state">
+                {historySearch.trim() ? 'No history matches your search.' : 'No query history yet. Run a query to start.'}
+              </div>
+            ) : (
             filteredHistory.map((item) => (
               <div
                 key={item.id}
@@ -175,7 +201,15 @@ export function SqlSidebar({
                 <div className="history-meta">{formatTime(item.executed_at)}</div>
               </div>
             ))
+            )
           ) : activeNavTab === 'snippets' ? (
+            filteredSnippets.length === 0 ? (
+              <div className="empty-state">
+                {historySearch.trim()
+                  ? 'No snippets match your search.'
+                  : 'No snippets yet. Use Save in the SQL editor to create one.'}
+              </div>
+            ) : (
             filteredSnippets.map((item) => (
               <div key={item.id} className="history-item snippet-item">
                 <div className="history-top">
@@ -230,7 +264,15 @@ export function SqlSidebar({
                 </div>
               </div>
             ))
+            )
           ) : (
+            schemaGroups.length === 0 ? (
+              <div className="empty-state">
+                {historySearch.trim()
+                  ? 'No tables match your search.'
+                  : 'No tables found for this connection.'}
+              </div>
+            ) : (
             schemaGroups.map(([schema, tables]) => (
               <div key={schema} className="explorer-group">
                 <button className="explorer-schema explorer-toggle-row" onClick={() => onToggleSchema(schema)}>
@@ -283,6 +325,7 @@ export function SqlSidebar({
                   })}
               </div>
             ))
+            )
           )}
         </div>
       </aside>

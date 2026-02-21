@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import ThemeToggle from '../components/theme-toggle'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
@@ -8,6 +8,37 @@ import { useTableEditorState } from '../components/table-editor/useTableEditorSt
 export default function TableEditorPage() {
   const state = useTableEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
+  const filterValueInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      if (target.isContentEditable) return true
+      const tag = target.tagName
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableTarget(event.target)) {
+        event.preventDefault()
+        filterValueInputRef.current?.focus()
+        filterValueInputRef.current?.select()
+        return
+      }
+
+      if (event.key === 'Escape' && document.activeElement === filterValueInputRef.current) {
+        if (state.filterValue) {
+          state.setFilterValue('')
+          state.setPage(0)
+        } else {
+          filterValueInputRef.current?.blur()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [state.filterValue, state.setFilterValue, state.setPage])
 
   return (
     <div className="layout-root">
@@ -17,6 +48,7 @@ export default function TableEditorPage() {
         onChangeConnection={state.setConnectionName}
         onOpenConnectionManager={() => setManagingConnections(true)}
         tables={state.tables}
+        loadingTables={state.loadingTables}
         activeTable={state.activeTable}
         onSelectTable={state.setActiveTable}
         onRefreshTables={() => {
@@ -52,6 +84,7 @@ export default function TableEditorPage() {
             filterColumn={state.filterColumn}
             filterMode={state.filterMode}
             filterValue={state.filterValue}
+            filterValueInputRef={filterValueInputRef}
             pageSize={state.pageSize}
             page={state.page}
             totalRows={state.totalRows}
@@ -61,6 +94,12 @@ export default function TableEditorPage() {
             onChangeFilterColumn={state.setFilterColumn}
             onChangeFilterMode={state.setFilterMode}
             onChangeFilterValue={state.setFilterValue}
+            onClearFilters={() => {
+              state.setFilterColumn('')
+              state.setFilterMode('contains')
+              state.setFilterValue('')
+              state.setPage(0)
+            }}
             onChangePageSize={state.setPageSize}
             onUpdateCell={(ctid, column, value) => {
               void state.updateCell(ctid, column, value)

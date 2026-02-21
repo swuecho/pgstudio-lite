@@ -7,6 +7,7 @@ type TableSidebarProps = {
   onChangeConnection: (name: string) => void
   onOpenConnectionManager: () => void
   tables: TableInfo[]
+  loadingTables: boolean
   activeTable: string
   onSelectTable: (table: string) => void
   onRefreshTables: () => void
@@ -18,6 +19,7 @@ export function TableSidebar({
   onChangeConnection,
   onOpenConnectionManager,
   tables,
+  loadingTables,
   activeTable,
   onSelectTable,
   onRefreshTables,
@@ -51,7 +53,7 @@ export function TableSidebar({
             ))}
           </select>
           <button className="btn small" onClick={onRefreshTables}>
-            Refresh
+            {loadingTables ? 'Refreshing...' : 'Refresh'}
           </button>
           <button className="btn small" onClick={onOpenConnectionManager}>
             Manage
@@ -59,7 +61,10 @@ export function TableSidebar({
         </div>
 
         <div className="layout-nav-list">
-          {tables.map((table) => (
+          {tables.length === 0 ? (
+            <div className="empty-state">No tables found for this connection.</div>
+          ) : (
+            tables.map((table) => (
             <button
               key={`${table.schema}.${table.table}`}
               className={`history-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
@@ -68,7 +73,8 @@ export function TableSidebar({
               <div className="history-query">{table.schema}.{table.table}</div>
               <div className="history-meta">~{table.estimatedRows} rows</div>
             </button>
-          ))}
+            ))
+          )}
         </div>
       </aside>
     </>

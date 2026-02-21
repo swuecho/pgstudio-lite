@@ -733,7 +733,7 @@ pre {
 
 .table-toolbar {
   display: grid;
-  grid-template-columns: 1fr auto auto 1fr minmax(120px, 1fr) auto;
+  grid-template-columns: 1fr auto auto 1fr minmax(120px, 1fr) auto auto;
   gap: 8px;
   padding: 12px;
   border-bottom: 1px solid var(--border);
