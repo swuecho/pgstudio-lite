@@ -43,7 +43,7 @@ export function SqlCellEditor({
   }, [params])
 
   return (
-    <div className="notebook-sql-editor">
+    <div className="overflow-hidden rounded-lg border border-[var(--border)]">
       <MonacoEditor
         height="190px"
         language="pgsql"
