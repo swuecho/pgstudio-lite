@@ -85,8 +85,11 @@ export default function TableEditorPage() {
       />
 
       <main className="layout-main">
-        <div className="editor-panel-header">
-          <div className="editor-title">Table Editor · {state.activeTable || '-'}</div>
+        <div className="editor-panel-header table-main-header">
+          <div className="table-header-title">
+            <div className="editor-title">Table Editor</div>
+            <code className="table-header-table">{state.activeTable || '-'}</code>
+          </div>
           <div className="editor-header-right">
             {state.connectionReadOnly ? <span className="pill">Read-only connection</span> : null}
             <span className="status-pill">{state.status}</span>

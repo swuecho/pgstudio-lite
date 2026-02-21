@@ -67,7 +67,7 @@ export function TableSidebar({
             tables.map((table) => (
             <button
               key={`${table.schema}.${table.table}`}
-              className={`history-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
+              className={`history-item table-nav-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
               onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
             >
               <div className="history-query">{table.schema}.{table.table}</div>

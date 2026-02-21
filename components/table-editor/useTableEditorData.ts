@@ -165,13 +165,15 @@ export function useTableEditorData(state: TableEditorState) {
 
   useEffect(() => {
     if (tables.length === 0) {
-      if (state.activeTable) state.setActiveTable('')
+      // Keep any preselected table (for example from URL params) while the
+      // table list is still loading to avoid falling back to the first table.
+      if (!tablesQuery.isFetching && state.activeTable) state.setActiveTable('')
       return
     }
     if (!tables.some((table) => toActiveTableKey(table.schema, table.table) === state.activeTable)) {
       state.setActiveTable(toActiveTableKey(tables[0].schema, tables[0].table))
     }
-  }, [tables, state.activeTable, state.setActiveTable])
+  }, [tables, tablesQuery.isFetching, state.activeTable, state.setActiveTable])
 
   useEffect(() => {
     if (!state.activeTable) return
