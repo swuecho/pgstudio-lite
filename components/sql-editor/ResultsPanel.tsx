@@ -1,11 +1,13 @@
+import Link from 'next/link'
 import { QueryResult } from './types'
 
 type SqlResultsPanelProps = {
   result: QueryResult | null
   formatCell: (value: unknown) => string
+  connectionName: string
 }
 
-export function SqlResultsPanel({ result, formatCell }: SqlResultsPanelProps) {
+export function SqlResultsPanel({ result, formatCell, connectionName }: SqlResultsPanelProps) {
   return (
     <div className="results-wrap">
       <div className="results-head">
@@ -23,6 +25,21 @@ export function SqlResultsPanel({ result, formatCell }: SqlResultsPanelProps) {
                   <span>#{index + 1}</span>
                   <span>{statement.command}</span>
                   <span>{statement.rowCount} rows</span>
+                  {statement.tableTarget ? (
+                    <Link
+                      className="result-open-link"
+                      href={{
+                        pathname: '/table-editor',
+                        query: {
+                          connectionName,
+                          schema: statement.tableTarget.schema,
+                          table: statement.tableTarget.table,
+                        },
+                      }}
+                    >
+                      Open in Table Editor
+                    </Link>
+                  ) : null}
                 </div>
                 {statement.fields.length > 0 ? (
                   <div className="table-wrap">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/router'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import ThemeToggle from '../components/theme-toggle'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
@@ -6,9 +7,28 @@ import { TableSidebar } from '../components/table-editor/Sidebar'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 
 export default function TableEditorPage() {
+  const router = useRouter()
   const state = useTableEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
   const filterValueInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!router.isReady) return
+    const takeFirst = (value: string | string[] | undefined) => {
+      if (!value) return ''
+      return Array.isArray(value) ? value[0] || '' : value
+    }
+
+    const nextConnectionName = takeFirst(router.query.connectionName)
+    const nextSchema = takeFirst(router.query.schema) || 'public'
+    const nextTable = takeFirst(router.query.table)
+
+    if (nextConnectionName) state.setConnectionName(nextConnectionName)
+    if (nextTable) {
+      state.setActiveTable(`${nextSchema}.${nextTable}`)
+      state.setPage(0)
+    }
+  }, [router.isReady, router.query.connectionName, router.query.schema, router.query.table, state.setActiveTable, state.setConnectionName, state.setPage])
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {

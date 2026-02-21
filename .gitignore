@@ -3,3 +3,5 @@ node_modules/
 .next/
 out/
 tsconfig.tsbuildinfo
+tmp/
+output

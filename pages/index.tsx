@@ -201,7 +201,7 @@ export default function SqlEditorPage() {
             tableColumnsByKeyRef={state.tableColumnsByKeyRef}
           />
 
-          <SqlResultsPanel result={state.result} formatCell={formatCell} />
+          <SqlResultsPanel result={state.result} formatCell={formatCell} connectionName={state.connectionName} />
 
           <div className="editor-footer">
             <button className="btn primary" disabled={state.running} onClick={() => void state.runCurrentQuery()}>
