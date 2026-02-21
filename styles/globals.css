@@ -153,12 +153,13 @@ select {
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--control-bg);
-  padding: 5px 9px;
+  padding: 4px 9px;
   color: var(--text);
+  height: 30px;
 }
 
 .layout-nav-controls input {
-  height: 34px;
+  height: 30px;
 }
 
 .layout-nav-list {
@@ -747,7 +748,13 @@ pre {
   border-radius: 7px;
   background: var(--control-bg);
   color: var(--text);
-  padding: 7px 9px;
+  padding: 4px 9px;
+  height: 30px;
+}
+
+.table-toolbar .cell-input {
+  height: 30px;
+  padding: 4px 9px;
 }
 
 .table-pagination {
