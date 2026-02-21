@@ -46,8 +46,8 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
 
   if (valueOnly) {
     return (
-      <div className="input-cell-value-only">
-        <div className="input-cell-value-row">
+      <div className="min-w-0">
+        <div className="grid gap-1.5">
           {showValueLabel ? <label htmlFor={valueId}>{metadata.label || metadata.key}</label> : null}
           <InputValueControl id={valueId} metadata={metadata} disabled={disabled} onChange={onChange} />
         </div>
@@ -56,29 +56,32 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
   }
 
   return (
-    <div className="input-cell-grid">
-      <div className="input-cell-config-grid">
-        <label>
+    <div className="grid gap-2.5">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Key
           <input
+            className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
             value={metadata.key}
             disabled={disabled}
             onChange={(event) => patch({ key: event.target.value.replace(/\s+/g, '_') })}
             placeholder="start_date"
           />
         </label>
-        <label>
+        <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Label
           <input
+            className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
             value={metadata.label}
             disabled={disabled}
             onChange={(event) => patch({ label: event.target.value })}
             placeholder="Start date"
           />
         </label>
-        <label>
+        <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Type
           <select
+            className="h-8 w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 text-xs text-[var(--text)]"
             value={metadata.inputType}
             disabled={disabled}
             onChange={(event) => {
@@ -100,30 +103,33 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
         </label>
       </div>
 
-      <div className="input-cell-config-grid">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         {(metadata.inputType === 'number' || metadata.inputType === 'range') && (
           <>
-            <label>
+            <label className="grid gap-1.5 text-xs text-[var(--muted)]">
               Min
               <input
+                className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
                 type="number"
                 value={metadata.min ?? ''}
                 disabled={disabled}
                 onChange={(event) => patch({ min: event.target.value ? Number(event.target.value) : undefined })}
               />
             </label>
-            <label>
+            <label className="grid gap-1.5 text-xs text-[var(--muted)]">
               Max
               <input
+                className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
                 type="number"
                 value={metadata.max ?? ''}
                 disabled={disabled}
                 onChange={(event) => patch({ max: event.target.value ? Number(event.target.value) : undefined })}
               />
             </label>
-            <label>
+            <label className="grid gap-1.5 text-xs text-[var(--muted)]">
               Step
               <input
+                className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
                 type="number"
                 value={metadata.step ?? ''}
                 disabled={disabled}
@@ -134,9 +140,10 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
         )}
 
         {(metadata.inputType === 'text' || metadata.inputType === 'date' || metadata.inputType === 'datetime-local') && (
-          <label>
+          <label className="grid gap-1.5 text-xs text-[var(--muted)]">
             Placeholder
             <input
+              className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
               value={metadata.placeholder || ''}
               disabled={disabled}
               onChange={(event) => patch({ placeholder: event.target.value })}
@@ -146,10 +153,10 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
       </div>
 
       {(metadata.inputType === 'select' || metadata.inputType === 'multiselect') && (
-        <label>
+        <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Options (`value|label` per line)
           <textarea
-            className="input-cell-options"
+            className="min-h-[84px] w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 font-mono text-xs text-[var(--text)]"
             value={optionsToText(metadata.options)}
             disabled={disabled}
             onChange={(event) => setOptionsFromText(event.target.value)}
@@ -157,13 +164,13 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
         </label>
       )}
 
-      <div className="input-cell-value-row">
-        <label htmlFor={valueId}>Value</label>
+      <div className="grid gap-1.5">
+        <label className="text-xs text-[var(--muted)]" htmlFor={valueId}>Value</label>
         <InputValueControl id={valueId} metadata={metadata} disabled={disabled} onChange={onChange} />
       </div>
 
-      <div className="input-cell-toggle-row">
-        <label>
+      <div className="flex flex-wrap gap-4">
+        <label className="inline-flex items-center gap-2 text-xs text-[var(--muted)]">
           <input
             type="checkbox"
             checked={metadata.required === true}
@@ -172,7 +179,7 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
           />
           Required
         </label>
-        <label>
+        <label className="inline-flex items-center gap-2 text-xs text-[var(--muted)]">
           <input
             type="checkbox"
             checked={metadata.autoRun !== false}
@@ -200,13 +207,23 @@ function InputValueControl({
   const patchValue = (value: NotebookInputCellMetadata['value']) => onChange({ ...metadata, value })
 
   if (metadata.inputType === 'checkbox') {
-    return <input id={id} type="checkbox" checked={Boolean(metadata.value)} disabled={disabled} onChange={(event) => patchValue(event.target.checked)} />
+    return (
+      <input
+        id={id}
+        className="h-4 w-4 rounded border border-[var(--border)] bg-[var(--control-bg)]"
+        type="checkbox"
+        checked={Boolean(metadata.value)}
+        disabled={disabled}
+        onChange={(event) => patchValue(event.target.checked)}
+      />
+    )
   }
 
   if (metadata.inputType === 'number') {
     return (
       <input
         id={id}
+        className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
         type="number"
         value={metadata.value === null ? '' : Number(metadata.value)}
         disabled={disabled}
@@ -221,9 +238,10 @@ function InputValueControl({
   if (metadata.inputType === 'range') {
     const numeric = metadata.value === null ? Number(metadata.min ?? 0) : Number(metadata.value)
     return (
-      <div className="input-cell-range-wrap">
+      <div className="flex items-center gap-2.5">
         <input
           id={id}
+          className="w-full"
           type="range"
           value={Number.isNaN(numeric) ? 0 : numeric}
           disabled={disabled}
@@ -239,7 +257,13 @@ function InputValueControl({
 
   if (metadata.inputType === 'select') {
     return (
-      <select id={id} value={String(metadata.value ?? '')} disabled={disabled} onChange={(event) => patchValue(event.target.value)}>
+      <select
+        id={id}
+        className="h-8 w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 text-xs text-[var(--text)]"
+        value={String(metadata.value ?? '')}
+        disabled={disabled}
+        onChange={(event) => patchValue(event.target.value)}
+      >
         {!metadata.required ? <option value="">(empty)</option> : null}
         {(metadata.options || []).map((option) => (
           <option key={option.value} value={option.value}>
@@ -255,6 +279,7 @@ function InputValueControl({
     return (
       <select
         id={id}
+        className="min-h-[84px] w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
         multiple
         value={values}
         disabled={disabled}
@@ -275,6 +300,7 @@ function InputValueControl({
   return (
     <input
       id={id}
+      className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
       type={metadata.inputType}
       value={String(metadata.value ?? '')}
       disabled={disabled}

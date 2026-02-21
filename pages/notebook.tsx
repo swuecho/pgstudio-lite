@@ -565,7 +565,7 @@ export default function NotebookPage() {
           </div>
         </div>
 
-        <div className="notebook-canvas">
+        <div className="grid flex-1 auto-rows-max content-start gap-3 overflow-auto px-3 py-3.5">
           {!activeNotebookId ? (
             <div className="empty-state">Create a notebook to begin.</div>
           ) : detailQuery.isLoading ? (
@@ -587,13 +587,13 @@ export default function NotebookPage() {
                   ref={(element) => {
                     cellSectionRefs.current[cell.id] = element
                   }}
-                  className={`notebook-cell ${cell.collapsed ? 'compact' : ''}`}
+                  className={`grid rounded-[10px] border border-[var(--border)] bg-[var(--panel)] ${cell.collapsed ? 'gap-2 p-2.5' : 'gap-2.5 p-3'}`}
                 >
-                  <div className="notebook-cell-head">
+                  <div className={`flex items-center ${cell.collapsed ? 'gap-1.5' : 'gap-2.5'}`}>
                     <span className="pill">{cell.type === 'markdown' ? 'MD' : cell.type === 'input' ? 'IN' : 'SQL'}</span>
                     <span className="history-meta">#{cell.position + 1}</span>
                     {cell.last_run_at ? <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span> : null}
-                    <div className="notebook-cell-actions">
+                    <div className="ml-auto flex gap-2">
                       <button
                         className="btn small icon-btn"
                         onClick={() => toggleCellCollapsed(cell)}
@@ -662,8 +662,9 @@ export default function NotebookPage() {
                             }}
                           />
                           {notebookInputs.length ? (
-                            <div className="notebook-param-insert">
+                            <div className="flex items-center gap-2">
                               <select
+                                className="h-[30px] min-w-[180px] rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2 text-xs text-[var(--text)]"
                                 value={selectedInsertParam}
                                 onChange={(event) =>
                                   setSelectedInsertParamByCell((prev) => ({ ...prev, [cell.id]: event.target.value }))
@@ -686,13 +687,13 @@ export default function NotebookPage() {
                             </div>
                           ) : null}
                           {sqlKeys.length ? (
-                            <div className="notebook-sql-params">
+                            <div className="flex flex-wrap items-center gap-1.5">
                               <span className="history-meta">Inputs:</span>
                               {sqlKeys.map((key) => (
                                 <button
                                   key={key}
                                   type="button"
-                                  className={`pill notebook-param-chip ${missingSqlKeys.includes(key) ? 'error' : 'ok'}`}
+                                  className={`pill cursor-pointer appearance-none leading-[1.2] ${missingSqlKeys.includes(key) ? 'error' : 'ok'}`}
                                   onClick={() => jumpToInputCell(key)}
                                   title={`Jump to input '${key}'`}
                                 >
@@ -701,7 +702,7 @@ export default function NotebookPage() {
                               ))}
                             </div>
                           ) : null}
-                          <div className="notebook-run-row">
+                          <div className="flex items-center gap-2.5">
                             <button
                               className="btn primary"
                               disabled={running || runningAll || !draft.trim()}
@@ -724,10 +725,12 @@ export default function NotebookPage() {
                         </>
                       ) : (
                         <>
-                          <div className="notebook-compact-sql">{toCompactSqlPreview(draft)}</div>
+                          <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2 font-mono text-xs leading-[1.3] text-[var(--muted)]">
+                            {toCompactSqlPreview(draft)}
+                          </div>
                           {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
                           {lastResult ? (
-                            <div className="notebook-compact-result">
+                            <div className="max-h-[220px] overflow-auto">
                               <CellResult result={lastResult} />
                             </div>
                           ) : (
@@ -748,8 +751,10 @@ export default function NotebookPage() {
                         ) : null
                       ) : (
                         inputMeta ? (
-                          <div className="notebook-input-compact">
-                            <span className="notebook-input-key">{inputMeta.key || 'input'}</span>
+                          <div className="grid grid-cols-[minmax(120px,200px)_1fr] items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2">
+                            <span className="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--panel)] px-2 py-1 font-mono text-[11px] text-[var(--muted)]">
+                              {inputMeta.key || 'input'}
+                            </span>
                             <InputCellEditor
                               metadata={inputMeta}
                               valueOnly
@@ -764,7 +769,7 @@ export default function NotebookPage() {
                   ) : (
                     <>
                       {!cell.collapsed ? (
-                        <div className="notebook-run-row">
+                        <div className="flex items-center gap-2.5">
                           <button
                             className="btn small"
                             onClick={() =>
@@ -779,12 +784,14 @@ export default function NotebookPage() {
                         </div>
                       ) : null}
                       {cell.collapsed || previewMarkdown[cell.id] ? (
-                        <div className={`notebook-markdown-preview ${cell.collapsed ? 'compact' : ''}`}>
+                        <div
+                          className={`m-0 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[13px] leading-[1.45] ${cell.collapsed ? 'max-h-[180px] overflow-auto p-2' : 'p-3'}`}
+                        >
                           <MarkdownPreview source={draft} />
                         </div>
                       ) : (
                         <textarea
-                          className="notebook-markdown"
+                          className="min-h-[160px] w-full rounded-lg border border-[var(--border)] bg-[var(--control-bg)] p-2.5 font-mono text-xs leading-[1.4] text-[var(--text)]"
                           value={draft}
                           onChange={(event) => onChangeCell(cell, event.target.value)}
                         />
@@ -867,7 +874,7 @@ function isSameValue(a: unknown, b: unknown) {
 
 function MarkdownPreview({ source }: { source: string }) {
   return (
-    <div className="notebook-markdown-render">
+    <div className="grid gap-2 [&_a]:text-[#1864d6] [&_a]:underline [&_h1]:m-0 [&_h1]:text-[20px] [&_h2]:m-0 [&_h2]:text-[17px] [&_h3]:m-0 [&_h3]:text-[14px] [&_li]:m-0 [&_ol]:m-0 [&_ol]:pl-[18px] [&_p]:m-0 [&_p_code]:rounded-md [&_p_code]:border [&_p_code]:border-[var(--border)] [&_p_code]:bg-[var(--panel)] [&_p_code]:px-1 [&_p_code]:py-[1px] [&_p_code]:text-[11px] [&_table]:block [&_table]:w-auto [&_table]:min-w-0 [&_table]:overflow-auto [&_table]:border-collapse [&_td]:whitespace-nowrap [&_td]:border [&_td]:border-[var(--border)] [&_td]:px-2 [&_td]:py-1 [&_td_code]:rounded-md [&_td_code]:border [&_td_code]:border-[var(--border)] [&_td_code]:bg-[var(--panel)] [&_td_code]:px-1 [&_td_code]:py-[1px] [&_td_code]:text-[11px] [&_th]:whitespace-nowrap [&_th]:border [&_th]:border-[var(--border)] [&_th]:px-2 [&_th]:py-1 [&_th_code]:rounded-md [&_th_code]:border [&_th_code]:border-[var(--border)] [&_th_code]:bg-[var(--panel)] [&_th_code]:px-1 [&_th_code]:py-[1px] [&_th_code]:text-[11px] [&_ul]:m-0 [&_ul]:pl-[18px] [html[data-theme='dark']_&_[a]]:text-[#7fb2ff]">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSanitize]}
@@ -877,7 +884,7 @@ function MarkdownPreview({ source }: { source: string }) {
             const isBlock = Boolean(className)
             if (!isBlock) return <code {...props}>{children}</code>
             return (
-              <pre className="notebook-markdown-code">
+              <pre className="my-1 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--control-bg)] p-2 font-mono text-xs [html[data-theme='dark']_&]:bg-[#0d1422]">
                 <code className={className} {...props}>
                   {children}
                 </code>
