@@ -5,8 +5,6 @@ export function useTableEditorLocalState() {
   const setConnectionName = useTableEditorLocalStore((s) => s.setConnectionName)
   const activeTable = useTableEditorLocalStore((s) => s.activeTable)
   const setActiveTable = useTableEditorLocalStore((s) => s.setActiveTable)
-  const newRowJson = useTableEditorLocalStore((s) => s.newRowJson)
-  const setNewRowJson = useTableEditorLocalStore((s) => s.setNewRowJson)
   const status = useTableEditorLocalStore((s) => s.status)
   const setStatus = useTableEditorLocalStore((s) => s.setStatus)
   const page = useTableEditorLocalStore((s) => s.page)
@@ -29,8 +27,6 @@ export function useTableEditorLocalState() {
     setConnectionName,
     activeTable,
     setActiveTable,
-    newRowJson,
-    setNewRowJson,
     status,
     setStatus,
     page,

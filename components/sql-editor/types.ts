@@ -23,6 +23,7 @@ export type SnippetItem = {
   id: string
   title: string
   query_text: string
+  connection_name: string
   created_at: string
   updated_at: string
 }
@@ -35,6 +36,7 @@ export type QueryTab = {
   query: string
   dirty: boolean
   snippetId?: string
+  snippetConnectionName?: string
 }
 
 export type SchemaTable = {

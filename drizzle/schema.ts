@@ -42,10 +42,12 @@ export const querySnippets = sqliteTable(
     id: text('id').primaryKey(),
     title: text('title').notNull(),
     queryText: text('query_text').notNull(),
+    connectionName: text('connection_name').notNull(),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
   (table) => ({
+    connectionUpdatedAtIdx: index('idx_query_snippets_connection_updated_at').on(table.connectionName, table.updatedAt),
     updatedAtIdx: index('idx_query_snippets_updated_at').on(table.updatedAt),
   })
 )

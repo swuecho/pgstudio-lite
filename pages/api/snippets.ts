@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { deleteSnippet, getSnippets, saveSnippet, updateSnippet } from '../../lib/db'
+import { getRequestConnectionName } from '../../lib/api/connection'
 import { nonEmptyStringSchema, parseWithSchema } from '../../lib/api/validation'
 
 const snippetsQuerySchema = z.object({
@@ -33,26 +34,28 @@ const updateSnippetSchema = z
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const connectionName = getRequestConnectionName(req)
+
     if (req.method === 'GET') {
       const { limit } = parseWithSchema(snippetsQuerySchema, req.query)
-      return res.status(200).json({ items: getSnippets(limit) })
+      return res.status(200).json({ items: getSnippets(limit, connectionName) })
     }
 
     if (req.method === 'POST') {
       const { title, queryText } = parseWithSchema(createSnippetSchema, req.body || {})
-      const item = saveSnippet({ title, queryText })
+      const item = saveSnippet({ title, queryText, connectionName })
       return res.status(200).json({ item })
     }
 
     if (req.method === 'DELETE') {
       const { id } = parseWithSchema(deleteSnippetSchema, req.body || {})
-      deleteSnippet(id)
+      deleteSnippet(id, connectionName)
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'PATCH') {
       const { id, title, queryText } = parseWithSchema(updateSnippetSchema, req.body || {})
-      const item = updateSnippet({ id, title, queryText })
+      const item = updateSnippet({ id, title, queryText, connectionName })
       if (!item) return res.status(404).json({ error: 'snippet not found' })
       return res.status(200).json({ item })
     }

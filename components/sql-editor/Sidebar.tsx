@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { HistoryItem, SchemaTable, SnippetItem } from './types'
 
 type SqlSidebarProps = {
+  connectionName: string
   activeNavTab: 'history' | 'snippets' | 'explorer'
   onChangeNavTab: (tab: 'history' | 'snippets' | 'explorer') => void
   historySearch: string
@@ -40,6 +41,7 @@ type SqlSidebarProps = {
 }
 
 export function SqlSidebar({
+  connectionName,
   activeNavTab,
   onChangeNavTab,
   historySearch,
@@ -104,7 +106,7 @@ export function SqlSidebar({
             className={`nav-tab ${activeNavTab === 'snippets' ? 'active' : ''}`}
             onClick={() => onChangeNavTab('snippets')}
           >
-            Snippets
+            Snippets{connectionName ? ` · ${connectionName}` : ''}
           </button>
           <button
             className={`nav-tab ${activeNavTab === 'history' ? 'active' : ''}`}

@@ -22,6 +22,8 @@ export function useSqlEditorTabs() {
               query: nextQuery,
               dirty,
               snippetId: snippetId === undefined ? tab.snippetId : snippetId || undefined,
+              snippetConnectionName:
+                snippetId === undefined ? tab.snippetConnectionName : snippetId ? tab.snippetConnectionName : undefined,
             }
           : tab
       )
@@ -30,7 +32,7 @@ export function useSqlEditorTabs() {
 
   function createQueryTab(
     initialQuery = '-- New query\n',
-    options: { title?: string; snippetId?: string; dirty?: boolean } = {}
+    options: { title?: string; snippetId?: string; snippetConnectionName?: string; dirty?: boolean } = {}
   ) {
     const nextIndex = queryTabs.length + 1
     const id = `tab-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -40,6 +42,7 @@ export function useSqlEditorTabs() {
       query: initialQuery,
       dirty: options.dirty ?? false,
       snippetId: options.snippetId,
+      snippetConnectionName: options.snippetConnectionName,
     }
     setQueryTabs((tabs) => [...tabs, tab])
     setActiveQueryTabId(id)
@@ -64,8 +67,10 @@ export function useSqlEditorTabs() {
     setQueryTabs((tabs) => tabs.map((tab) => (tab.id === tabId ? { ...tab, title } : tab)))
   }
 
-  function openSnippetInTab(item: SnippetItem) {
-    const existing = queryTabs.find((tab) => tab.snippetId === item.id)
+  function openSnippetInTab(item: SnippetItem, connectionName: string) {
+    const existing = queryTabs.find(
+      (tab) => tab.snippetId === item.id && tab.snippetConnectionName === connectionName
+    )
     if (existing) {
       setQueryTabs((tabs) =>
         tabs.map((tab) =>
@@ -76,6 +81,7 @@ export function useSqlEditorTabs() {
                 query: item.query_text,
                 dirty: false,
                 snippetId: item.id,
+                snippetConnectionName: connectionName,
               }
             : tab
         )
@@ -84,7 +90,12 @@ export function useSqlEditorTabs() {
       return
     }
 
-    createQueryTab(item.query_text, { title: item.title, snippetId: item.id, dirty: false })
+    createQueryTab(item.query_text, {
+      title: item.title,
+      snippetId: item.id,
+      snippetConnectionName: connectionName,
+      dirty: false,
+    })
   }
 
   return {
