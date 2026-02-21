@@ -1,6 +1,27 @@
 import type { QueryResult } from '../sql-editor/types'
 
-export type NotebookCellType = 'sql' | 'markdown'
+export type NotebookInputType = 'text' | 'number' | 'date' | 'datetime-local' | 'checkbox' | 'select' | 'range' | 'multiselect'
+
+export type NotebookInputOption = {
+  label: string
+  value: string
+}
+
+export type NotebookInputCellMetadata = {
+  key: string
+  label: string
+  inputType: NotebookInputType
+  value: string | number | boolean | string[] | null
+  required?: boolean
+  placeholder?: string
+  options?: NotebookInputOption[]
+  min?: number
+  max?: number
+  step?: number
+  autoRun?: boolean
+}
+
+export type NotebookCellType = 'sql' | 'markdown' | 'input'
 
 export type Notebook = {
   id: string
@@ -23,6 +44,7 @@ export type NotebookCell = {
   last_row_count: number | null
   last_result_json: QueryResult | null
   last_error: string | null
+  metadata_json: NotebookInputCellMetadata | null
   updated_at: string
 }
 
@@ -32,3 +54,5 @@ export type NotebookDetail = {
 }
 
 export type RunCellResponse = QueryResult
+
+export type NotebookInputValues = Record<string, unknown>

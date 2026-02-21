@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 import BetterSqlite3 from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
@@ -37,6 +38,7 @@ sqlite.exec(`
     last_row_count integer,
     last_result_json text,
     last_error text,
+    metadata_json text,
     updated_at text NOT NULL
   );
   CREATE UNIQUE INDEX IF NOT EXISTS idx_notebook_cells_notebook_position ON notebook_cells (notebook_id, position);
@@ -66,6 +68,30 @@ sqlite.exec(`
   )
   WHERE connection_name IS NULL OR trim(connection_name) = '';
 `)
+
+// Handle dev drift where metadata_json exists already but 0006 is not yet registered.
+const hasNotebookMetadataJsonColumn = sqlite
+  .prepare(`SELECT 1 FROM pragma_table_info('notebook_cells') WHERE name = 'metadata_json' LIMIT 1`)
+  .get()
+if (hasNotebookMetadataJsonColumn) {
+  const hasMigrationsTable = sqlite
+    .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '__drizzle_migrations' LIMIT 1`)
+    .get()
+  if (hasMigrationsTable) {
+    const migrationPath = join(process.cwd(), 'drizzle/migrations/0006_input_cell_metadata.sql')
+    if (existsSync(migrationPath)) {
+      const migrationHash = createHash('sha256').update(readFileSync(migrationPath, 'utf8')).digest('hex')
+      const alreadyApplied = sqlite
+        .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ? LIMIT 1`)
+        .get(migrationHash)
+      if (!alreadyApplied) {
+        sqlite
+          .prepare(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`)
+          .run(migrationHash, 1772300000000)
+      }
+    }
+  }
+}
 
 export const metaDb = drizzle(sqlite, { schema })
 

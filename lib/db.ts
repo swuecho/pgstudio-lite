@@ -645,9 +645,11 @@ export function deleteSnippet(id: string, connectionName?: string) {
 export async function executeQuery({
   query,
   connectionName,
+  values,
 }: {
   query: string
   connectionName?: string
+  values?: unknown[]
 }) {
   const connection = getConnectionByName(connectionName)
   const startedAt = new Date()
@@ -660,6 +662,13 @@ export async function executeQuery({
     const client = await pool.connect()
     try {
       const statements = splitStatements(query)
+      if (values && statements.length !== 1) {
+        const error = new Error('Parameterized execution supports exactly one SQL statement') as Error & {
+          statusCode?: number
+        }
+        error.statusCode = 400
+        throw error
+      }
       if (connection.readOnly && statements.some((statement) => isWriteStatement(statement))) {
         const error = new Error(`Connection '${connection.name}' is read-only`) as Error & {
           statusCode?: number
@@ -675,7 +684,9 @@ export async function executeQuery({
       }> = []
 
       for (const statement of statements) {
-        const result = await client.query(statement)
+        const result = values
+          ? await client.query({ text: statement, values })
+          : await client.query(statement)
         results.push({
           command: result.command,
           rowCount: result.rowCount ?? 0,

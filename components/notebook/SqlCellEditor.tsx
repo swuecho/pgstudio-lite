@@ -1,7 +1,9 @@
 import dynamic from 'next/dynamic'
 import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
+import { useEffect, useRef } from 'react'
 import { getCurrentTheme } from '../sql-editor/utils'
+import type { NotebookInputType } from './types'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -17,6 +19,7 @@ loader.config({ paths: { vs: '/api/monaco' } })
 type SqlCellEditorProps = {
   value: string
   disabled?: boolean
+  params?: Array<{ key: string; label: string; inputType: NotebookInputType }>
   onChange: (value: string) => void
   onRun: () => void
   onRunAndFocusNext: () => void
@@ -27,12 +30,18 @@ type SqlCellEditorProps = {
 export function SqlCellEditor({
   value,
   disabled,
+  params = [],
   onChange,
   onRun,
   onRunAndFocusNext,
   onMountEditor,
   onUnmountEditor,
 }: SqlCellEditorProps) {
+  const paramsRef = useRef(params)
+  useEffect(() => {
+    paramsRef.current = params
+  }, [params])
+
   return (
     <div className="notebook-sql-editor">
       <MonacoEditor
@@ -83,6 +92,42 @@ export function SqlCellEditor({
           applyEditorTheme()
           window.addEventListener('pgstudio:themechange', applyEditorTheme)
 
+          const provider = monaco.languages.registerCompletionItemProvider('pgsql', {
+            triggerCharacters: ['{'],
+            provideCompletionItems(model: MonacoEditorNs.ITextModel, position: any) {
+              const linePrefix = model.getValueInRange({
+                startLineNumber: position.lineNumber,
+                startColumn: 1,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column,
+              })
+              const match = linePrefix.match(/{{\s*([A-Za-z0-9_]*)$/)
+              if (!match) return { suggestions: [] }
+
+              const typed = match[1] || ''
+              const startColumn = position.column - typed.length
+              const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn,
+                endColumn: position.column,
+              }
+
+              const suggestions = paramsRef.current
+                .filter((item) => !typed || item.key.toLowerCase().startsWith(typed.toLowerCase()))
+                .map((item) => ({
+                  label: item.key,
+                  kind: monaco.languages.CompletionItemKind.Variable,
+                  insertText: `${item.key}}}`,
+                  detail: `${item.label} (${item.inputType})`,
+                  documentation: `Notebook input: ${item.label}`,
+                  range,
+                }))
+
+              return { suggestions }
+            },
+          })
+
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
             onRun()
           })
@@ -92,6 +137,7 @@ export function SqlCellEditor({
           })
 
           editor.onDidDispose(() => {
+            provider.dispose()
             window.removeEventListener('pgstudio:themechange', applyEditorTheme)
             onUnmountEditor()
           })
