@@ -251,19 +251,20 @@ export function TableGridPanel({
             Clear filters
           </button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              {columns.map((col) => (
-                <th key={col.name}>{col.name}</th>
-              ))}
-              <th>actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row._ctid}>
-                {columns.map((col) => {
+        <div className="table-scroll-area">
+          <table className="table-grid-table">
+            <thead>
+              <tr>
+                {columns.map((col) => (
+                  <th key={col.name}>{col.name}</th>
+                ))}
+                <th className="table-actions-col">actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row._ctid}>
+                  {columns.map((col) => {
                   if (col.name === '_ctid') {
                     return (
                       <td key={col.name}>
@@ -331,7 +332,7 @@ export function TableGridPanel({
                           <span className="table-cell-kind">JSON</span>
                           <textarea
                             className="cell-input table-json-input"
-                            rows={3}
+                            rows={1}
                             defaultValue={
                               typeof row[col.name] === 'string'
                                 ? String(row[col.name])
@@ -391,28 +392,29 @@ export function TableGridPanel({
                     </td>
                   )
                 })}
-                <td>
-                  <button
-                    className="btn small danger"
-                    disabled={readOnlyConnection}
-                    onClick={() => {
-                      const rowPreview = truncate(previewValue(row), 500)
-                      setDialog({
-                        title: 'Preview row delete',
-                        lines: [`Row: ${row._ctid}`, `Data: ${rowPreview}`],
-                        confirmLabel: 'Delete row',
-                        cancelLabel: 'Cancel',
-                        onConfirm: () => onDeleteRow(row._ctid),
-                      })
-                    }}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <td className="table-actions-col">
+                    <button
+                      className="btn small danger"
+                      disabled={readOnlyConnection}
+                      onClick={() => {
+                        const rowPreview = truncate(previewValue(row), 500)
+                        setDialog({
+                          title: 'Preview row delete',
+                          lines: [`Row: ${row._ctid}`, `Data: ${rowPreview}`],
+                          confirmLabel: 'Delete row',
+                          cancelLabel: 'Cancel',
+                          onConfirm: () => onDeleteRow(row._ctid),
+                        })
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <div className="table-pagination">
           <span className="history-meta">
             {totalRows} rows total · page {page + 1} / {Math.max(1, Math.ceil(totalRows / pageSize))}
