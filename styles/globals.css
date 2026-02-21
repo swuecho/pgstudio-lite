@@ -1079,7 +1079,6 @@ pre {
   gap: 8px;
 }
 
-.notebook-sql,
 .notebook-markdown {
   width: 100%;
   min-height: 160px;
@@ -1091,6 +1090,12 @@ pre {
   font-size: 12px;
   line-height: 1.4;
   padding: 10px;
+}
+
+.notebook-sql-editor {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .notebook-markdown-preview {
@@ -1219,7 +1224,6 @@ pre {
   background: #141c2a;
 }
 
-[data-theme='dark'] .notebook-sql,
 [data-theme='dark'] .notebook-markdown {
   background: #111827;
 }

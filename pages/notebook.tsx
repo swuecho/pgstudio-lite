@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { editor as MonacoEditorNs } from 'monaco-editor'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import ThemeToggle from '../components/theme-toggle'
+import { SqlCellEditor } from '../components/notebook/SqlCellEditor'
 import { formatCell } from '../components/sql-editor/utils'
 import type { QueryResult } from '../components/sql-editor/types'
 import type { NotebookCell, NotebookCellType } from '../components/notebook/types'
@@ -33,6 +35,7 @@ export default function NotebookPage() {
   const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const sqlEditorRefs = useRef<Record<string, MonacoEditorNs.IStandaloneCodeEditor>>({})
 
   const connectionsQuery = useQuery({ queryKey: ['connections', 'notebook'], queryFn: () => getConnections() })
   const notebooksQuery = useQuery({ queryKey: NOTEBOOKS_KEY, queryFn: () => getNotebooks() })
@@ -77,6 +80,12 @@ export default function NotebookPage() {
       return next
     })
   }, [cells])
+
+  useEffect(() => {
+    return () => {
+      for (const timer of Object.values(saveTimersRef.current)) clearTimeout(timer)
+    }
+  }, [])
 
   const sortedCells = useMemo(() => [...cells].sort((a, b) => a.position - b.position), [cells])
 
@@ -161,6 +170,31 @@ export default function NotebookPage() {
       setRunningCellId('')
     },
   })
+
+  function focusNextSqlEditor(cellId: string) {
+    const fromIndex = sortedCells.findIndex((cell) => cell.id === cellId)
+    if (fromIndex === -1) return
+    for (let i = fromIndex + 1; i < sortedCells.length; i += 1) {
+      const next = sortedCells[i]
+      if (next.type !== 'sql' || next.collapsed) continue
+      const nextEditor = sqlEditorRefs.current[next.id]
+      if (nextEditor) {
+        nextEditor.focus()
+        return
+      }
+    }
+  }
+
+  async function runSqlCellWithShortcuts(cell: NotebookCell, runAndFocusNext = false) {
+    const query = (draftByCell[cell.id] ?? cell.content).trim()
+    if (!query || runningAll || Boolean(runningCellId)) return
+    try {
+      await runCellMutation.mutateAsync({ cellId: cell.id, query })
+      if (runAndFocusNext) focusNextSqlEditor(cell.id)
+    } catch {
+      // Status and errors are already surfaced by mutation callbacks.
+    }
+  }
 
   function scheduleCellSave(cell: NotebookCell, next: string) {
     if (!activeNotebookId) return
@@ -330,6 +364,7 @@ export default function NotebookPage() {
             >
               Add Markdown
             </button>
+            <span className="history-meta">Ctrl/Cmd+Enter: Run · Shift+Enter: Run + Next SQL</span>
             <button className="btn primary" disabled={!activeNotebookId || runningAll} onClick={() => void runAllSqlCells()}>
               {runningAll ? 'Running All...' : 'Run All'}
             </button>
@@ -404,17 +439,30 @@ export default function NotebookPage() {
                     <>
                       {!cell.collapsed ? (
                         <>
-                          <textarea
-                            className="notebook-sql"
+                          <SqlCellEditor
                             value={draft}
-                            onChange={(event) => onChangeCell(cell, event.target.value)}
-                            spellCheck={false}
+                            disabled={running || runningAll}
+                            onChange={(next) => onChangeCell(cell, next)}
+                            onRun={() => {
+                              void runSqlCellWithShortcuts(cell, false)
+                            }}
+                            onRunAndFocusNext={() => {
+                              void runSqlCellWithShortcuts(cell, true)
+                            }}
+                            onMountEditor={(editor) => {
+                              sqlEditorRefs.current[cell.id] = editor
+                            }}
+                            onUnmountEditor={() => {
+                              delete sqlEditorRefs.current[cell.id]
+                            }}
                           />
                           <div className="notebook-run-row">
                             <button
                               className="btn primary"
                               disabled={running || runningAll || !draft.trim()}
-                              onClick={() => runCellMutation.mutate({ cellId: cell.id, query: draft })}
+                              onClick={() => {
+                                void runSqlCellWithShortcuts(cell, false)
+                              }}
                             >
                               {running ? 'Running...' : 'Run'}
                             </button>
