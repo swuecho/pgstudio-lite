@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { extname, join } from 'node:path'
 
-const STUDIO_MONACO_DIR = join(process.cwd(), '..', 'studio', 'public', 'monaco-editor')
+const MONACO_MIN_DIR = join(process.cwd(), 'node_modules', 'monaco-editor', 'min')
 
 function contentTypeFor(pathname: string) {
   const ext = extname(pathname).toLowerCase()
@@ -27,9 +27,17 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const pathSegments = Array.isArray(req.query.path) ? req.query.path : []
   const safePath = pathSegments.join('/').replace(/\.\./g, '')
-  const fullPath = join(STUDIO_MONACO_DIR, safePath)
+  const normalizedPath = safePath.startsWith('min/') ? safePath.slice(4) : safePath
+  const candidatePaths = [normalizedPath]
+  if (normalizedPath && !normalizedPath.startsWith('vs/')) {
+    candidatePaths.push(`vs/${normalizedPath}`)
+  }
+  const fullPath = candidatePaths
+    .map((item) => join(MONACO_MIN_DIR, item))
+    .find((item) => existsSync(item))
 
   try {
+    if (!fullPath) return res.status(404).send('Not Found')
     const data = readFileSync(fullPath)
     res.setHeader('Content-Type', contentTypeFor(fullPath))
     res.setHeader('Cache-Control', 'public, max-age=86400')
