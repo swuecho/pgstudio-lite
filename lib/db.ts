@@ -97,16 +97,16 @@ function parseEnvConnections(): Array<{
 
   const singleConnectionString = process.env.PG_CONNECTION_STRING?.trim() || ''
   if (singleConnectionString) {
-      const singleName = process.env.PG_CONNECTION_NAME?.trim() || 'default'
-      const singleReadOnly = process.env.PG_CONNECTION_READ_ONLY?.trim() === 'true'
-      if (!parsed.some((item) => item.name === singleName)) {
-        parsed.push({
-          name: singleName,
-          connectionString: singleConnectionString,
-          isDefault: parsed.length === 0,
-          readOnly: singleReadOnly,
-        })
-      }
+    const singleName = process.env.PG_CONNECTION_NAME?.trim() || 'default'
+    const singleReadOnly = process.env.PG_CONNECTION_READ_ONLY?.trim() === 'true'
+    if (!parsed.some((item) => item.name === singleName)) {
+      parsed.push({
+        name: singleName,
+        connectionString: singleConnectionString,
+        isDefault: parsed.length === 0,
+        readOnly: singleReadOnly,
+      })
+    }
   }
 
   if (parsed.length > 0 && !parsed.some((item) => item.isDefault)) parsed[0].isDefault = true
@@ -527,12 +527,12 @@ export function getHistory(limit = 100, connectionName?: string) {
   const resolved = connectionName?.trim()
   const rows = resolved
     ? metaDb
-        .select()
-        .from(queryHistory)
-        .where(eq(queryHistory.connectionName, resolved))
-        .orderBy(desc(queryHistory.executedAt))
-        .limit(safeLimit)
-        .all()
+      .select()
+      .from(queryHistory)
+      .where(eq(queryHistory.connectionName, resolved))
+      .orderBy(desc(queryHistory.executedAt))
+      .limit(safeLimit)
+      .all()
     : metaDb.select().from(queryHistory).orderBy(desc(queryHistory.executedAt)).limit(safeLimit).all()
   return rows.map((row) => parseHistoryRow(toHistoryRow(row)))
 }

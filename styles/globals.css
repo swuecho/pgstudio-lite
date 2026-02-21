@@ -760,6 +760,13 @@ pre {
   background: var(--panel);
 }
 
+.table-pagination .history-actions {
+  margin-top: 0;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
 .cell-input {
   width: 100%;
   border: 1px solid var(--border);
