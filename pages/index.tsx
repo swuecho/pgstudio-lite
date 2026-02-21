@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
@@ -11,10 +11,86 @@ import ThemeToggle from '../components/theme-toggle'
 export default function SqlEditorPage() {
   const state = useSqlEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
+  const sidebarSearchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false
+      if (target.isContentEditable) return true
+      const tag = target.tagName
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+    }
+
+    const openQuickActions = () => {
+      const choice = window
+        .prompt(
+          [
+            'Quick Action',
+            'new - New query tab',
+            'run - Run current query',
+            'save - Save snippet',
+            'search - Focus sidebar search',
+            'explorer - Open explorer tab',
+            'snippets - Open snippets tab',
+            'history - Open history tab',
+          ].join('\n')
+        )
+        ?.trim()
+        .toLowerCase()
+
+      if (!choice) return
+      if (choice === 'new') return state.createQueryTab()
+      if (choice === 'run') return void state.runCurrentQuery()
+      if (choice === 'save') return void state.saveCurrentAsSnippet()
+      if (choice === 'search') {
+        sidebarSearchRef.current?.focus()
+        sidebarSearchRef.current?.select()
+        return
+      }
+      if (choice === 'explorer' || choice === 'snippets' || choice === 'history') {
+        state.setActiveNavTab(choice)
+      }
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      if ((event.metaKey || event.ctrlKey) && key === 'k') {
+        event.preventDefault()
+        openQuickActions()
+        return
+      }
+
+      if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableTarget(event.target)) {
+        event.preventDefault()
+        sidebarSearchRef.current?.focus()
+        sidebarSearchRef.current?.select()
+        return
+      }
+
+      if (event.key === 'Escape' && document.activeElement === sidebarSearchRef.current) {
+        if (state.historySearch) {
+          state.setHistorySearch('')
+        } else {
+          sidebarSearchRef.current?.blur()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [
+    state.historySearch,
+    state.createQueryTab,
+    state.runCurrentQuery,
+    state.saveCurrentAsSnippet,
+    state.setActiveNavTab,
+    state.setHistorySearch,
+  ])
 
   return (
     <div className="layout-root">
       <SqlSidebar
+        searchInputRef={sidebarSearchRef}
         connectionName={state.connectionName}
         activeNavTab={state.activeNavTab}
         onChangeNavTab={state.setActiveNavTab}
@@ -38,6 +114,9 @@ export default function SqlEditorPage() {
         onInsertTemplate={() => state.insertIntoEditor('select * from public.your_table limit 100;')}
         canSaveAs={Boolean(state.activeQueryTab?.snippetId)}
         savingSnippet={state.savingSnippet}
+        loadingHistory={state.loadingHistory}
+        loadingSnippets={state.loadingSnippets}
+        loadingSchema={state.loadingSchema}
         filteredHistory={state.filteredHistory}
         filteredSnippets={state.filteredSnippets}
         schemaGroups={state.schemaGroups}

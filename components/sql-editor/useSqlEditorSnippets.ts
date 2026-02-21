@@ -240,6 +240,7 @@ export function useSqlEditorSnippets({
 
   return {
     snippetItems,
+    loadingSnippets: snippetsQuery.isFetching,
     savingSnippet:
       createSnippetMutation.isPending || updateSnippetMutation.isPending || deleteSnippetMutation.isPending,
     renamingSnippetId,

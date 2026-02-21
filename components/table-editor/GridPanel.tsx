@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { RefObject } from 'react'
 import { ColumnInfo, RowData } from './types'
 
 type TableGridPanelProps = {
@@ -10,6 +11,7 @@ type TableGridPanelProps = {
   filterColumn: string
   filterMode: 'contains' | 'equals'
   filterValue: string
+  filterValueInputRef: RefObject<HTMLInputElement | null>
   pageSize: number
   page: number
   totalRows: number
@@ -19,6 +21,7 @@ type TableGridPanelProps = {
   onChangeFilterColumn: (value: string) => void
   onChangeFilterMode: (value: 'contains' | 'equals') => void
   onChangeFilterValue: (value: string) => void
+  onClearFilters: () => void
   onChangePageSize: (value: number) => void
   onUpdateCell: (ctid: string, column: string, value: unknown) => void
   onDeleteRow: (ctid: string) => void
@@ -45,6 +48,7 @@ export function TableGridPanel({
   filterColumn,
   filterMode,
   filterValue,
+  filterValueInputRef,
   pageSize,
   page,
   totalRows,
@@ -54,6 +58,7 @@ export function TableGridPanel({
   onChangeFilterColumn,
   onChangeFilterMode,
   onChangeFilterValue,
+  onClearFilters,
   onChangePageSize,
   onUpdateCell,
   onDeleteRow,
@@ -200,6 +205,8 @@ export function TableGridPanel({
     return 'pending' as const
   }
 
+  const hasFilters = Boolean(filterColumn || filterValue.trim())
+
   return (
     <>
       <div className="table-grid-wrap">
@@ -229,6 +236,7 @@ export function TableGridPanel({
             <option value="equals">equals</option>
           </select>
           <input
+            ref={filterValueInputRef}
             className="cell-input"
             placeholder="Filter value"
             value={filterValue}
@@ -239,6 +247,9 @@ export function TableGridPanel({
             <option value="50">50</option>
             <option value="100">100</option>
           </select>
+          <button className="btn small" onClick={onClearFilters} disabled={!hasFilters}>
+            Clear filters
+          </button>
         </div>
         <table>
           <thead>
