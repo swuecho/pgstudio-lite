@@ -628,6 +628,17 @@ select {
   font-size: 11px;
 }
 
+.result-open-link {
+  margin-left: auto;
+  text-decoration: none;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.result-open-link:hover {
+  text-decoration: underline;
+}
+
 .table-wrap {
   overflow: auto;
 }

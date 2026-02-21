@@ -58,6 +58,11 @@ export type SchemaTable = {
   estimatedRows: number
 }
 
+type QueryTableTarget = {
+  schema: string
+  table: string
+}
+
 function sqlIdent(value: string): string {
   return `"${value.replaceAll('"', '""')}"`
 }
@@ -488,6 +493,49 @@ function isWriteStatement(sql: string) {
   return false
 }
 
+function parseSqlIdent(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1).replaceAll('""', '"')
+  }
+  return trimmed
+}
+
+function parseQualifiedTable(value: string): QueryTableTarget | null {
+  const parts = value
+    .split('.')
+    .map((part) => parseSqlIdent(part))
+    .filter(Boolean)
+  if (parts.length === 1) return { schema: 'public', table: parts[0] }
+  if (parts.length === 2) return { schema: parts[0], table: parts[1] }
+  return null
+}
+
+function extractPrimaryTableTarget(sql: string): QueryTableTarget | null {
+  const normalized = stripLeadingCommentsAndWhitespace(sql)
+  if (!normalized) return null
+
+  const ident = `(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_$]*)`
+  const qualified = `(${ident}(?:\\s*\\.\\s*${ident})?)`
+  const firstWord = normalized.toLowerCase().split(/\s+/, 1)[0]
+  if (!firstWord) return null
+
+  let match: RegExpMatchArray | null = null
+  if (firstWord === 'update') {
+    match = normalized.match(new RegExp(`^update\\s+${qualified}`, 'i'))
+  } else if (firstWord === 'insert') {
+    match = normalized.match(new RegExp(`^insert\\s+into\\s+${qualified}`, 'i'))
+  } else if (firstWord === 'delete') {
+    match = normalized.match(new RegExp(`^delete\\s+from\\s+${qualified}`, 'i'))
+  } else {
+    match = normalized.match(new RegExp(`\\bfrom\\s+${qualified}`, 'i'))
+  }
+  if (!match?.[1]) return null
+
+  return parseQualifiedTable(match[1].replace(/\s+/g, ''))
+}
+
 function parseHistoryRow(row: QueryHistoryRow) {
   return {
     ...row,
@@ -681,6 +729,7 @@ export async function executeQuery({
         rowCount: number
         fields: string[]
         rows: Record<string, unknown>[]
+        tableTarget: QueryTableTarget | null
       }> = []
 
       for (const statement of statements) {
@@ -692,6 +741,7 @@ export async function executeQuery({
           rowCount: result.rowCount ?? 0,
           fields: result.fields.map((f: { name: string }) => f.name),
           rows: result.rows,
+          tableTarget: extractPrimaryTableTarget(statement),
         })
       }
 
