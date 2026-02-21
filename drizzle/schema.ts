@@ -81,6 +81,7 @@ export const notebookCells = sqliteTable(
     lastRowCount: integer('last_row_count'),
     lastResultJson: text('last_result_json'),
     lastError: text('last_error'),
+    metadataJson: text('metadata_json'),
     updatedAt: text('updated_at').notNull(),
   },
   (table) => ({

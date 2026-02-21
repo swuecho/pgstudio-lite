@@ -43,6 +43,13 @@
       "when": 1772200000000,
       "tag": "0005_quick_snippet_namespace",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1772300000000,
+      "tag": "0006_input_cell_metadata",
+      "breakpoints": true
     }
   ]
 }

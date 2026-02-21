@@ -5,22 +5,49 @@ import { nonEmptyStringSchema, parseWithSchema } from '../../../../lib/api/valid
 
 const paramsSchema = z.object({ id: nonEmptyStringSchema })
 
+const inputOptionSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+})
+
+const inputMetadataSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+  inputType: z.enum(['text', 'number', 'date', 'datetime-local', 'checkbox', 'select', 'range', 'multiselect']),
+  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
+  required: z.boolean().optional(),
+  placeholder: z.string().optional(),
+  options: z.array(inputOptionSchema).optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  step: z.number().optional(),
+  autoRun: z.boolean().optional(),
+})
+
 const createCellSchema = z.object({
-  type: z.enum(['sql', 'markdown']),
+  type: z.enum(['sql', 'markdown', 'input']),
   content: z.string().optional(),
+  metadata: inputMetadataSchema.nullable().optional(),
   position: z.coerce.number().int().min(0).optional(),
 })
 
 const patchCellSchema = z
   .object({
     cellId: nonEmptyStringSchema,
-    type: z.enum(['sql', 'markdown']).optional(),
+    type: z.enum(['sql', 'markdown', 'input']).optional(),
     content: z.string().optional(),
+    metadata: inputMetadataSchema.nullable().optional(),
     collapsed: z.boolean().optional(),
     position: z.coerce.number().int().min(0).optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.type === undefined && value.content === undefined && value.collapsed === undefined && value.position === undefined) {
+    if (
+      value.type === undefined &&
+      value.content === undefined &&
+      value.metadata === undefined &&
+      value.collapsed === undefined &&
+      value.position === undefined
+    ) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'at least one field is required' })
     }
   })
@@ -41,8 +68,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === 'PATCH') {
-      const { cellId, type, content, collapsed, position } = parseWithSchema(patchCellSchema, req.body || {})
-      const item = updateNotebookCell(id, cellId, { type, content, collapsed, position })
+      const { cellId, type, content, metadata, collapsed, position } = parseWithSchema(patchCellSchema, req.body || {})
+      const item = updateNotebookCell(id, cellId, { type, content, metadata, collapsed, position })
       if (!item) return res.status(404).json({ error: 'cell not found' })
       const data = getNotebookById(id)
       return res.status(200).json({ item, cells: data?.cells || [] })

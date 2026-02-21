@@ -3,8 +3,29 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { notebookCells, notebooks } from '../drizzle/schema'
 import { executeQuery, getConnections } from './db'
 import { metaDb } from './meta-db'
+import { compileSqlTemplate, extractTemplateKeys } from './notebook-params'
 
-export type NotebookCellType = 'sql' | 'markdown'
+export type NotebookInputType = 'text' | 'number' | 'date' | 'datetime-local' | 'checkbox' | 'select' | 'range' | 'multiselect'
+export type NotebookCellType = 'sql' | 'markdown' | 'input'
+
+export type NotebookInputOption = {
+  label: string
+  value: string
+}
+
+export type NotebookInputCellMetadata = {
+  key: string
+  label: string
+  inputType: NotebookInputType
+  value: string | number | boolean | string[] | null
+  required?: boolean
+  placeholder?: string
+  options?: NotebookInputOption[]
+  min?: number
+  max?: number
+  step?: number
+  autoRun?: boolean
+}
 
 export type Notebook = {
   id: string
@@ -27,6 +48,7 @@ export type NotebookCell = {
   last_row_count: number | null
   last_result_json: unknown | null
   last_error: string | null
+  metadata_json: NotebookInputCellMetadata | null
   updated_at: string
 }
 
@@ -49,6 +71,14 @@ function toNotebookCell(row: typeof notebookCells.$inferSelect): NotebookCell {
       parsedLastResult = null
     }
   }
+  let parsedMetadata: NotebookInputCellMetadata | null = null
+  if (row.metadataJson) {
+    try {
+      parsedMetadata = JSON.parse(row.metadataJson) as NotebookInputCellMetadata
+    } catch {
+      parsedMetadata = null
+    }
+  }
 
   return {
     id: row.id,
@@ -63,8 +93,95 @@ function toNotebookCell(row: typeof notebookCells.$inferSelect): NotebookCell {
     last_row_count: row.lastRowCount ?? null,
     last_result_json: parsedLastResult,
     last_error: row.lastError ?? null,
+    metadata_json: parsedMetadata,
     updated_at: row.updatedAt,
   }
+}
+
+function defaultInputMetadata(): NotebookInputCellMetadata {
+  return {
+    key: `param_${randomUUID().slice(0, 8)}`,
+    label: 'Input',
+    inputType: 'text',
+    value: '',
+    required: false,
+    autoRun: true,
+  }
+}
+
+function normalizeInputMetadata(metadata: NotebookInputCellMetadata) {
+  const key = metadata.key.trim()
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+    throw new Error('input metadata key must match [A-Za-z_][A-Za-z0-9_]*')
+  }
+
+  const label = metadata.label.trim() || key
+  const autoRun = metadata.autoRun !== false
+  const required = metadata.required === true
+  const inputType = metadata.inputType
+
+  let value = metadata.value
+  if (inputType === 'checkbox') value = Boolean(value)
+  if (inputType === 'number' || inputType === 'range') {
+    if (value === '' || value === null || value === undefined) value = null
+    else value = Number(value)
+  }
+  if (inputType === 'multiselect') {
+    value = Array.isArray(value) ? value.map((item) => String(item)) : []
+  }
+  if (inputType === 'select') {
+    value = value === null || value === undefined ? '' : String(value)
+  }
+  if (inputType === 'text' || inputType === 'date' || inputType === 'datetime-local') {
+    value = value === null || value === undefined ? '' : String(value)
+  }
+
+  const options = (metadata.options || [])
+    .map((item) => ({ label: String(item.label || '').trim(), value: String(item.value || '').trim() }))
+    .filter((item) => item.value)
+
+  return {
+    key,
+    label,
+    inputType,
+    value,
+    required,
+    placeholder: metadata.placeholder?.trim() || undefined,
+    options: options.length ? options : undefined,
+    min: metadata.min,
+    max: metadata.max,
+    step: metadata.step,
+    autoRun,
+  } satisfies NotebookInputCellMetadata
+}
+
+function isInputCellMetadata(value: unknown): value is NotebookInputCellMetadata {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<NotebookInputCellMetadata>
+  return typeof candidate.key === 'string' && typeof candidate.label === 'string' && typeof candidate.inputType === 'string'
+}
+
+function coerceForQuery(metadata: NotebookInputCellMetadata, value: unknown) {
+  if (value === undefined) value = metadata.value
+  if (metadata.inputType === 'checkbox') return Boolean(value)
+  if (metadata.inputType === 'number' || metadata.inputType === 'range') {
+    if (value === '' || value === null || value === undefined) {
+      if (metadata.required) throw new Error(`Input '${metadata.key}' is required`)
+      return null
+    }
+    const parsed = Number(value)
+    if (Number.isNaN(parsed)) throw new Error(`Input '${metadata.key}' must be a number`)
+    return parsed
+  }
+  if (metadata.inputType === 'multiselect') {
+    const items = Array.isArray(value) ? value.map((item) => String(item)) : []
+    if (metadata.required && items.length === 0) throw new Error(`Input '${metadata.key}' is required`)
+    return items
+  }
+
+  const str = value === null || value === undefined ? '' : String(value)
+  if (metadata.required && !str.trim()) throw new Error(`Input '${metadata.key}' is required`)
+  return str
 }
 
 function getDefaultConnectionName() {
@@ -187,6 +304,7 @@ export function createNotebookCell(input: {
   notebookId: string
   type: NotebookCellType
   content?: string
+  metadata?: NotebookInputCellMetadata | null
   position?: number
 }) {
   const notebook = metaDb.select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
@@ -206,6 +324,10 @@ export function createNotebookCell(input: {
 
   const now = new Date().toISOString()
   const id = randomUUID()
+  const metadata =
+    input.type === 'input'
+      ? normalizeInputMetadata(input.metadata && isInputCellMetadata(input.metadata) ? input.metadata : defaultInputMetadata())
+      : null
   metaDb.transaction((tx) => {
     tx.insert(notebookCells)
       .values({
@@ -213,8 +335,9 @@ export function createNotebookCell(input: {
         notebookId: input.notebookId,
         position: 1000000 + rows.length,
         type: input.type,
-        content: input.content?.trim() ?? '',
+        content: input.type === 'input' ? '' : input.content?.trim() ?? '',
         collapsed: false,
+        metadataJson: metadata ? JSON.stringify(metadata) : null,
         updatedAt: now,
       })
       .run()
@@ -231,7 +354,7 @@ export function createNotebookCell(input: {
 export function updateNotebookCell(
   notebookId: string,
   cellId: string,
-  input: { type?: NotebookCellType; content?: string; collapsed?: boolean; position?: number }
+  input: { type?: NotebookCellType; content?: string; collapsed?: boolean; position?: number; metadata?: NotebookInputCellMetadata | null }
 ) {
   const existing = metaDb
     .select()
@@ -258,9 +381,19 @@ export function updateNotebookCell(
     }
 
     const values: Partial<typeof notebookCells.$inferInsert> = { updatedAt: now }
-    if (input.type !== undefined) values.type = input.type
+    if (input.type !== undefined) {
+      values.type = input.type
+      if (input.type !== 'input' && input.metadata === undefined) values.metadataJson = null
+    }
     if (input.content !== undefined) values.content = input.content
     if (input.collapsed !== undefined) values.collapsed = input.collapsed
+    if (input.metadata !== undefined) {
+      values.metadataJson =
+        input.metadata === null ? null : JSON.stringify(normalizeInputMetadata(input.metadata))
+    }
+    if (input.type === 'input' && input.metadata === undefined && !existing.metadataJson) {
+      values.metadataJson = JSON.stringify(defaultInputMetadata())
+    }
     tx.update(notebookCells).set(values).where(eq(notebookCells.id, cellId)).run()
     tx.update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, notebookId)).run()
   })
@@ -291,7 +424,12 @@ export function deleteNotebookCell(notebookId: string, cellId: string) {
   return true
 }
 
-export async function runNotebookSqlCell(input: { notebookId: string; cellId: string; query: string }) {
+export async function runNotebookSqlCell(input: {
+  notebookId: string
+  cellId: string
+  query: string
+  inputValues?: Record<string, unknown>
+}) {
   const notebook = metaDb.select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
   if (!notebook) {
     const error = new Error('notebook not found') as Error & { statusCode?: number }
@@ -316,7 +454,46 @@ export async function runNotebookSqlCell(input: { notebookId: string; cellId: st
 
   const now = new Date().toISOString()
   try {
-    const result = await executeQuery({ query: input.query, connectionName: notebook.connectionName })
+    const templateKeys = extractTemplateKeys(input.query)
+    const notebookInputCells = metaDb
+      .select()
+      .from(notebookCells)
+      .where(eq(notebookCells.notebookId, input.notebookId))
+      .all()
+      .map(toNotebookCell)
+      .filter((item) => item.type === 'input' && item.metadata_json)
+
+    const metadataByKey = new Map<string, NotebookInputCellMetadata>()
+    for (const inputCell of notebookInputCells) {
+      const metadata = inputCell.metadata_json
+      if (!metadata) continue
+      metadataByKey.set(metadata.key, normalizeInputMetadata(metadata))
+    }
+
+    let compiledQueryText = input.query
+    let compiledValues: unknown[] | undefined
+    if (templateKeys.length > 0) {
+      const resolvedValues: Record<string, unknown> = {}
+      for (const key of templateKeys) {
+        const metadata = metadataByKey.get(key)
+        if (!metadata) {
+          const error = new Error(`Unknown input key '{{${key}}}'`) as Error & { statusCode?: number }
+          error.statusCode = 400
+          throw error
+        }
+        const rawOverride = input.inputValues?.[key]
+        resolvedValues[key] = coerceForQuery(metadata, rawOverride)
+      }
+      const compiled = compileSqlTemplate(input.query, resolvedValues)
+      compiledQueryText = compiled.text
+      compiledValues = compiled.values
+    }
+
+    const result = await executeQuery({
+      query: compiledQueryText,
+      connectionName: notebook.connectionName,
+      values: compiledValues,
+    })
     metaDb
       .update(notebookCells)
       .set({

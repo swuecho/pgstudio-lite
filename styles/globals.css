@@ -1098,6 +1098,129 @@ pre {
   overflow: hidden;
 }
 
+.notebook-sql-params {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.notebook-param-insert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notebook-param-insert select {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--control-bg);
+  color: var(--text);
+  height: 30px;
+  padding: 4px 8px;
+  min-width: 180px;
+}
+
+.notebook-param-chip {
+  cursor: pointer;
+  appearance: none;
+  line-height: 1.2;
+}
+
+.input-cell-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.input-cell-config-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 920px) {
+  .input-cell-config-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.input-cell-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.input-cell-grid input,
+.input-cell-grid select,
+.input-cell-grid textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+.input-cell-options {
+  min-height: 84px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.input-cell-value-row {
+  display: grid;
+  gap: 6px;
+}
+
+.input-cell-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.input-cell-toggle-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-cell-range-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notebook-input-compact {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-cell-value-only {
+  min-width: 0;
+}
+
+.notebook-input-key {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .notebook-markdown-preview {
   margin: 0;
   border: 1px solid var(--border);
@@ -1225,6 +1348,12 @@ pre {
 }
 
 [data-theme='dark'] .notebook-markdown {
+  background: #111827;
+}
+
+[data-theme='dark'] .input-cell-grid input,
+[data-theme='dark'] .input-cell-grid select,
+[data-theme='dark'] .input-cell-grid textarea {
   background: #111827;
 }
 

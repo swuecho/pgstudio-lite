@@ -62,6 +62,32 @@ describe('notebook service', () => {
     expect(result.totalRows).toBe(1)
   })
 
+  it('runCell includes input values when provided', async () => {
+    const calls = installFetchMock([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          statements: [{ command: 'SELECT', rowCount: 1, fields: ['id'], rows: [{ id: 1 }] }],
+          totalRows: 1,
+          durationMs: 3,
+        },
+      },
+    ])
+
+    await notebookService.runCell('nb-1', 'cell-1', 'select * from t where d >= {{start_date}};', {
+      start_date: '2026-02-01',
+    })
+
+    expect(calls[0].options?.body).toBe(
+      JSON.stringify({
+        cellId: 'cell-1',
+        query: 'select * from t where d >= {{start_date}};',
+        inputValues: { start_date: '2026-02-01' },
+      })
+    )
+  })
+
   it('createCell sends type and content', async () => {
     const calls = installFetchMock([
       {
