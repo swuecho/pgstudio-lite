@@ -60,14 +60,3 @@ export async function removeRow(table: string, payload: { connectionName: string
     body: JSON.stringify(body),
   })
 }
-
-export async function insertRow(
-  table: string,
-  payload: { connectionName: string; schema?: string; row: Record<string, unknown> }
-) {
-  const body = { ...payload, schema: payload.schema || 'public' }
-  return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  })
-}

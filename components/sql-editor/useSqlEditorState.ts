@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getConnections, runQuery } from '../../features/sql/sql.service'
 import { detectOS, suffixWithLimit } from './utils'
-import { QueryResult } from './types'
+import type { QueryResult, SnippetItem } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'
 import { useSqlEditorHistory } from './useSqlEditorHistory'
 import { useSqlEditorSnippets } from './useSqlEditorSnippets'
@@ -23,6 +23,7 @@ export function useSqlEditorState() {
   const explorer = useSqlEditorExplorer(connectionName, historySearch)
   const history = useSqlEditorHistory(historySearch, connectionName)
   const snippets = useSqlEditorSnippets({
+    connectionName,
     activeQueryTab: tabs.activeQueryTab,
     setQueryTabs: tabs.setQueryTabs,
     setStatus,
@@ -147,7 +148,7 @@ export function useSqlEditorState() {
     createQueryTab: tabs.createQueryTab,
     activeQueryTab: tabs.activeQueryTab,
     setActiveTabQuery: tabs.setActiveTabQuery,
-    openSnippetInTab: tabs.openSnippetInTab,
+    openSnippetInTab: (item: SnippetItem) => tabs.openSnippetInTab(item, connectionName),
     duplicateSnippet: snippets.duplicateSnippet,
     renameSnippet: snippets.renameSnippet,
     deleteSnippet: snippets.deleteSnippet,

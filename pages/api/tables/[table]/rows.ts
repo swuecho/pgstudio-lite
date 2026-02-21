@@ -4,7 +4,6 @@ import {
   deleteTableRowByCtid,
   getTableColumns,
   getTableRows,
-  insertTableRow,
   updateTableRowByCtid,
 } from '../../../../lib/db'
 import { getRequestConnectionName } from '../../../../lib/api/connection'
@@ -23,11 +22,6 @@ const rowsQuerySchema = z.object({
   filterColumn: z.string().trim().optional(),
   filterValue: z.string().trim().optional(),
   filterMode: z.enum(['contains', 'equals']).optional(),
-})
-
-const createRowBodySchema = z.object({
-  schema: optionalSchemaNameSchema.default('public'),
-  row: z.record(z.string(), z.unknown()).optional().default({}),
 })
 
 const patchRowBodySchema = z.object({
@@ -66,12 +60,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ schema, table, columns, rows: rows.rows, total: rows.total })
     }
 
-    if (req.method === 'POST') {
-      const { schema, row: payload } = parseWithSchema(createRowBodySchema, req.body || {})
-      await insertTableRow(connectionName, schema, table, payload)
-      return res.status(200).json({ ok: true })
-    }
-
     if (req.method === 'PATCH') {
       const { schema, ctid, patch } = parseWithSchema(patchRowBodySchema, req.body || {})
       await updateTableRowByCtid(connectionName, schema, table, ctid, patch)
@@ -84,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true })
     }
 
-    res.setHeader('Allow', 'GET, POST, PATCH, DELETE')
+    res.setHeader('Allow', 'GET, PATCH, DELETE')
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
