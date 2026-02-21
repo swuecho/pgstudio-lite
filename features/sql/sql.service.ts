@@ -25,28 +25,34 @@ export async function clearHistory(connectionName?: string) {
   return fetchJson<{ ok: boolean }>(`/api/history${suffix ? `?${suffix}` : ''}`, { method: 'DELETE' })
 }
 
-export async function getSnippets(limit = 300) {
-  return fetchJson<{ items: SnippetItem[] }>(`/api/snippets?limit=${limit}`)
+export async function getSnippets(limit = 300, connectionName?: string) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (connectionName) params.set('connectionName', connectionName)
+  return fetchJson<{ items: SnippetItem[] }>(`/api/snippets?${params.toString()}`)
 }
 
-export async function createSnippet(title: string, queryText: string) {
+export async function createSnippet(title: string, queryText: string, connectionName: string) {
   return fetchJson<{ item: SnippetItem }>('/api/snippets', {
     method: 'POST',
-    body: JSON.stringify({ title, queryText }),
+    body: JSON.stringify({ title, queryText, connectionName }),
   })
 }
 
-export async function updateSnippet(id: string, payload: { title?: string; queryText?: string }) {
+export async function updateSnippet(
+  id: string,
+  payload: { title?: string; queryText?: string },
+  connectionName: string
+) {
   return fetchJson<{ item: SnippetItem }>('/api/snippets', {
     method: 'PATCH',
-    body: JSON.stringify({ id, ...payload }),
+    body: JSON.stringify({ id, connectionName, ...payload }),
   })
 }
 
-export async function deleteSnippet(id: string) {
+export async function deleteSnippet(id: string, connectionName: string) {
   return fetchJson<{ ok: boolean }>('/api/snippets', {
     method: 'DELETE',
-    body: JSON.stringify({ id }),
+    body: JSON.stringify({ id, connectionName }),
   })
 }
 

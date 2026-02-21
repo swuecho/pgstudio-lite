@@ -3,7 +3,6 @@ import { create } from 'zustand'
 type TableEditorLocalStore = {
   connectionName: string
   activeTable: string
-  newRowJson: string
   status: string
   page: number
   pageSize: number
@@ -14,7 +13,6 @@ type TableEditorLocalStore = {
   filterMode: 'contains' | 'equals'
   setConnectionName: (value: string) => void
   setActiveTable: (value: string) => void
-  setNewRowJson: (value: string) => void
   setStatus: (value: string) => void
   setPage: (value: number | ((prev: number) => number)) => void
   setPageSize: (value: number) => void
@@ -28,7 +26,6 @@ type TableEditorLocalStore = {
 export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => ({
   connectionName: 'default',
   activeTable: '',
-  newRowJson: '{\n  \n}',
   status: 'Ready',
   page: 0,
   pageSize: 50,
@@ -39,7 +36,6 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   filterMode: 'contains',
   setConnectionName: (value) => set({ connectionName: value }),
   setActiveTable: (value) => set({ activeTable: value }),
-  setNewRowJson: (value) => set({ newRowJson: value }),
   setStatus: (value) => set({ status: value }),
   setPage: (value) => set((state) => ({ page: typeof value === 'function' ? value(state.page) : value })),
   setPageSize: (value) => set({ pageSize: value }),

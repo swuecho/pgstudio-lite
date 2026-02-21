@@ -68,4 +68,36 @@ describe('sql service', () => {
 
     await expect(sqlService.clearHistory()).rejects.toThrow('boom')
   })
+
+  it('getSnippets scopes by connectionName', async () => {
+    const calls = installFetchMock([{ ok: true, status: 200, payload: { items: [] } }])
+    await sqlService.getSnippets(300, 'staging')
+    expect(calls[0].path).toBe('/api/snippets?limit=300&connectionName=staging')
+  })
+
+  it('createSnippet sends connectionName in payload', async () => {
+    const calls = installFetchMock([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          item: {
+            id: 'snip-1',
+            title: 's',
+            query_text: 'select 1;',
+            connection_name: 'staging',
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+          },
+        },
+      },
+    ])
+
+    await sqlService.createSnippet('s', 'select 1;', 'staging')
+
+    expect(calls[0].options?.method).toBe('POST')
+    expect(calls[0].options?.body).toBe(
+      JSON.stringify({ title: 's', queryText: 'select 1;', connectionName: 'staging' })
+    )
+  })
 })

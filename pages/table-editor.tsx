@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import ThemeToggle from '../components/theme-toggle'
-import { InsertPanel } from '../components/table-editor/InsertPanel'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
@@ -71,15 +70,6 @@ export default function TableEditorPage() {
             }}
             onPrevPage={() => state.setPage((p) => Math.max(0, p - 1))}
             onNextPage={() => state.setPage((p) => p + 1)}
-          />
-
-          <InsertPanel
-            newRowJson={state.newRowJson}
-            readOnlyConnection={state.connectionReadOnly}
-            onChangeNewRowJson={state.setNewRowJson}
-            onInsertRow={() => {
-              void state.insertRow()
-            }}
           />
         </div>
       </main>

@@ -15,6 +15,7 @@ export default function SqlEditorPage() {
   return (
     <div className="layout-root">
       <SqlSidebar
+        connectionName={state.connectionName}
         activeNavTab={state.activeNavTab}
         onChangeNavTab={state.setActiveNavTab}
         historySearch={state.historySearch}
