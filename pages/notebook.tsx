@@ -12,6 +12,12 @@ import { formatCell } from '../components/sql-editor/utils'
 import type { QueryResult } from '../components/sql-editor/types'
 import type { NotebookCell, NotebookCellType, NotebookInputCellMetadata, NotebookInputValues } from '../components/notebook/types'
 import {
+  buildInputValues,
+  getInputMetadata,
+  runReactiveSqlCells,
+  type ReactiveNotebookState,
+} from '../lib/notebook-reactive'
+import {
   createCell,
   createNotebook,
   deleteCell,
@@ -115,7 +121,7 @@ export default function NotebookPage() {
       for (const cell of cells) {
         if (cell.type !== 'input') continue
         if (next[cell.id] !== undefined) continue
-        next[cell.id] = toInputMetadata(cell)
+        next[cell.id] = getInputMetadata(cell, next) || defaultInputMetadata()
       }
       return next
     })
@@ -147,7 +153,8 @@ export default function NotebookPage() {
     () =>
       sortedCells
         .filter((cell) => cell.type === 'input')
-        .map((cell) => inputDraftByCell[cell.id] || toInputMetadata(cell))
+        .map((cell) => inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell))
+        .filter((metadata): metadata is NotebookInputCellMetadata => Boolean(metadata))
         .filter((metadata) => metadata.key)
         .map((metadata) => ({ key: metadata.key, label: metadata.label, inputType: metadata.inputType })),
     [sortedCells, inputDraftByCell]
@@ -156,7 +163,8 @@ export default function NotebookPage() {
     const out: Record<string, string> = {}
     for (const cell of sortedCells) {
       if (cell.type !== 'input') continue
-      const metadata = inputDraftByCell[cell.id] || toInputMetadata(cell)
+      const metadata = inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell)
+      if (!metadata) continue
       if (!metadata.key) continue
       out[metadata.key] = cell.id
     }
@@ -302,7 +310,7 @@ export default function NotebookPage() {
   }
 
   function onInputMetadataChange(cell: NotebookCell, next: NotebookInputCellMetadata) {
-    const previous = inputDraftByCellRef.current[cell.id] || toInputMetadata(cell)
+    const previous = inputDraftByCellRef.current[cell.id] || getInputMetadata(cell, inputDraftByCellRef.current) || defaultInputMetadata()
     const nextDrafts = { ...inputDraftByCellRef.current, [cell.id]: next }
     inputDraftByCellRef.current = nextDrafts
     setInputDraftByCell(nextDrafts)
@@ -313,49 +321,45 @@ export default function NotebookPage() {
   }
 
   async function rerunDependentSqlCells(inputCellId: string, inputKey: string) {
-    const activeId = activeNotebookIdRef.current
-    const isRunningAll = runningAllRef.current
-    const runningId = runningCellIdRef.current
-    if (!activeId || isRunningAll || runningId) return
-
-    const cellsNow = sortedCellsRef.current
-    const sourceCell = cellsNow.find((cell) => cell.id === inputCellId)
-    if (!sourceCell) return
-
-    const targets = cellsNow.filter((cell) => {
-      if (cell.type !== 'sql') return false
-      if (cell.position <= sourceCell.position) return false
-      const query = draftByCellRef.current[cell.id] ?? cell.content
-      return extractTemplateKeys(query).includes(inputKey)
-    })
-
-    if (!targets.length) return
-
     const generation = reactiveRunGenerationRef.current + 1
     reactiveRunGenerationRef.current = generation
 
+    const getState = (): ReactiveNotebookState => ({
+      activeNotebookId: activeNotebookIdRef.current,
+      runningAll: runningAllRef.current,
+      runningCellId: runningCellIdRef.current,
+      sortedCells: sortedCellsRef.current,
+      draftByCell: draftByCellRef.current,
+      inputDraftByCell: inputDraftByCellRef.current,
+    })
+
+    const targets = getState().sortedCells.filter((cell) => {
+      if (cell.type !== 'sql') return false
+      const query = getState().draftByCell[cell.id] ?? cell.content
+      return extractTemplateKeys(query).includes(inputKey)
+    })
+    if (!targets.length) return
+
     try {
       setStatus(`Input '${inputKey}' changed. Re-running ${targets.length} SQL cell(s)...`)
-      for (const target of targets) {
-        if (reactiveRunGenerationRef.current !== generation) return
-        const query = (draftByCellRef.current[target.id] ?? target.content).trim()
-        if (!query) continue
-        setRunningCellId(target.id)
-        const result = await runCell(
-          activeId,
-          target.id,
-          query,
-          buildInputValues(cellsNow, inputDraftByCellRef.current)
-        )
-        if (reactiveRunGenerationRef.current !== generation) return
-        setResultsByCell((prev) => ({ ...prev, [target.id]: result }))
-      }
+      await runReactiveSqlCells({
+        inputCellId,
+        inputKey,
+        getState,
+        runCell: async ({ notebookId, cellId, query, inputValues }) => {
+          if (reactiveRunGenerationRef.current !== generation) return
+          setRunningCellId(cellId)
+          const result = await runCell(notebookId, cellId, query, inputValues)
+          if (reactiveRunGenerationRef.current !== generation) return
+          setResultsByCell((prev) => ({ ...prev, [cellId]: result }))
+        },
+      })
       setStatus(`Auto-run completed for '${inputKey}'`)
     } catch (error) {
       setStatus(`Auto-run stopped: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       setRunningCellId('')
-      if (activeId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeId] })
+      if (activeNotebookIdRef.current) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookIdRef.current] })
     }
   }
 
@@ -573,7 +577,7 @@ export default function NotebookPage() {
               const draft = draftByCell[cell.id] ?? cell.content
               const lastResult = resultsByCell[cell.id]
               const running = runningCellId === cell.id
-              const inputMeta = cell.type === 'input' ? inputDraftByCell[cell.id] || toInputMetadata(cell) : null
+              const inputMeta = cell.type === 'input' ? inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell) : null
               const sqlKeys = cell.type === 'sql' ? extractTemplateKeys(draft) : []
               const missingSqlKeys = sqlKeys.filter((key) => !inputKeys.has(key))
               const selectedInsertParam = selectedInsertParamByCell[cell.id] || notebookInputs[0]?.key || ''
@@ -854,23 +858,6 @@ function defaultInputMetadata(): NotebookInputCellMetadata {
     required: false,
     autoRun: true,
   }
-}
-
-function toInputMetadata(cell: NotebookCell): NotebookInputCellMetadata {
-  const metadata = cell.metadata_json
-  if (metadata && metadata.key && metadata.label && metadata.inputType) return metadata
-  return defaultInputMetadata()
-}
-
-function buildInputValues(cells: NotebookCell[], inputDraftByCell: Record<string, NotebookInputCellMetadata>) {
-  const out: NotebookInputValues = {}
-  for (const cell of cells) {
-    if (cell.type !== 'input') continue
-    const metadata = inputDraftByCell[cell.id] || toInputMetadata(cell)
-    if (!metadata.key) continue
-    out[metadata.key] = metadata.value
-  }
-  return out
 }
 
 function isSameValue(a: unknown, b: unknown) {
