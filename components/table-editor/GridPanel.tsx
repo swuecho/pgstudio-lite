@@ -293,7 +293,6 @@ export function TableGridPanel({
                         </div>
                       ) : isDateColumn(col.dataType) ? (
                         <div className="table-cell-editor">
-                          <span className="table-cell-kind">DATE</span>
                           <input
                             className="cell-input table-typed-input"
                             type="date"
@@ -311,7 +310,6 @@ export function TableGridPanel({
                         </div>
                       ) : isDateTimeColumn(col.dataType) ? (
                         <div className="table-cell-editor">
-                          <span className="table-cell-kind">TIME</span>
                           <input
                             className="cell-input table-typed-input"
                             type="datetime-local"
