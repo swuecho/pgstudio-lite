@@ -50,6 +50,23 @@ if (!hasLastResultJsonColumn) {
   sqlite.exec(`ALTER TABLE notebook_cells ADD COLUMN last_result_json text;`)
 }
 
+const hasSnippetConnectionColumn = sqlite
+  .prepare(`SELECT 1 FROM pragma_table_info('query_snippets') WHERE name = 'connection_name' LIMIT 1`)
+  .get()
+if (!hasSnippetConnectionColumn) {
+  sqlite.exec(`ALTER TABLE query_snippets ADD COLUMN connection_name text;`)
+}
+
+sqlite.exec(`
+  UPDATE query_snippets
+  SET connection_name = COALESCE(
+    NULLIF((SELECT name FROM db_connections WHERE is_default = 1 LIMIT 1), ''),
+    NULLIF((SELECT name FROM db_connections ORDER BY name LIMIT 1), ''),
+    'default'
+  )
+  WHERE connection_name IS NULL OR trim(connection_name) = '';
+`)
+
 export const metaDb = drizzle(sqlite, { schema })
 
 migrate(metaDb, { migrationsFolder: join(process.cwd(), 'drizzle/migrations') })

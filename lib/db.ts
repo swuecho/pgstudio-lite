@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import pg from 'pg'
 import { dbConnections, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
@@ -34,6 +34,7 @@ type QuerySnippetRow = {
   id: string
   title: string
   query_text: string
+  connection_name: string
   created_at: string
   updated_at: string
 }
@@ -515,6 +516,7 @@ function toSnippetRow(row: typeof querySnippets.$inferSelect): QuerySnippetRow {
     id: row.id,
     title: row.title,
     query_text: row.queryText,
+    connection_name: row.connectionName,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   }
@@ -544,11 +546,13 @@ export function clearHistory(connectionName?: string) {
   metaDb.delete(queryHistory).where(eq(queryHistory.connectionName, resolved)).run()
 }
 
-export function getSnippets(limit = 100) {
+export function getSnippets(limit = 100, connectionName?: string) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100))
+  const resolvedConnectionName = getConnectionByName(connectionName).name
   return metaDb
     .select()
     .from(querySnippets)
+    .where(eq(querySnippets.connectionName, resolvedConnectionName))
     .orderBy(desc(querySnippets.updatedAt))
     .limit(safeLimit)
     .all()
@@ -558,30 +562,54 @@ export function getSnippets(limit = 100) {
 export function saveSnippet({
   title,
   queryText,
+  connectionName,
 }: {
   title: string
   queryText: string
+  connectionName?: string
 }) {
   const now = new Date().toISOString()
   const id = randomUUID()
+  const resolvedConnectionName = getConnectionByName(connectionName).name
   metaDb
     .insert(querySnippets)
-    .values({ id, title: title.trim(), queryText: queryText.trim(), createdAt: now, updatedAt: now })
+    .values({
+      id,
+      title: title.trim(),
+      queryText: queryText.trim(),
+      connectionName: resolvedConnectionName,
+      createdAt: now,
+      updatedAt: now,
+    })
     .run()
-  return { id, title: title.trim(), query_text: queryText.trim(), created_at: now, updated_at: now }
+  return {
+    id,
+    title: title.trim(),
+    query_text: queryText.trim(),
+    connection_name: resolvedConnectionName,
+    created_at: now,
+    updated_at: now,
+  }
 }
 
 export function updateSnippet({
   id,
   title,
   queryText,
+  connectionName,
 }: {
   id: string
   title?: string
   queryText?: string
+  connectionName?: string
 }) {
+  const resolvedConnectionName = getConnectionByName(connectionName).name
   if (title === undefined && queryText === undefined) {
-    const row = metaDb.select().from(querySnippets).where(eq(querySnippets.id, id)).get()
+    const row = metaDb
+      .select()
+      .from(querySnippets)
+      .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
+      .get()
     return row ? toSnippetRow(row) : null
   }
 
@@ -591,15 +619,27 @@ export function updateSnippet({
   if (title !== undefined) values.title = title.trim()
   if (queryText !== undefined) values.queryText = queryText.trim()
 
-  const result = metaDb.update(querySnippets).set(values).where(eq(querySnippets.id, id)).run()
+  const result = metaDb
+    .update(querySnippets)
+    .set(values)
+    .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
+    .run()
   if (!result.changes) return null
 
-  const row = metaDb.select().from(querySnippets).where(eq(querySnippets.id, id)).get()
+  const row = metaDb
+    .select()
+    .from(querySnippets)
+    .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
+    .get()
   return row ? toSnippetRow(row) : null
 }
 
-export function deleteSnippet(id: string) {
-  metaDb.delete(querySnippets).where(eq(querySnippets.id, id)).run()
+export function deleteSnippet(id: string, connectionName?: string) {
+  const resolvedConnectionName = getConnectionByName(connectionName).name
+  metaDb
+    .delete(querySnippets)
+    .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
+    .run()
 }
 
 export async function executeQuery({
@@ -852,31 +892,6 @@ export async function updateTableRowByCtid(
     const values = keys.map((k) => patch[k])
     const sql = `update ${qTable} set ${setClause} where ctid::text = $${keys.length + 1}`
     await client.query(sql, [...values, ctid])
-  })
-}
-
-export async function insertTableRow(
-  connectionName: string | undefined,
-  schema: string,
-  table: string,
-  payload: Record<string, unknown>
-) {
-  const connection = getConnectionByName(connectionName)
-  if (connection.readOnly) {
-    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
-    error.statusCode = 403
-    throw error
-  }
-  const keys = Object.keys(payload)
-  if (keys.length === 0) return
-
-  return withClient(connectionName, async (client) => {
-    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
-    const columns = keys.map((k) => sqlIdent(k)).join(', ')
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
-    const values = keys.map((k) => payload[k])
-    const sql = `insert into ${qTable} (${columns}) values (${placeholders})`
-    await client.query(sql, values)
   })
 }
 

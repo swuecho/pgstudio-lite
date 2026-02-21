@@ -4,7 +4,6 @@ import {
   getConnections as getConnectionsService,
   getRows as getRowsService,
   getTables as getTablesService,
-  insertRow as insertRowService,
   patchRow,
   removeRow,
 } from '../../features/table/table.service'
@@ -14,7 +13,6 @@ type TableEditorState = {
   setConnectionName: (value: string) => void
   activeTable: string
   setActiveTable: (value: string) => void
-  newRowJson: string
   setStatus: (value: string) => void
   page: number
   setPage: (value: number | ((prev: number) => number)) => void
@@ -114,16 +112,6 @@ export function useTableEditorData(state: TableEditorState) {
     onSuccess: invalidateRows,
   })
 
-  const insertRowMutation = useMutation({
-    mutationFn: (row: Record<string, unknown>) =>
-      insertRowService(selectedTarget.table, {
-        connectionName: state.connectionName,
-        schema: selectedTarget.schema,
-        row,
-      }),
-    onSuccess: invalidateRows,
-  })
-
   async function loadTables(conn = state.connectionName) {
     await tablesQuery.refetch()
     await queryClient.invalidateQueries({
@@ -160,28 +148,6 @@ export function useTableEditorData(state: TableEditorState) {
       state.setStatus('Deleted')
     } catch (error) {
       state.setStatus(error instanceof Error ? error.message : 'Failed to delete row')
-    }
-  }
-
-  async function insertRow() {
-    if (connectionReadOnly) {
-      state.setStatus('Connection is read-only')
-      return
-    }
-    let payload: Record<string, unknown>
-    try {
-      payload = JSON.parse(state.newRowJson)
-    } catch {
-      state.setStatus('Invalid JSON for new row')
-      return
-    }
-
-    state.setStatus('Inserting...')
-    try {
-      await insertRowMutation.mutateAsync(payload)
-      state.setStatus('Inserted')
-    } catch (error) {
-      state.setStatus(error instanceof Error ? error.message : 'Failed to insert row')
     }
   }
 
@@ -233,7 +199,6 @@ export function useTableEditorData(state: TableEditorState) {
     loadRows,
     updateCell,
     deleteRow,
-    insertRow,
     loadingRows: rowsQuery.isFetching,
     loadingTables: tablesQuery.isFetching,
     connectionReadOnly,
