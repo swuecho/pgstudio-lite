@@ -6,7 +6,6 @@ import { SqlSidebar } from '../components/sql-editor/Sidebar'
 import { SqlTabsBar } from '../components/sql-editor/TabsBar'
 import { useSqlEditorState } from '../components/sql-editor/useSqlEditorState'
 import { formatCell, formatTime } from '../components/sql-editor/utils'
-import ThemeToggle from '../components/theme-toggle'
 
 export default function SqlEditorPage() {
   const state = useSqlEditorState()
@@ -164,7 +163,6 @@ export default function SqlEditorPage() {
               New
             </button>
             <span className={`status-pill ${state.status.tone}`}>{state.status.text}</span>
-            <ThemeToggle />
               <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
                 {state.connections.map((c) => (
                   <option key={c.name} value={c.name}>

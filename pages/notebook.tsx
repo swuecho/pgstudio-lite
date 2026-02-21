@@ -42,6 +42,7 @@ export default function NotebookPage() {
   const [resultsByCell, setResultsByCell] = useState<Record<string, QueryResult>>({})
   const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
   const [inputDraftByCell, setInputDraftByCell] = useState<Record<string, NotebookInputCellMetadata>>({})
+  const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
 
@@ -96,6 +97,10 @@ export default function NotebookPage() {
   }, [activeNotebookId])
 
   useEffect(() => {
+    setSelectedCellId('')
+  }, [activeNotebookId])
+
+  useEffect(() => {
     runningCellIdRef.current = runningCellId
   }, [runningCellId])
 
@@ -139,6 +144,12 @@ export default function NotebookPage() {
       return next
     })
   }, [cells])
+
+  useEffect(() => {
+    if (!selectedCellId) return
+    if (sortedCells.some((cell) => cell.id === selectedCellId)) return
+    setSelectedCellId('')
+  }, [sortedCells, selectedCellId])
 
   useEffect(() => {
     return () => {
@@ -217,12 +228,15 @@ export default function NotebookPage() {
 
   const addCellMutation = useMutation({
     mutationFn: (type: NotebookCellType) => {
-      if (type === 'sql') return createCell(activeNotebookId, { type, content: 'select now();' })
-      if (type === 'markdown') return createCell(activeNotebookId, { type, content: '## Notes\n' })
-      return createCell(activeNotebookId, { type: 'input', metadata: defaultInputMetadata() })
+      const selectedIndex = sortedCells.findIndex((cell) => cell.id === selectedCellId)
+      const position = selectedIndex === -1 ? undefined : selectedIndex + 1
+      if (type === 'sql') return createCell(activeNotebookId, { type, content: 'select now();', position })
+      if (type === 'markdown') return createCell(activeNotebookId, { type, content: '## Notes\n', position })
+      return createCell(activeNotebookId, { type: 'input', metadata: defaultInputMetadata(), position })
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setStatus('Cell added')
+      setSelectedCellId(data.item.id)
       if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
     },
     onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
@@ -469,6 +483,9 @@ export default function NotebookPage() {
           TB
         </Link>
         <button className="rail-btn active">NB</button>
+        <div className="mt-auto flex justify-center">
+          <ThemeToggle />
+        </div>
       </aside>
 
       <aside className="layout-nav">
@@ -527,11 +544,11 @@ export default function NotebookPage() {
 
       <main className="layout-main">
         <div className="editor-panel-header">
-          <div className="editor-title">Notebook · {activeNotebook?.title || '-'}</div>
-          <div className="editor-header-right">
-            <span className="status-pill">{status}</span>
-            <ThemeToggle />
+          <div className="editor-title truncate">Notebook · {activeNotebook?.title || '-'}</div>
+          <div className="editor-header-right min-w-0 flex-nowrap gap-2">
+            <span className="status-pill max-w-[180px] shrink-0 truncate whitespace-nowrap">{status}</span>
             <select
+              className="shrink-0"
               value={activeNotebook?.connection_name || ''}
               onChange={(event) => {
                 if (!activeNotebook?.id) return
@@ -545,23 +562,23 @@ export default function NotebookPage() {
                 </option>
               ))}
             </select>
-            <button className="btn small" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('sql')}>
+            <button className="btn small shrink-0 whitespace-nowrap" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('sql')}>
               Add SQL
             </button>
             <button
-              className="btn small"
+              className="btn small shrink-0 whitespace-nowrap"
               disabled={!activeNotebookId || runningAll}
               onClick={() => addCellMutation.mutate('markdown')}
             >
               Add Markdown
             </button>
-            <button className="btn small" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('input')}>
+            <button className="btn small shrink-0 whitespace-nowrap" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('input')}>
               Add Input
             </button>
-            <span className="history-meta">Ctrl/Cmd+Enter: Run · Shift+Enter: Run + Next SQL</span>
-            <button className="btn primary" disabled={!activeNotebookId || runningAll} onClick={() => void runAllSqlCells()}>
+            <button className="btn small primary shrink-0 whitespace-nowrap" disabled={!activeNotebookId || runningAll} onClick={() => void runAllSqlCells()}>
               {runningAll ? 'Running All...' : 'Run All'}
             </button>
+            <span className="history-meta hidden shrink-0 whitespace-nowrap 2xl:flex">Ctrl/Cmd+Enter: Run · Shift+Enter: Run + Next SQL</span>
           </div>
         </div>
 
@@ -587,7 +604,11 @@ export default function NotebookPage() {
                   ref={(element) => {
                     cellSectionRefs.current[cell.id] = element
                   }}
-                  className={`grid rounded-[10px] border border-[var(--border)] bg-[var(--panel)] ${cell.collapsed ? 'gap-2 p-2.5' : 'gap-2.5 p-3'}`}
+                  onMouseDown={() => setSelectedCellId(cell.id)}
+                  onFocusCapture={() => setSelectedCellId(cell.id)}
+                  className={`grid rounded-[10px] border border-[var(--border)] bg-[var(--panel)] ${
+                    selectedCellId === cell.id ? 'ring-1 ring-[var(--accent)]' : ''
+                  } ${cell.collapsed ? 'gap-2 p-2.5' : 'gap-2.5 p-3'}`}
                 >
                   <div className={`flex items-center ${cell.collapsed ? 'gap-1.5' : 'gap-2.5'}`}>
                     <span className="pill">{cell.type === 'markdown' ? 'MD' : cell.type === 'input' ? 'IN' : 'SQL'}</span>

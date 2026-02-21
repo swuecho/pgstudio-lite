@@ -106,4 +106,23 @@ describe('notebook service', () => {
     expect(calls[0].options?.method).toBe('POST')
     expect(calls[0].options?.body).toBe(JSON.stringify({ type: 'markdown', content: '# title' }))
   })
+
+  it('createCell includes position when provided', async () => {
+    const calls = installFetchMock([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          item: { id: 'cell-2', notebook_id: 'nb-1', type: 'sql', position: 2, content: 'select 1;' },
+          cells: [],
+        },
+      },
+    ])
+
+    await notebookService.createCell('nb-1', { type: 'sql', content: 'select 1;', position: 2 })
+
+    expect(calls[0].path).toBe('/api/notebooks/nb-1/cells')
+    expect(calls[0].options?.method).toBe('POST')
+    expect(calls[0].options?.body).toBe(JSON.stringify({ type: 'sql', content: 'select 1;', position: 2 }))
+  })
 })
