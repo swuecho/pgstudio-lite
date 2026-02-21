@@ -725,7 +725,7 @@ export default function NotebookPage() {
                           ) : null}
                           <div className="flex items-center gap-2.5">
                             <button
-                              className="btn primary"
+                              className="btn small primary"
                               disabled={running || runningAll || !draft.trim()}
                               onClick={() => {
                                 void runSqlCellWithShortcuts(cell, false)
