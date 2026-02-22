@@ -6,8 +6,11 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import ThemeToggle from '../components/theme-toggle'
+import { NotebookHelpPanel } from '../components/notebook/NotebookHelpPanel'
+import { NotebookImportModal } from '../components/notebook/NotebookImportModal'
 import { InputCellEditor } from '../components/notebook/InputCellEditor'
 import { SqlCellEditor } from '../components/notebook/SqlCellEditor'
+import { useNotebookImport } from '../components/notebook/useNotebookImport'
 import { formatCell } from '../components/sql-editor/utils'
 import type { QueryResult } from '../components/sql-editor/types'
 import type { NotebookCell, NotebookCellType, NotebookInputCellMetadata, NotebookInputValues } from '../components/notebook/types'
@@ -79,6 +82,11 @@ export default function NotebookPage() {
   const activeNotebook = detailQuery.data?.notebook
   const cells = detailQuery.data?.cells || []
   const sortedCells = useMemo(() => [...cells].sort((a, b) => a.position - b.position), [cells])
+  const notebookImport = useNotebookImport({
+    activeNotebookId,
+    setActiveNotebookId,
+    setStatus,
+  })
 
   useEffect(() => {
     draftByCellRef.current = draftByCell
@@ -157,6 +165,42 @@ export default function NotebookPage() {
       for (const timer of Object.values(reactiveTimersRef.current)) clearTimeout(timer)
     }
   }, [])
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      const typing = Boolean(target?.isContentEditable) || tag === 'input' || tag === 'textarea' || tag === 'select'
+
+      if (event.key === 'Escape') {
+        if (notebookImport.showImportModal) {
+          event.preventDefault()
+          notebookImport.setShowImportModal(false)
+        } else if (notebookImport.showHelp) {
+          event.preventDefault()
+          notebookImport.setShowHelp(false)
+        }
+        return
+      }
+
+      if (!(event.metaKey || event.ctrlKey)) return
+      if (typing) return
+
+      const key = event.key.toLowerCase()
+      if (key === 'i') {
+        event.preventDefault()
+        notebookImport.setShowImportModal(true)
+        return
+      }
+      if (key === 'e') {
+        event.preventDefault()
+        notebookImport.exportNotebookJson()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [notebookImport, activeNotebookId])
 
   const inputValues = useMemo(() => buildInputValues(sortedCells, inputDraftByCell), [sortedCells, inputDraftByCell])
   const inputKeys = useMemo(() => new Set(Object.keys(inputValues)), [inputValues])
@@ -578,9 +622,34 @@ export default function NotebookPage() {
             <button className="btn small primary notebook-action-btn" disabled={!activeNotebookId || runningAll} onClick={() => void runAllSqlCells()}>
               {runningAll ? 'Running All...' : 'Run All'}
             </button>
+            <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowImportModal(true)}>
+              Import
+            </button>
+            <button className="btn small notebook-action-btn" disabled={!activeNotebookId} onClick={notebookImport.exportNotebookJson}>
+              Export
+            </button>
+            <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowHelp((prev) => !prev)}>
+              {notebookImport.showHelp ? 'Hide Help' : 'Help'}
+            </button>
             <span className="history-meta notebook-shortcuts">Ctrl/Cmd+Enter: Run · Shift+Enter: Run + Next SQL</span>
           </div>
         </div>
+
+        {notebookImport.showHelp ? (
+          <NotebookHelpPanel
+            promptTask={notebookImport.promptTask}
+            setPromptTask={notebookImport.setPromptTask}
+            promptDbContext={notebookImport.promptDbContext}
+            setPromptDbContext={notebookImport.setPromptDbContext}
+            promptStyle={notebookImport.promptStyle}
+            setPromptStyle={notebookImport.setPromptStyle}
+            promptPatchTask={notebookImport.promptPatchTask}
+            setPromptPatchTask={notebookImport.setPromptPatchTask}
+            copyGeneratePrompt={notebookImport.copyGeneratePrompt}
+            copyPatchPromptPrefilled={notebookImport.copyPatchPromptPrefilled}
+            copyHelpApiSnippet={notebookImport.copyHelpApiSnippet}
+          />
+        ) : null}
 
         <div className="notebook-cells">
           {!activeNotebookId ? (
@@ -821,6 +890,30 @@ export default function NotebookPage() {
           )}
         </div>
       </main>
+
+      {notebookImport.showImportModal ? (
+        <NotebookImportModal
+          importMode={notebookImport.importMode}
+          setImportMode={notebookImport.setImportMode}
+          importRawJson={notebookImport.importRawJson}
+          setImportRawJson={notebookImport.setImportRawJson}
+          isImporting={notebookImport.isImporting}
+          isValidating={notebookImport.isValidating}
+          importParseHint={notebookImport.importParseHint}
+          importValidationSnapshot={notebookImport.importValidationSnapshot}
+          importValidationWarnings={notebookImport.importValidationWarnings}
+          importDiffSummary={notebookImport.importDiffSummary}
+          importErrorDetails={notebookImport.importErrorDetails}
+          canUseCurrentJson={Boolean(activeNotebookId)}
+          onClose={() => notebookImport.setShowImportModal(false)}
+          onPaste={notebookImport.pasteImportJsonFromClipboard}
+          onFormatJson={notebookImport.formatImportJson}
+          onValidate={notebookImport.validateImportDraft}
+          onPreviewDiff={notebookImport.previewImportDiff}
+          onUseCurrentJson={notebookImport.loadCurrentNotebookJson}
+          onImport={notebookImport.submitImportFromModal}
+        />
+      ) : null}
     </div>
   )
 }

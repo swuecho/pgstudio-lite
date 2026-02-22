@@ -316,3 +316,7 @@ Other standard errors:
 Canonical schema draft for validators is in:
 
 - `docs/schemas/notebook.v1.schema.json`
+
+LLM authoring prompt template is in:
+
+- `docs/notebook-llm-prompt-template.md`

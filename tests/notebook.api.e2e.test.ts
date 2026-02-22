@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import notebooksHandler from '../pages/api/notebooks/index'
 import notebookCellsHandler from '../pages/api/notebooks/[id]/cells'
 import runCellHandler from '../pages/api/notebooks/[id]/run-cell'
+import notebookExportHandler from '../pages/api/notebooks/[id]/export'
+import notebookPatchHandler from '../pages/api/notebooks/[id]/patch'
+import notebookImportHandler from '../pages/api/notebooks/import'
 import { sqlite } from '../lib/meta-db'
 import { executeQuery } from '../lib/db'
 
@@ -204,6 +207,200 @@ describe('notebook API e2e', () => {
     expect(response.payload).toMatchObject({
       error: 'query is required',
       code: 'INVALID_REQUEST',
+    })
+  })
+
+  it('import + export flow: imports canonical notebook and exports it', async () => {
+    const importResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'create',
+        notebook: {
+          spec_version: '1.0',
+          title: 'Imported Notebook',
+          description: 'Imported by test',
+          connection_name: 'default',
+          metadata: { source: 'vitest' },
+          cells: [
+            { id: 'c1', type: 'markdown', content: '# Hello' },
+            {
+              id: 'c2',
+              type: 'input',
+              content: '',
+              metadata: {
+                key: 'start_date',
+                label: 'Start Date',
+                inputType: 'date',
+                value: '2026-01-01',
+                required: true,
+                autoRun: true,
+              },
+            },
+            { id: 'c3', type: 'sql', content: 'select {{start_date}} as d;' },
+          ],
+        },
+      },
+    })
+
+    expect(importResponse.statusCode).toBe(200)
+    expect(importResponse.payload).toMatchObject({
+      ok: true,
+      warnings: [],
+      notebook: {
+        spec_version: '1.0',
+        title: 'Imported Notebook',
+        description: 'Imported by test',
+        connection_name: 'default',
+        metadata: { source: 'vitest' },
+      },
+    })
+    const notebookId = (importResponse.payload as { notebook_id: string }).notebook_id
+
+    const exportResponse = await invokeApi(notebookExportHandler, {
+      method: 'GET',
+      query: { id: notebookId },
+    })
+
+    expect(exportResponse.statusCode).toBe(200)
+    expect(exportResponse.payload).toMatchObject({
+      spec_version: '1.0',
+      id: notebookId,
+      title: 'Imported Notebook',
+      description: 'Imported by test',
+      connection_name: 'default',
+      metadata: { source: 'vitest' },
+      cells: [
+        { id: 'c1', type: 'markdown', content: '# Hello' },
+        { id: 'c2', type: 'input' },
+        { id: 'c3', type: 'sql', content: 'select {{start_date}} as d;' },
+      ],
+    })
+  })
+
+  it('patch flow: updates title and inserts markdown cell', async () => {
+    const importResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'create',
+        notebook: {
+          spec_version: '1.0',
+          title: 'Patch Source',
+          cells: [{ id: 'c1', type: 'markdown', content: '# A' }],
+        },
+      },
+    })
+    const notebookId = (importResponse.payload as { notebook_id: string }).notebook_id
+
+    const patchResponse = await invokeApi(notebookPatchHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: {
+        spec_version: '1.0',
+        ops: [
+          { op: 'replace', path: '/title', value: 'Patch Target' },
+          { op: 'add', path: '/cells/1', value: { id: 'c2', type: 'markdown', content: '## Added' } },
+        ],
+      },
+    })
+
+    expect(patchResponse.statusCode).toBe(200)
+    expect(patchResponse.payload).toMatchObject({
+      ok: true,
+      notebook: {
+        title: 'Patch Target',
+        cells: [{ id: 'c1' }, { id: 'c2', content: '## Added' }],
+      },
+    })
+  })
+
+  it('import validate_only: validates and normalizes without persistence', async () => {
+    const beforeCounts = sqlite
+      .prepare(
+        `
+          SELECT
+            (SELECT COUNT(*) FROM notebooks) AS notebooks_count,
+            (SELECT COUNT(*) FROM notebook_cells) AS notebook_cells_count
+        `
+      )
+      .get() as { notebooks_count: number; notebook_cells_count: number }
+
+    const response = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'create',
+        validate_only: true,
+        notebook: {
+          spec_version: '1.0',
+          title: 'Validate-only Notebook',
+          description: 'Should not persist',
+          metadata: { source: 'vitest-validate-only' },
+          cells: [
+            { id: 'c2', type: 'markdown', position: 1, content: 'second' },
+            { id: 'c1', type: 'markdown', position: 0, content: 'first' },
+          ],
+        },
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.payload).toMatchObject({
+      ok: true,
+      warnings: [],
+      notebook: {
+        spec_version: '1.0',
+        title: 'Validate-only Notebook',
+        description: 'Should not persist',
+        metadata: { source: 'vitest-validate-only' },
+        cells: [{ id: 'c1', position: 0 }, { id: 'c2', position: 1 }],
+      },
+    })
+
+    const afterCounts = sqlite
+      .prepare(
+        `
+          SELECT
+            (SELECT COUNT(*) FROM notebooks) AS notebooks_count,
+            (SELECT COUNT(*) FROM notebook_cells) AS notebook_cells_count
+        `
+      )
+      .get() as { notebooks_count: number; notebook_cells_count: number }
+
+    expect(afterCounts).toEqual(beforeCounts)
+  })
+
+  it('import validation failure: returns 422 with details', async () => {
+    const response = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'create',
+        notebook: {
+          spec_version: '1.0',
+          title: 'Bad Notebook',
+          cells: [
+            {
+              id: 'input-1',
+              type: 'input',
+              content: '',
+              metadata: {
+                key: '1bad',
+                label: 'Invalid key',
+                inputType: 'text',
+                value: '',
+              },
+            },
+          ],
+        },
+      },
+    })
+
+    expect(response.statusCode).toBe(422)
+    expect(response.payload).toMatchObject({
+      error: 'validation_failed',
+      details: expect.arrayContaining([
+        expect.objectContaining({
+          path: '/notebook/cells/0/metadata/key',
+        }),
+      ]),
     })
   })
 })

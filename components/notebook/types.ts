@@ -26,6 +26,8 @@ export type NotebookCellType = 'sql' | 'markdown' | 'input'
 export type Notebook = {
   id: string
   title: string
+  description: string
+  metadata_json: Record<string, unknown>
   connection_name: string
   created_at: string
   updated_at: string

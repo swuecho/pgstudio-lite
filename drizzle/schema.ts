@@ -58,6 +58,7 @@ export const notebooks = sqliteTable(
     id: text('id').primaryKey(),
     title: text('title').notNull(),
     description: text('description').notNull().default(''),
+    metadataJson: text('metadata_json').notNull().default('{}'),
     connectionName: text('connection_name').notNull(),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),

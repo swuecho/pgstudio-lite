@@ -112,6 +112,9 @@ Migrations also run automatically on server startup via `/Users/hwu/dev/pgstudio
 - `GET|POST|PATCH|DELETE /api/snippets`
 - `GET|POST|PATCH|DELETE /api/notebooks`
 - `GET /api/notebooks/[id]`
+- `POST /api/notebooks/import`
+- `GET /api/notebooks/[id]/export`
+- `POST /api/notebooks/[id]/patch`
 - `POST|PATCH|DELETE /api/notebooks/[id]/cells`
 - `POST /api/notebooks/[id]/run-cell`
 - `GET /api/tables`
