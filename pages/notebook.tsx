@@ -6,8 +6,11 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import ThemeToggle from '../components/theme-toggle'
+import { NotebookHelpPanel } from '../components/notebook/NotebookHelpPanel'
+import { NotebookImportModal } from '../components/notebook/NotebookImportModal'
 import { InputCellEditor } from '../components/notebook/InputCellEditor'
 import { SqlCellEditor } from '../components/notebook/SqlCellEditor'
+import { useNotebookImport } from '../components/notebook/useNotebookImport'
 import { formatCell } from '../components/sql-editor/utils'
 import type { QueryResult } from '../components/sql-editor/types'
 import type { NotebookCell, NotebookCellType, NotebookInputCellMetadata, NotebookInputValues } from '../components/notebook/types'
@@ -22,12 +25,9 @@ import {
   createNotebook,
   deleteCell,
   deleteNotebook,
-  exportNotebook,
   getConnections,
   getNotebook,
   getNotebooks,
-  importNotebook,
-  type NotebookSpecV1,
   runCell,
   updateCell,
   updateNotebook,
@@ -35,59 +35,6 @@ import {
 import { extractTemplateKeys } from '../lib/notebook-params'
 
 const NOTEBOOKS_KEY = ['notebooks']
-const NOTEBOOK_LLM_PROMPT_TEMPLATE = `You are generating a pgstudio-lite notebook document.
-
-Return only valid JSON. Do not include markdown fences, prose, comments, or explanations.
-
-Requirements:
-- Output must follow notebook spec v1.
-- Set "spec_version" to "1.0".
-- Include top-level fields: spec_version, title, description, connection_name, metadata, cells.
-- cells must be a non-empty array.
-- Allowed cell types: markdown, input, sql.
-- Every cell must have stable id, type, and content.
-- input cells must include metadata with:
-  - key matching ^[A-Za-z_][A-Za-z0-9_]*$
-  - label, inputType, value
-- SQL cells should use template params in {{param_key}} form when input cells exist.
-- SQL content must not be empty.
-- Keep cell IDs deterministic and readable (example: md_intro, input_start_date, sql_main_query).
-- Put cells in intended execution order.
-- Prefer safe, read-only SQL (SELECT ...) unless asked otherwise.
-
-Task:
-{{TASK_DESCRIPTION}}
-
-Database context (if provided):
-{{DB_CONTEXT}}
-
-Notebook style preferences (if provided):
-{{STYLE_PREFERENCES}}
-
-Return JSON only.`
-
-const NOTEBOOK_PATCH_PROMPT_TEMPLATE = `You are updating an existing pgstudio-lite notebook.
-
-Return only valid JSON. Do not include markdown fences, prose, comments, or explanations.
-
-Requirements:
-- Output must be a JSON object with:
-  - "spec_version": "1.0"
-  - "ops": RFC 6902 JSON Patch operations array
-- Allowed patch operations: add, remove, replace
-- Paths must be valid JSON Pointer paths against the exported notebook JSON.
-- Keep existing cell IDs stable whenever possible.
-- If adding new cells, use deterministic readable IDs (example: md_notes_q1, sql_top_customers_v2).
-- If SQL uses parameters, ensure matching input keys exist.
-- Prefer safe read-only SQL (SELECT ...) unless asked otherwise.
-
-Current notebook JSON:
-{{CURRENT_NOTEBOOK_JSON}}
-
-Update request:
-{{PATCH_TASK_DESCRIPTION}}
-
-Return JSON only.`
 
 export default function NotebookPage() {
   const queryClient = useQueryClient()
@@ -101,10 +48,6 @@ export default function NotebookPage() {
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [showHelp, setShowHelp] = useState(false)
-  const [importMode, setImportMode] = useState<'create' | 'replace' | 'upsert'>('create')
-  const [importRawJson, setImportRawJson] = useState('')
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | null }>>({})
@@ -139,6 +82,11 @@ export default function NotebookPage() {
   const activeNotebook = detailQuery.data?.notebook
   const cells = detailQuery.data?.cells || []
   const sortedCells = useMemo(() => [...cells].sort((a, b) => a.position - b.position), [cells])
+  const notebookImport = useNotebookImport({
+    activeNotebookId,
+    setActiveNotebookId,
+    setStatus,
+  })
 
   useEffect(() => {
     draftByCellRef.current = draftByCell
@@ -218,6 +166,42 @@ export default function NotebookPage() {
     }
   }, [])
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      const typing = Boolean(target?.isContentEditable) || tag === 'input' || tag === 'textarea' || tag === 'select'
+
+      if (event.key === 'Escape') {
+        if (notebookImport.showImportModal) {
+          event.preventDefault()
+          notebookImport.setShowImportModal(false)
+        } else if (notebookImport.showHelp) {
+          event.preventDefault()
+          notebookImport.setShowHelp(false)
+        }
+        return
+      }
+
+      if (!(event.metaKey || event.ctrlKey)) return
+      if (typing) return
+
+      const key = event.key.toLowerCase()
+      if (key === 'i') {
+        event.preventDefault()
+        notebookImport.setShowImportModal(true)
+        return
+      }
+      if (key === 'e') {
+        event.preventDefault()
+        notebookImport.exportNotebookJson()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [notebookImport, activeNotebookId])
+
   const inputValues = useMemo(() => buildInputValues(sortedCells, inputDraftByCell), [sortedCells, inputDraftByCell])
   const inputKeys = useMemo(() => new Set(Object.keys(inputValues)), [inputValues])
   const notebookInputs = useMemo(
@@ -282,20 +266,6 @@ export default function NotebookPage() {
     onSuccess: () => {
       setStatus('Notebook deleted')
       void queryClient.invalidateQueries({ queryKey: NOTEBOOKS_KEY })
-    },
-    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
-  })
-
-  const importNotebookMutation = useMutation({
-    mutationFn: (payload: { mode: 'create' | 'replace' | 'upsert'; notebook: NotebookSpecV1; target_notebook_id?: string }) =>
-      importNotebook(payload),
-    onSuccess: (result) => {
-      setStatus(result.warnings.length ? `Imported with warnings (${result.warnings.length})` : 'Notebook imported')
-      setActiveNotebookId(result.notebook_id)
-      setShowImportModal(false)
-      setImportRawJson('')
-      void queryClient.invalidateQueries({ queryKey: NOTEBOOKS_KEY })
-      void queryClient.invalidateQueries({ queryKey: ['notebook', result.notebook_id] })
     },
     onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
   })
@@ -547,55 +517,6 @@ export default function NotebookPage() {
     }
   }
 
-  function downloadExportJson() {
-    if (!activeNotebookId) return
-    void exportNotebook(activeNotebookId)
-      .then((notebook) => {
-        const text = `${JSON.stringify(notebook, null, 2)}\n`
-        const blob = new Blob([text], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        const safeTitle = (notebook.title || 'notebook').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-        link.href = url
-        link.download = `${safeTitle || 'notebook'}-${notebook.id || activeNotebookId}.json`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-        setStatus('Notebook exported')
-      })
-      .catch((error) => setStatus(error instanceof Error ? error.message : String(error)))
-  }
-
-  function submitImportFromModal() {
-    let parsed: NotebookSpecV1
-    try {
-      parsed = JSON.parse(importRawJson) as NotebookSpecV1
-    } catch {
-      setStatus('Invalid JSON in import payload')
-      return
-    }
-
-    if (importMode === 'replace' && !activeNotebookId) {
-      setStatus('Select a notebook before using replace mode')
-      return
-    }
-
-    importNotebookMutation.mutate({
-      mode: importMode,
-      notebook: parsed,
-      target_notebook_id: importMode === 'replace' ? activeNotebookId : undefined,
-    })
-  }
-
-  function copyPromptTemplate(kind: 'generate' | 'patch') {
-    const text = kind === 'generate' ? NOTEBOOK_LLM_PROMPT_TEMPLATE : NOTEBOOK_PATCH_PROMPT_TEMPLATE
-    void navigator.clipboard
-      .writeText(text)
-      .then(() => setStatus(kind === 'generate' ? 'Generate prompt copied' : 'Patch prompt copied'))
-      .catch(() => setStatus('Clipboard copy failed'))
-  }
-
   return (
     <div className="layout-root">
       <aside className="layout-rail">
@@ -701,45 +622,33 @@ export default function NotebookPage() {
             <button className="btn small primary notebook-action-btn" disabled={!activeNotebookId || runningAll} onClick={() => void runAllSqlCells()}>
               {runningAll ? 'Running All...' : 'Run All'}
             </button>
-            <button className="btn small notebook-action-btn" onClick={() => setShowImportModal(true)}>
+            <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowImportModal(true)}>
               Import
             </button>
-            <button className="btn small notebook-action-btn" disabled={!activeNotebookId} onClick={downloadExportJson}>
+            <button className="btn small notebook-action-btn" disabled={!activeNotebookId} onClick={notebookImport.exportNotebookJson}>
               Export
             </button>
-            <button className="btn small notebook-action-btn" onClick={() => setShowHelp((prev) => !prev)}>
-              {showHelp ? 'Hide Help' : 'Help'}
+            <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowHelp((prev) => !prev)}>
+              {notebookImport.showHelp ? 'Hide Help' : 'Help'}
             </button>
             <span className="history-meta notebook-shortcuts">Ctrl/Cmd+Enter: Run · Shift+Enter: Run + Next SQL</span>
           </div>
         </div>
 
-        {showHelp ? (
-          <section className="notebook-help-panel">
-            <h3>Notebook Import/Export Help</h3>
-            <p>Use this page as a presentation layer. Generate notebook JSON with Codex/Claude, then import it.</p>
-            <p>
-              Required import format: <code>spec_version</code>, <code>title</code>, <code>description</code>,{' '}
-              <code>connection_name</code>, <code>metadata</code>, <code>cells</code>.
-            </p>
-            <p>
-              Cell types: <code>markdown</code>, <code>input</code>, <code>sql</code>. Use SQL params like{' '}
-              <code>{'{{start_date}}'}</code> and define matching <code>input</code> metadata keys.
-            </p>
-            <p>
-              Use prompt template: <code>docs/notebook-llm-prompt-template.md</code>.
-              <button className="btn small notebook-help-copy-btn" onClick={() => copyPromptTemplate('generate')}>
-                Generate New Notebook Prompt
-              </button>
-              <button className="btn small notebook-help-copy-btn" onClick={() => copyPromptTemplate('patch')}>
-                Patch Existing Notebook Prompt
-              </button>
-            </p>
-            <p>
-              API endpoints: <code>POST /api/notebooks/import</code>, <code>GET /api/notebooks/:id/export</code>,{' '}
-              <code>POST /api/notebooks/:id/patch</code>.
-            </p>
-          </section>
+        {notebookImport.showHelp ? (
+          <NotebookHelpPanel
+            promptTask={notebookImport.promptTask}
+            setPromptTask={notebookImport.setPromptTask}
+            promptDbContext={notebookImport.promptDbContext}
+            setPromptDbContext={notebookImport.setPromptDbContext}
+            promptStyle={notebookImport.promptStyle}
+            setPromptStyle={notebookImport.setPromptStyle}
+            promptPatchTask={notebookImport.promptPatchTask}
+            setPromptPatchTask={notebookImport.setPromptPatchTask}
+            copyGeneratePrompt={notebookImport.copyGeneratePrompt}
+            copyPatchPromptPrefilled={notebookImport.copyPatchPromptPrefilled}
+            copyHelpApiSnippet={notebookImport.copyHelpApiSnippet}
+          />
         ) : null}
 
         <div className="notebook-cells">
@@ -982,42 +891,28 @@ export default function NotebookPage() {
         </div>
       </main>
 
-      {showImportModal ? (
-        <div className="notebook-modal-overlay" role="dialog" aria-modal="true" aria-label="Import notebook JSON">
-          <div className="notebook-modal">
-            <div className="notebook-modal-head">
-              <strong>Import Notebook JSON</strong>
-              <button className="btn small" onClick={() => setShowImportModal(false)}>
-                Close
-              </button>
-            </div>
-            <div className="notebook-modal-controls">
-              <label htmlFor="import-mode">Mode</label>
-              <select
-                id="import-mode"
-                value={importMode}
-                onChange={(event) => setImportMode(event.target.value as 'create' | 'replace' | 'upsert')}
-              >
-                <option value="create">create (new notebook)</option>
-                <option value="replace">replace (active notebook)</option>
-                <option value="upsert">upsert (id-aware)</option>
-              </select>
-              <button
-                className="btn small primary"
-                onClick={submitImportFromModal}
-                disabled={importNotebookMutation.isPending || !importRawJson.trim()}
-              >
-                {importNotebookMutation.isPending ? 'Importing...' : 'Import'}
-              </button>
-            </div>
-            <textarea
-              className="notebook-import-textarea"
-              value={importRawJson}
-              onChange={(event) => setImportRawJson(event.target.value)}
-              placeholder={`Paste notebook JSON here.\nTip: use docs/notebook-llm-prompt-template.md for LLM generation.`}
-            />
-          </div>
-        </div>
+      {notebookImport.showImportModal ? (
+        <NotebookImportModal
+          importMode={notebookImport.importMode}
+          setImportMode={notebookImport.setImportMode}
+          importRawJson={notebookImport.importRawJson}
+          setImportRawJson={notebookImport.setImportRawJson}
+          isImporting={notebookImport.isImporting}
+          isValidating={notebookImport.isValidating}
+          importParseHint={notebookImport.importParseHint}
+          importValidationSnapshot={notebookImport.importValidationSnapshot}
+          importValidationWarnings={notebookImport.importValidationWarnings}
+          importDiffSummary={notebookImport.importDiffSummary}
+          importErrorDetails={notebookImport.importErrorDetails}
+          canUseCurrentJson={Boolean(activeNotebookId)}
+          onClose={() => notebookImport.setShowImportModal(false)}
+          onPaste={notebookImport.pasteImportJsonFromClipboard}
+          onFormatJson={notebookImport.formatImportJson}
+          onValidate={notebookImport.validateImportDraft}
+          onPreviewDiff={notebookImport.previewImportDiff}
+          onUseCurrentJson={notebookImport.loadCurrentNotebookJson}
+          onImport={notebookImport.submitImportFromModal}
+        />
       ) : null}
     </div>
   )
