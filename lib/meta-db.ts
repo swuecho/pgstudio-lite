@@ -59,6 +59,11 @@ if (hasTable('notebook_cells') && !hasColumn('notebook_cells', 'last_result_json
   sqlite.exec(`ALTER TABLE notebook_cells ADD COLUMN last_result_json text;`)
 }
 
+if (hasTable('notebooks') && !hasColumn('notebooks', 'metadata_json')) {
+  sqlite.exec(`ALTER TABLE notebooks ADD COLUMN metadata_json text NOT NULL DEFAULT '{}';`)
+  sqlite.exec(`UPDATE notebooks SET metadata_json = '{}' WHERE metadata_json IS NULL OR trim(metadata_json) = '';`)
+}
+
 if (hasTable('query_snippets')) {
   if (!hasColumn('query_snippets', 'connection_name')) {
     sqlite.exec(`ALTER TABLE query_snippets ADD COLUMN connection_name text;`)

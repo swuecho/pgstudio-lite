@@ -30,6 +30,8 @@ export type NotebookInputCellMetadata = {
 export type Notebook = {
   id: string
   title: string
+  description: string
+  metadata_json: Record<string, unknown>
   connection_name: string
   created_at: string
   updated_at: string
@@ -52,10 +54,42 @@ export type NotebookCell = {
   updated_at: string
 }
 
+export type NotebookSpecV1Cell = {
+  id: string
+  type: NotebookCellType
+  position?: number
+  collapsed?: boolean
+  content: string
+  metadata?: Record<string, unknown>
+}
+
+export type NotebookSpecV1 = {
+  spec_version: '1.0'
+  id?: string
+  title: string
+  description?: string
+  connection_name?: string
+  metadata?: Record<string, unknown>
+  cells: NotebookSpecV1Cell[]
+}
+
 function toNotebook(row: typeof notebooks.$inferSelect): Notebook {
+  let parsedMetadata: Record<string, unknown> = {}
+  if (row.metadataJson) {
+    try {
+      const value = JSON.parse(row.metadataJson) as unknown
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        parsedMetadata = value as Record<string, unknown>
+      }
+    } catch {
+      parsedMetadata = {}
+    }
+  }
   return {
     id: row.id,
     title: row.title,
+    description: row.description,
+    metadata_json: parsedMetadata,
     connection_name: row.connectionName,
     created_at: row.createdAt,
     updated_at: row.updatedAt,
@@ -234,6 +268,8 @@ export function createNotebook(input: { title: string; connectionName?: string }
   const title = input.title.trim()
   if (!title) throw new Error('title is required')
   const connectionName = input.connectionName?.trim() || getDefaultConnectionName()
+  const description = ''
+  const metadataJson = '{}'
   const now = new Date().toISOString()
   const id = randomUUID()
   metaDb
@@ -241,6 +277,8 @@ export function createNotebook(input: { title: string; connectionName?: string }
     .values({
       id,
       title,
+      description,
+      metadataJson,
       connectionName,
       createdAt: now,
       updatedAt: now,
@@ -275,6 +313,197 @@ export function updateNotebook(id: string, input: { title?: string; connectionNa
 
   const updated = metaDb.select().from(notebooks).where(eq(notebooks.id, id)).get()
   return updated ? toNotebook(updated) : null
+}
+
+export function importNotebookSpecV1(input: {
+  mode?: 'create' | 'replace' | 'upsert'
+  targetNotebookId?: string
+  notebook: NotebookSpecV1
+  validateOnly?: boolean
+}) {
+  const mode = input.mode || 'create'
+  const spec = input.notebook
+  const warnings: string[] = []
+  const description = (spec.description || '').trim()
+  const metadata = spec.metadata && typeof spec.metadata === 'object' && !Array.isArray(spec.metadata) ? spec.metadata : {}
+  const connectionName = spec.connection_name?.trim() || getDefaultConnectionName()
+  const existingByTarget = input.targetNotebookId
+    ? metaDb.select().from(notebooks).where(eq(notebooks.id, input.targetNotebookId)).get()
+    : null
+  const existingBySpecId = spec.id ? metaDb.select().from(notebooks).where(eq(notebooks.id, spec.id)).get() : null
+
+  let notebookId: string
+  if (mode === 'create') {
+    notebookId = randomUUID()
+  } else if (mode === 'replace') {
+    if (!input.targetNotebookId) throw new Error('target_notebook_id is required for replace mode')
+    if (!existingByTarget) {
+      const error = new Error('notebook not found') as Error & { statusCode?: number }
+      error.statusCode = 404
+      throw error
+    }
+    notebookId = input.targetNotebookId
+  } else if (existingByTarget) {
+    notebookId = existingByTarget.id
+  } else if (existingBySpecId) {
+    notebookId = existingBySpecId.id
+  } else {
+    notebookId = spec.id || randomUUID()
+  }
+
+  const sortedCells = [...spec.cells]
+    .map((cell, index) => ({ ...cell, __index: index }))
+    .sort((a, b) => {
+      const ap = a.position === undefined ? a.__index : a.position
+      const bp = b.position === undefined ? b.__index : b.position
+      return ap - bp
+    })
+
+  if (input.validateOnly) {
+    return {
+      notebook_id: notebookId,
+      warnings,
+      notebook: exportNotebookSpecV1FromPayload({
+        id: notebookId,
+        title: spec.title,
+        description,
+        metadata,
+        connectionName,
+        cells: sortedCells.map((cell, position) => ({
+          id: cell.id,
+          position,
+          type: cell.type,
+          content: cell.content,
+          collapsed: cell.collapsed ?? false,
+          metadata: cell.metadata,
+        })),
+      }),
+    }
+  }
+
+  const now = new Date().toISOString()
+  metaDb.transaction((tx) => {
+    if (mode === 'create' && spec.id) {
+      const existing = tx.select({ id: notebooks.id }).from(notebooks).where(eq(notebooks.id, spec.id)).get()
+      if (existing) {
+        const error = new Error('notebook already exists') as Error & { statusCode?: number }
+        error.statusCode = 409
+        throw error
+      }
+    }
+
+    const exists = tx.select({ id: notebooks.id }).from(notebooks).where(eq(notebooks.id, notebookId)).get()
+    if (!exists) {
+      tx.insert(notebooks)
+        .values({
+          id: notebookId,
+          title: spec.title.trim(),
+          description,
+          metadataJson: JSON.stringify(metadata),
+          connectionName,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run()
+    } else {
+      tx.update(notebooks)
+        .set({
+          title: spec.title.trim(),
+          description,
+          metadataJson: JSON.stringify(metadata),
+          connectionName,
+          updatedAt: now,
+        })
+        .where(eq(notebooks.id, notebookId))
+        .run()
+    }
+
+    tx.delete(notebookCells).where(eq(notebookCells.notebookId, notebookId)).run()
+
+    for (const [position, cell] of sortedCells.entries()) {
+      const metadata =
+        cell.type === 'input'
+          ? JSON.stringify(normalizeInputMetadata(cell.metadata && isInputCellMetadata(cell.metadata) ? cell.metadata : defaultInputMetadata()))
+          : null
+      tx.insert(notebookCells)
+        .values({
+          id: cell.id,
+          notebookId,
+          position,
+          type: cell.type,
+          content: cell.type === 'input' ? (cell.content ?? '') : String(cell.content ?? ''),
+          collapsed: cell.collapsed ?? false,
+          metadataJson: metadata,
+          updatedAt: now,
+        })
+        .run()
+    }
+  })
+
+  return {
+    notebook_id: notebookId,
+    warnings,
+    notebook: exportNotebookSpecV1ById(notebookId),
+  }
+}
+
+function exportNotebookSpecV1FromPayload(input: {
+  id: string
+  title: string
+  description: string
+  metadata: Record<string, unknown>
+  connectionName: string
+  cells: Array<{
+    id: string
+    position: number
+    type: NotebookCellType
+    content: string
+    collapsed: boolean
+    metadata?: Record<string, unknown>
+  }>
+}): NotebookSpecV1 {
+  return {
+    spec_version: '1.0',
+    id: input.id,
+    title: input.title,
+    description: input.description,
+    connection_name: input.connectionName,
+    metadata: input.metadata,
+    cells: input.cells.map((cell) => ({
+      id: cell.id,
+      type: cell.type,
+      position: cell.position,
+      collapsed: cell.collapsed,
+      content: cell.content,
+      metadata: cell.type === 'input' && cell.metadata ? cell.metadata : undefined,
+    })),
+  }
+}
+
+export function exportNotebookSpecV1ById(id: string): NotebookSpecV1 {
+  const data = getNotebookById(id)
+  if (!data) {
+    const error = new Error('notebook not found') as Error & { statusCode?: number }
+    error.statusCode = 404
+    throw error
+  }
+
+  return {
+    spec_version: '1.0',
+    id: data.notebook.id,
+    title: data.notebook.title,
+    description: data.notebook.description,
+    connection_name: data.notebook.connection_name,
+    metadata: data.notebook.metadata_json,
+    cells: data.cells.map((cell) => ({
+      id: cell.id,
+      type: cell.type,
+      position: cell.position,
+      collapsed: cell.collapsed,
+      content: cell.content,
+      metadata: cell.type === 'input' ? cell.metadata_json ?? undefined : undefined,
+    })),
+  }
 }
 
 export function deleteNotebook(id: string) {
