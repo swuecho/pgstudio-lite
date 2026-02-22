@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { badRequest } from './errors'
 
 export const nonEmptyStringSchema = z.string().trim().min(1)
 
@@ -17,7 +18,5 @@ export function parseWithSchema<T extends z.ZodTypeAny>(schema: T, input: unknow
   const result = schema.safeParse(input)
   if (result.success) return result.data
   const message = result.error.issues[0]?.message || 'Invalid request payload'
-  const error = new Error(message) as Error & { statusCode?: number }
-  error.statusCode = 400
-  throw error
+  throw badRequest(message, 'INVALID_REQUEST')
 }
