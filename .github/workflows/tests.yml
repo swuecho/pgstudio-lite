@@ -24,5 +24,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Init test DB schema
+        run: mkdir -p data && npm run db:migrate
+
       - name: Run tests
+        env:
+          SKIP_RUNTIME_MIGRATE: '1'
         run: npm test
