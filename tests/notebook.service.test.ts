@@ -125,4 +125,48 @@ describe('notebook service', () => {
     expect(calls[0].options?.method).toBe('POST')
     expect(calls[0].options?.body).toBe(JSON.stringify({ type: 'sql', content: 'select 1;', position: 2 }))
   })
+
+  it('importNotebook posts payload to import endpoint', async () => {
+    const calls = installFetchMock([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          ok: true,
+          notebook_id: 'nb-imported',
+          warnings: [],
+          notebook: { spec_version: '1.0', title: 'Imported', cells: [{ id: 'c1', type: 'markdown', content: '# title' }] },
+        },
+      },
+    ])
+
+    const payload = {
+      mode: 'create' as const,
+      notebook: {
+        spec_version: '1.0' as const,
+        title: 'Imported',
+        cells: [{ id: 'c1', type: 'markdown' as const, content: '# title' }],
+      },
+    }
+    await notebookService.importNotebook(payload)
+
+    expect(calls[0].path).toBe('/api/notebooks/import')
+    expect(calls[0].options?.method).toBe('POST')
+    expect(calls[0].options?.body).toBe(JSON.stringify(payload))
+  })
+
+  it('exportNotebook requests export endpoint', async () => {
+    const calls = installFetchMock([
+      {
+        ok: true,
+        status: 200,
+        payload: { spec_version: '1.0', id: 'nb-1', title: 'Exported', cells: [{ id: 'c1', type: 'markdown', content: '# title' }] },
+      },
+    ])
+
+    await notebookService.exportNotebook('nb-1')
+
+    expect(calls[0].path).toBe('/api/notebooks/nb-1/export')
+    expect(calls[0].options?.method).toBeUndefined()
+  })
 })
