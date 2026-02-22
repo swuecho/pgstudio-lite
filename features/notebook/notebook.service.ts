@@ -10,6 +10,30 @@ import type {
   RunCellResponse,
 } from '../../components/notebook/types'
 
+export type NotebookSpecV1 = {
+  spec_version: '1.0'
+  id?: string
+  title: string
+  description?: string
+  connection_name?: string
+  metadata?: Record<string, unknown>
+  cells: Array<{
+    id: string
+    type: 'sql' | 'markdown' | 'input'
+    position?: number
+    collapsed?: boolean
+    content: string
+    metadata?: Record<string, unknown>
+  }>
+}
+
+export type ImportNotebookResponse = {
+  ok: boolean
+  notebook_id: string
+  warnings: string[]
+  notebook: NotebookSpecV1
+}
+
 export async function getConnections() {
   return fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
 }
@@ -83,4 +107,20 @@ export async function runCell(notebookId: string, cellId: string, query: string,
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export async function importNotebook(payload: {
+  mode?: 'create' | 'replace' | 'upsert'
+  target_notebook_id?: string
+  notebook: NotebookSpecV1
+  validate_only?: boolean
+}) {
+  return fetchJson<ImportNotebookResponse>('/api/notebooks/import', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function exportNotebook(notebookId: string) {
+  return fetchJson<NotebookSpecV1>(`/api/notebooks/${encodeURIComponent(notebookId)}/export`)
 }
