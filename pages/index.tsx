@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
@@ -8,9 +8,17 @@ import { useSqlEditorState } from '../components/sql-editor/useSqlEditorState'
 import { formatCell, formatTime } from '../components/sql-editor/utils'
 
 export default function SqlEditorPage() {
+  const MIN_EDITOR_HEIGHT = 140
+  const MIN_RESULTS_HEIGHT = 120
+  const SPLITTER_HEIGHT = 12
+
   const state = useSqlEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
+  const [resultsHeight, setResultsHeight] = useState(260)
+  const [isResizing, setIsResizing] = useState(false)
   const sidebarSearchRef = useRef<HTMLInputElement>(null)
+  const editorPanelBodyRef = useRef<HTMLDivElement>(null)
+  const editorFooterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {
@@ -85,6 +93,42 @@ export default function SqlEditorPage() {
     state.setActiveNavTab,
     state.setHistorySearch,
   ])
+
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('resizing-sql-split')
+    }
+  }, [])
+
+  const startResize = (event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const panel = editorPanelBodyRef.current
+    if (!panel) return
+
+    const startY = event.clientY
+    const startHeight = resultsHeight
+    setIsResizing(true)
+    document.body.classList.add('resizing-sql-split')
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const footerHeight = editorFooterRef.current?.offsetHeight ?? 0
+      const availableHeight = panel.clientHeight - footerHeight - SPLITTER_HEIGHT
+      const maxResultsHeight = Math.max(MIN_RESULTS_HEIGHT, availableHeight - MIN_EDITOR_HEIGHT)
+      const deltaY = moveEvent.clientY - startY
+      const nextHeight = Math.min(maxResultsHeight, Math.max(MIN_RESULTS_HEIGHT, startHeight - deltaY))
+      setResultsHeight(nextHeight)
+    }
+
+    const onMouseUp = () => {
+      setIsResizing(false)
+      document.body.classList.remove('resizing-sql-split')
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
 
   return (
     <div className="layout-root">
@@ -185,7 +229,7 @@ export default function SqlEditorPage() {
           onCloseTab={state.closeTab}
         />
 
-        <div className="editor-panel-body">
+        <div className="editor-panel-body" ref={editorPanelBodyRef}>
           <EditorPane
             value={state.activeQueryTab?.query || ''}
             onChangeValue={(value) => state.setActiveTabQuery(value)}
@@ -201,9 +245,22 @@ export default function SqlEditorPage() {
             tableColumnsByKeyRef={state.tableColumnsByKeyRef}
           />
 
-          <SqlResultsPanel result={state.result} formatCell={formatCell} connectionName={state.connectionName} />
+          <div
+            className={`editor-splitter${isResizing ? ' active' : ''}`}
+            role="separator"
+            aria-label="Resize editor and results panels"
+            aria-orientation="horizontal"
+            onMouseDown={startResize}
+          />
 
-          <div className="editor-footer">
+          <SqlResultsPanel
+            result={state.result}
+            formatCell={formatCell}
+            connectionName={state.connectionName}
+            style={{ flexBasis: `${resultsHeight}px` }}
+          />
+
+          <div className="editor-footer" ref={editorFooterRef}>
             <button className="btn primary" disabled={state.running} onClick={() => void state.runCurrentQuery()}>
               {state.running ? 'Running...' : state.runLabel}
             </button>

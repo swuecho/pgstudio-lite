@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 
 type TableEditorLocalStore = {
-  connectionName: string
   activeTable: string
   status: string
   page: number
@@ -11,7 +10,6 @@ type TableEditorLocalStore = {
   filterColumn: string
   filterValue: string
   filterMode: 'contains' | 'equals'
-  setConnectionName: (value: string) => void
   setActiveTable: (value: string) => void
   setStatus: (value: string) => void
   setPage: (value: number | ((prev: number) => number)) => void
@@ -24,7 +22,6 @@ type TableEditorLocalStore = {
 }
 
 export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => ({
-  connectionName: 'default',
   activeTable: '',
   status: 'Ready',
   page: 0,
@@ -34,7 +31,6 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   filterColumn: '',
   filterValue: '',
   filterMode: 'contains',
-  setConnectionName: (value) => set({ connectionName: value }),
   setActiveTable: (value) => set({ activeTable: value }),
   setStatus: (value) => set({ status: value }),
   setPage: (value) => set((state) => ({ page: typeof value === 'function' ? value(state.page) : value })),
