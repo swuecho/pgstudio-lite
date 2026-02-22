@@ -5,10 +5,8 @@ import runCellHandler from '../pages/api/notebooks/[id]/run-cell'
 import { sqlite } from '../lib/meta-db'
 import { executeQuery } from '../lib/db'
 
-vi.mock('../lib/db', async () => {
-  const actual = await vi.importActual<typeof import('../lib/db')>('../lib/db')
+vi.mock('../lib/db', () => {
   return {
-    ...actual,
     getConnections: vi.fn(() => [
       {
         id: 'conn-default',
