@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { createNotebook, deleteNotebook, listNotebooks, updateNotebook } from '../../../lib/notebook-db'
+import { methodNotAllowed, sendApiError } from '../../../lib/api/errors'
 import { nonEmptyStringSchema, optionalConnectionNameSchema, parseWithSchema } from '../../../lib/api/validation'
 
 const notebooksQuerySchema = z.object({
@@ -55,11 +56,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(200).json({ ok: true })
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    const statusCode = (error as { statusCode?: number })?.statusCode || 400
-    return res.status(statusCode).json({ error: message })
+    return sendApiError(res, error)
   }
 
-  res.setHeader('Allow', 'GET, POST, PATCH, DELETE')
-  return res.status(405).json({ error: 'Method not allowed' })
+  return methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'])
 }
