@@ -48,6 +48,7 @@ export default function NotebookPage() {
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
+  const [notebookSearch, setNotebookSearch] = useState('')
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | null }>>({})
@@ -538,14 +539,24 @@ export default function NotebookPage() {
         </div>
 
         <div className="layout-nav-controls">
-          <input disabled value={status} readOnly />
+          <input
+            placeholder="Search notebooks"
+            value={notebookSearch}
+            onChange={(e) => setNotebookSearch(e.target.value)}
+          />
           <button className="btn small" onClick={() => createNotebookMutation.mutate()}>
             New
           </button>
         </div>
 
         <div className="layout-nav-list">
-          {notebooks.map((item) => (
+          {notebooks
+            .filter((item) =>
+              !notebookSearch.trim() ||
+              item.title.toLowerCase().includes(notebookSearch.toLowerCase()) ||
+              item.connection_name.toLowerCase().includes(notebookSearch.toLowerCase())
+            )
+            .map((item) => (
             <button
               key={item.id}
               className={`history-item ${item.id === activeNotebookId ? 'active-item' : ''}`}
@@ -606,22 +617,6 @@ export default function NotebookPage() {
                 </option>
               ))}
             </select>
-            <button className="btn small notebook-action-btn" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('sql')}>
-              Add SQL
-            </button>
-            <button
-              className="btn small notebook-action-btn"
-              disabled={!activeNotebookId || runningAll}
-              onClick={() => addCellMutation.mutate('markdown')}
-            >
-              Add Markdown
-            </button>
-            <button className="btn small notebook-action-btn" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('input')}>
-              Add Input
-            </button>
-            <button className="btn small primary notebook-action-btn" disabled={!activeNotebookId || runningAll} onClick={() => void runAllSqlCells()}>
-              {runningAll ? 'Running All...' : 'Run All'}
-            </button>
             <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowImportModal(true)}>
               Import
             </button>
@@ -631,7 +626,26 @@ export default function NotebookPage() {
             <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowHelp((prev) => !prev)}>
               {notebookImport.showHelp ? 'Hide Help' : 'Help'}
             </button>
-            <span className="history-meta notebook-shortcuts">Ctrl/Cmd+Enter: Run · Shift+Enter: Run + Next SQL</span>
+          </div>
+        </div>
+
+        <div className="notebook-toolbar">
+          <div className="notebook-cell-count">
+            <span className="history-meta">{sortedCells.length} {sortedCells.length === 1 ? 'cell' : 'cells'}</span>
+          </div>
+          <div className="notebook-toolbar-actions">
+            <button className="btn small" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('sql')}>
+              Add SQL
+            </button>
+            <button className="btn small" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('markdown')}>
+              Add Markdown
+            </button>
+            <button className="btn small" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('input')}>
+              Add Input
+            </button>
+            <button className="btn small primary" disabled={!activeNotebookId || runningAll} onClick={() => void runAllSqlCells()}>
+              {runningAll ? 'Running All...' : 'Run All'}
+            </button>
           </div>
         </div>
 

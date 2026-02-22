@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { RefObject } from 'react'
+import ThemeToggle from '../theme-toggle'
 import { HistoryItem, SchemaTable, SnippetItem } from './types'
 
 type SqlSidebarProps = {
@@ -104,6 +105,9 @@ export function SqlSidebar({
         <Link className="rail-btn link-btn" href="/notebook">
           NB
         </Link>
+        <div className="mt-auto flex justify-center">
+          <ThemeToggle />
+        </div>
       </aside>
 
       <aside className="layout-nav">
