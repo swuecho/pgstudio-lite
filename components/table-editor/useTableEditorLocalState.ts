@@ -1,8 +1,9 @@
+import { useActiveConnectionStore } from '../shared/stores/activeConnectionStore'
 import { useTableEditorLocalStore } from './stores/tableEditorLocalStore'
 
 export function useTableEditorLocalState() {
-  const connectionName = useTableEditorLocalStore((s) => s.connectionName)
-  const setConnectionName = useTableEditorLocalStore((s) => s.setConnectionName)
+  const connectionName = useActiveConnectionStore((s) => s.connectionName)
+  const setConnectionName = useActiveConnectionStore((s) => s.setConnectionName)
   const activeTable = useTableEditorLocalStore((s) => s.activeTable)
   const setActiveTable = useTableEditorLocalStore((s) => s.setActiveTable)
   const status = useTableEditorLocalStore((s) => s.status)

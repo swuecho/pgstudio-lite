@@ -8,16 +8,18 @@ import { useSqlEditorExplorer } from './useSqlEditorExplorer'
 import { useSqlEditorHistory } from './useSqlEditorHistory'
 import { useSqlEditorSnippets } from './useSqlEditorSnippets'
 import { useSqlEditorTabs } from './useSqlEditorTabs'
+import { useActiveConnectionStore } from '../shared/stores/activeConnectionStore'
 
 export function useSqlEditorState() {
   const [editorRef, setEditorRef] = useState<MonacoEditorNs.IStandaloneCodeEditor | null>(null)
-  const [connectionName, setConnectionName] = useState('default')
   const [status, setStatus] = useState<{ text: string; tone: string }>({ text: 'Ready', tone: 'default' })
   const [activeNavTab, setActiveNavTab] = useState<'history' | 'snippets' | 'explorer'>('explorer')
   const [historySearch, setHistorySearch] = useState('')
   const [running, setRunning] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
+  const connectionName = useActiveConnectionStore((s) => s.connectionName)
+  const setConnectionName = useActiveConnectionStore((s) => s.setConnectionName)
 
   const tabs = useSqlEditorTabs()
   const explorer = useSqlEditorExplorer(connectionName, historySearch)

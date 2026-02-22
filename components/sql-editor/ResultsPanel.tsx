@@ -1,15 +1,17 @@
 import Link from 'next/link'
+import type { CSSProperties } from 'react'
 import { QueryResult } from './types'
 
 type SqlResultsPanelProps = {
   result: QueryResult | null
   formatCell: (value: unknown) => string
   connectionName: string
+  style?: CSSProperties
 }
 
-export function SqlResultsPanel({ result, formatCell, connectionName }: SqlResultsPanelProps) {
+export function SqlResultsPanel({ result, formatCell, connectionName, style }: SqlResultsPanelProps) {
   return (
-    <div className="results-wrap">
+    <div className="results-wrap" style={style}>
       <div className="results-head">
         <span>Results</span>
         <span className="history-meta">{result ? `${result.totalRows} rows` : ''}</span>

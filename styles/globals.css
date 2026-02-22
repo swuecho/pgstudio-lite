@@ -632,6 +632,30 @@ select {
   grid-template-rows: 38px 1fr 34px;
 }
 
+.editor-splitter {
+  height: 12px;
+  flex: 0 0 12px;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+}
+
+.editor-splitter::before {
+  content: '';
+  width: 100%;
+  max-width: 56px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.editor-splitter:hover::before,
+.editor-splitter.active::before {
+  background: var(--link);
+}
+
 .results-head,
 .results-foot,
 .editor-footer {
@@ -675,6 +699,11 @@ select {
   border-top: 1px solid var(--border);
   justify-content: flex-end;
   background: var(--surface-editor-footer);
+}
+
+body.resizing-sql-split {
+  cursor: row-resize;
+  user-select: none;
 }
 
 .btn {
