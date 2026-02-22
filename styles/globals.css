@@ -180,7 +180,7 @@ select {
   border-right: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface-nav-start), var(--surface-nav-end));
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto 1fr;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -193,11 +193,26 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .nav-title {
   font-size: 13px;
   font-weight: 600;
+  flex-shrink: 0;
+}
+
+.nav-tabs-inline {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-tabs-inline .nav-tab {
+  padding: 4px 8px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .layout-nav-tabs {
@@ -231,8 +246,18 @@ select {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
+  height: 46px;
+  align-items: center;
+}
+
+.layout-nav-controls .btn {
+  height: var(--control-h);
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .layout-nav-controls input,
@@ -480,12 +505,15 @@ select {
 
 .editor-panel-header {
   height: var(--header-h);
+  min-height: var(--header-h);
+  max-height: var(--header-h);
   border-bottom: 1px solid var(--border);
   padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--panel);
+  flex-shrink: 0;
 }
 
 .table-main-header {
@@ -497,6 +525,8 @@ select {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .table-header-table {
@@ -523,6 +553,9 @@ select {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .status-pill {
@@ -555,13 +588,14 @@ select {
 }
 
 .sql-tabs-bar {
-  height: 36px;
+  height: 46px;
   border-bottom: 1px solid var(--border);
-  padding: 4px 8px;
+  padding: 8px;
   display: flex;
   gap: 6px;
   overflow: auto hidden;
   background: var(--panel);
+  align-items: center;
 }
 
 .sql-tab {
@@ -902,9 +936,11 @@ pre {
   display: grid;
   grid-template-columns: 1fr auto auto 1fr minmax(120px, 1fr) auto auto;
   gap: 8px;
-  padding: 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
+  height: 46px;
+  align-items: center;
   z-index: 2;
 }
 
@@ -1168,6 +1204,8 @@ pre {
   min-width: 0;
   flex-wrap: nowrap;
   gap: var(--space-2);
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .notebook-status-pill {

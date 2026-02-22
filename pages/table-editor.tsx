@@ -12,7 +12,7 @@ export default function TableEditorPage() {
   const [managingConnections, setManagingConnections] = useState(false)
   const filterValueInputRef = useRef<HTMLInputElement>(null)
   const didInitUrlSyncRef = useRef(false)
-  const sidebarProps = state.getSidebarProps(() => setManagingConnections(true))
+  const sidebarProps = state.getSidebarProps()
   const gridProps = state.getGridProps(filterValueInputRef)
 
   const takeFirst = (value: string | string[] | undefined) => {
@@ -120,6 +120,17 @@ export default function TableEditorPage() {
           <div className="editor-header-right">
             {state.connectionReadOnly ? <span className="pill">Read-only connection</span> : null}
             <span className="status-pill">{state.status}</span>
+            <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
+              {state.connections.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name}
+                  {c.readOnly ? ' (read-only)' : ''}
+                </option>
+              ))}
+            </select>
+            <button className="btn small" onClick={() => setManagingConnections(true)}>
+              Manage
+            </button>
             <ThemeToggle />
           </div>
         </div>
