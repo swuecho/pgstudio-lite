@@ -12,6 +12,8 @@ export default function TableEditorPage() {
   const [managingConnections, setManagingConnections] = useState(false)
   const filterValueInputRef = useRef<HTMLInputElement>(null)
   const didInitUrlSyncRef = useRef(false)
+  const sidebarProps = state.getSidebarProps(() => setManagingConnections(true))
+  const gridProps = state.getGridProps(filterValueInputRef)
 
   const takeFirst = (value: string | string[] | undefined) => {
     if (!value) return ''
@@ -98,17 +100,7 @@ export default function TableEditorPage() {
   return (
     <div className="layout-root">
       <TableSidebar
-        connections={state.connections}
-        connectionName={state.connectionName}
-        onChangeConnection={state.setConnectionName}
-        onOpenConnectionManager={() => setManagingConnections(true)}
-        tables={state.tables}
-        loadingTables={state.loadingTables}
-        activeTable={state.activeTable}
-        onSelectTable={state.setActiveTable}
-        onRefreshTables={() => {
-          void state.loadTables()
-        }}
+        {...sidebarProps}
       />
 
       <ConnectionManagerModal
@@ -134,39 +126,7 @@ export default function TableEditorPage() {
 
         <div className="table-page">
           <TableGridPanel
-            columns={state.columns}
-            rows={state.rows}
-            editableColumns={state.editableColumns}
-            sortBy={state.sortBy}
-            sortOrder={state.sortOrder}
-            filterColumn={state.filterColumn}
-            filterMode={state.filterMode}
-            filterValue={state.filterValue}
-            filterValueInputRef={filterValueInputRef}
-            pageSize={state.pageSize}
-            page={state.page}
-            totalRows={state.totalRows}
-            readOnlyConnection={state.connectionReadOnly}
-            onChangeSortBy={state.setSortBy}
-            onChangeSortOrder={state.setSortOrder}
-            onChangeFilterColumn={state.setFilterColumn}
-            onChangeFilterMode={state.setFilterMode}
-            onChangeFilterValue={state.setFilterValue}
-            onClearFilters={() => {
-              state.setFilterColumn('')
-              state.setFilterMode('contains')
-              state.setFilterValue('')
-              state.setPage(0)
-            }}
-            onChangePageSize={state.setPageSize}
-            onUpdateCell={(ctid, column, value) => {
-              void state.updateCell(ctid, column, value)
-            }}
-            onDeleteRow={(ctid) => {
-              void state.deleteRow(ctid)
-            }}
-            onPrevPage={() => state.setPage((p) => Math.max(0, p - 1))}
-            onNextPage={() => state.setPage((p) => p + 1)}
+            {...gridProps}
           />
         </div>
       </main>

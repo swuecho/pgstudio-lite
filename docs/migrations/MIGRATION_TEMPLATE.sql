@@ -1,0 +1,15 @@
+-- Migration: <short name>
+-- Checklist:
+-- 1) Constraints/defaults:
+--    - <nullability/default decisions>
+-- 2) Backfill:
+--    - <how existing rows are handled>
+-- 3) Rollback note:
+--    - <how to revert safely>
+-- Backward-compatibility notes:
+-- - <why old code keeps working, or explicit breaking note>
+
+-- Example SQL:
+-- ALTER TABLE `<table>` ADD COLUMN `<column>` text NOT NULL DEFAULT '';
+-- --> statement-breakpoint
+-- UPDATE `<table>` SET `<column>` = '' WHERE `<column>` IS NULL;

@@ -1,12 +1,5 @@
-import { useEffect, useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  getConnections as getConnectionsService,
-  getRows as getRowsService,
-  getTables as getTablesService,
-  patchRow,
-  removeRow,
-} from '../../features/table/table.service'
+import { useTableEditorEffects } from './useTableEditorEffects'
+import { useTableEditorQueries } from './useTableEditorQueries'
 
 type TableEditorState = {
   connectionName: string
@@ -27,182 +20,29 @@ type TableEditorState = {
 }
 
 export function useTableEditorData(state: TableEditorState) {
-  function parseActiveTableKey(activeTableKey: string) {
-    const [schema, ...tableParts] = activeTableKey.split('.')
-    const table = tableParts.join('.')
-    if (!schema || !table) return { schema: 'public', table: activeTableKey }
-    return { schema, table }
-  }
+  const queries = useTableEditorQueries(state)
 
-  function toActiveTableKey(schema: string, table: string) {
-    return `${schema}.${table}`
-  }
-
-  const selectedTarget = parseActiveTableKey(state.activeTable)
-  const queryClient = useQueryClient()
-  const connectionsQuery = useQuery({
-    queryKey: ['table', 'connections'],
-    queryFn: getConnectionsService,
+  useTableEditorEffects({
+    state,
+    configuredConnections: queries.connectionsQuery.data?.connections,
+    tables: queries.tables,
+    loadingTables: queries.loadingTables,
+    columns: queries.columns,
   })
-  const connections = connectionsQuery.data?.connections || []
-
-  const tablesQuery = useQuery({
-    queryKey: ['table', 'tables', state.connectionName],
-    queryFn: () => getTablesService(state.connectionName),
-    enabled: Boolean(state.connectionName),
-  })
-  const tables = tablesQuery.data?.tables || []
-  const activeConnection = connections.find((connection) => connection.name === state.connectionName)
-  const connectionReadOnly = activeConnection?.readOnly === true
-
-  const rowsQuery = useQuery({
-    queryKey: [
-      'table',
-      'rows',
-      state.connectionName,
-      state.activeTable,
-      state.page,
-      state.pageSize,
-      state.sortBy,
-      state.sortOrder,
-      state.filterColumn,
-      state.filterMode,
-      state.filterValue.trim(),
-    ],
-    queryFn: () =>
-      getRowsService({
-        schema: selectedTarget.schema,
-        table: selectedTarget.table,
-        connectionName: state.connectionName,
-        page: state.page,
-        pageSize: state.pageSize,
-        sortBy: state.sortBy,
-        sortOrder: state.sortOrder,
-        filterColumn: state.filterColumn,
-        filterValue: state.filterValue,
-        filterMode: state.filterMode,
-      }),
-    enabled: Boolean(state.connectionName && selectedTarget.table),
-  })
-  const columns = rowsQuery.data?.columns || []
-  const rows = rowsQuery.data?.rows || []
-  const totalRows = Number(rowsQuery.data?.total || 0)
-  const editableColumns = useMemo(() => columns.filter((c) => !c.isIdentity && c.name !== '_ctid'), [columns])
-
-  function invalidateRows() {
-    return queryClient.invalidateQueries({
-      queryKey: ['table', 'rows', state.connectionName, state.activeTable],
-    })
-  }
-
-  const patchRowMutation = useMutation({
-    mutationFn: ({ ctid, column, value }: { ctid: string; column: string; value: unknown }) =>
-      patchRow(selectedTarget.table, {
-        connectionName: state.connectionName,
-        schema: selectedTarget.schema,
-        ctid,
-        patch: { [column]: value },
-      }),
-    onSuccess: invalidateRows,
-  })
-
-  const deleteRowMutation = useMutation({
-    mutationFn: (ctid: string) =>
-      removeRow(selectedTarget.table, { connectionName: state.connectionName, schema: selectedTarget.schema, ctid }),
-    onSuccess: invalidateRows,
-  })
-
-  async function loadTables(conn = state.connectionName) {
-    await tablesQuery.refetch()
-    await queryClient.invalidateQueries({
-      queryKey: ['table', 'tables', conn],
-    })
-  }
-
-  async function loadRows() {
-    await rowsQuery.refetch()
-  }
-
-  async function updateCell(ctid: string, column: string, value: unknown) {
-    if (connectionReadOnly) {
-      state.setStatus('Connection is read-only')
-      return
-    }
-    state.setStatus('Saving...')
-    try {
-      await patchRowMutation.mutateAsync({ ctid, column, value })
-      state.setStatus('Saved')
-    } catch (error) {
-      state.setStatus(error instanceof Error ? error.message : 'Failed to save row')
-    }
-  }
-
-  async function deleteRow(ctid: string) {
-    if (connectionReadOnly) {
-      state.setStatus('Connection is read-only')
-      return
-    }
-    state.setStatus('Deleting...')
-    try {
-      await deleteRowMutation.mutateAsync(ctid)
-      state.setStatus('Deleted')
-    } catch (error) {
-      state.setStatus(error instanceof Error ? error.message : 'Failed to delete row')
-    }
-  }
-
-  useEffect(() => {
-    if (!connectionsQuery.data) return
-    if (connectionsQuery.data.connections.length === 0) return
-    const currentExists = connectionsQuery.data.connections.some((connection) => connection.name === state.connectionName)
-    if (!currentExists) {
-      const preferred =
-        connectionsQuery.data.connections.find((connection) => connection.isDefault)?.name ||
-        connectionsQuery.data.connections[0].name
-      state.setConnectionName(preferred)
-    }
-  }, [connectionsQuery.data, state.connectionName, state.setConnectionName])
-
-  useEffect(() => {
-    if (tables.length === 0) {
-      // Keep any preselected table (for example from URL params) while the
-      // table list is still loading to avoid falling back to the first table.
-      if (!tablesQuery.isFetching && state.activeTable) state.setActiveTable('')
-      return
-    }
-    if (!tables.some((table) => toActiveTableKey(table.schema, table.table) === state.activeTable)) {
-      state.setActiveTable(toActiveTableKey(tables[0].schema, tables[0].table))
-    }
-  }, [tables, tablesQuery.isFetching, state.activeTable, state.setActiveTable])
-
-  useEffect(() => {
-    if (!state.activeTable) return
-    state.setPage(0)
-  }, [state.activeTable, state.pageSize, state.sortBy, state.sortOrder, state.filterColumn, state.filterMode, state.filterValue])
-
-  useEffect(() => {
-    if (columns.length === 0) return
-    if (state.sortBy !== '_ctid' && !columns.some((col) => col.name === state.sortBy)) {
-      state.setSortBy('_ctid')
-    }
-    if (state.filterColumn && !columns.some((col) => col.name === state.filterColumn)) {
-      state.setFilterColumn('')
-    }
-  }, [columns, state.filterColumn, state.sortBy, state.setFilterColumn, state.setSortBy])
 
   return {
-    connections,
-    tables,
-    columns,
-    rows,
-    totalRows,
-    editableColumns,
-    loadTables,
-    loadRows,
-    updateCell,
-    deleteRow,
-    loadingRows: rowsQuery.isFetching,
-    loadingTables: tablesQuery.isFetching,
-    connectionReadOnly,
+    connections: queries.connections,
+    tables: queries.tables,
+    columns: queries.columns,
+    rows: queries.rows,
+    totalRows: queries.totalRows,
+    editableColumns: queries.editableColumns,
+    loadTables: queries.loadTables,
+    loadRows: queries.loadRows,
+    updateCell: queries.updateCell,
+    deleteRow: queries.deleteRow,
+    loadingRows: queries.loadingRows,
+    loadingTables: queries.loadingTables,
+    connectionReadOnly: queries.connectionReadOnly,
   }
 }
