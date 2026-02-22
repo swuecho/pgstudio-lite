@@ -6,12 +6,8 @@ export function useTableEditorState() {
   const state = useTableEditorLocalState()
   const actions = useTableEditorData(state)
 
-  function getSidebarProps(onOpenConnectionManager: () => void) {
+  function getSidebarProps() {
     return {
-      connections: actions.connections,
-      connectionName: state.connectionName,
-      onChangeConnection: state.setConnectionName,
-      onOpenConnectionManager,
       tables: actions.tables,
       loadingTables: actions.loadingTables,
       activeTable: state.activeTable,

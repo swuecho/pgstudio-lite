@@ -534,14 +534,14 @@ export default function NotebookPage() {
 
       <aside className="layout-nav">
         <div className="layout-nav-header">
-          <div className="nav-title">Notebooks</div>
-          <button className="btn small" onClick={() => createNotebookMutation.mutate()}>
-            New
-          </button>
+          <div className="nav-title">Notebook</div>
         </div>
 
         <div className="layout-nav-controls">
           <input disabled value={status} readOnly />
+          <button className="btn small" onClick={() => createNotebookMutation.mutate()}>
+            New
+          </button>
         </div>
 
         <div className="layout-nav-list">

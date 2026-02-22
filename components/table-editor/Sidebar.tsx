@@ -1,11 +1,7 @@
 import Link from 'next/link'
-import { Connection, TableInfo } from './types'
+import { TableInfo } from './types'
 
 type TableSidebarProps = {
-  connections: Connection[]
-  connectionName: string
-  onChangeConnection: (name: string) => void
-  onOpenConnectionManager: () => void
   tables: TableInfo[]
   loadingTables: boolean
   activeTable: string
@@ -14,10 +10,6 @@ type TableSidebarProps = {
 }
 
 export function TableSidebar({
-  connections,
-  connectionName,
-  onChangeConnection,
-  onOpenConnectionManager,
   tables,
   loadingTables,
   activeTable,
@@ -44,19 +36,9 @@ export function TableSidebar({
         </div>
 
         <div className="layout-nav-controls">
-          <select value={connectionName} onChange={(e) => onChangeConnection(e.target.value)}>
-            {connections.map((c) => (
-              <option key={c.name} value={c.name}>
-                {c.name}
-                {c.readOnly ? ' (read-only)' : ''}
-              </option>
-            ))}
-          </select>
+          <input placeholder="Search tables" />
           <button className="btn small" onClick={onRefreshTables}>
             {loadingTables ? 'Refreshing...' : 'Refresh'}
-          </button>
-          <button className="btn small" onClick={onOpenConnectionManager}>
-            Manage
           </button>
         </div>
 

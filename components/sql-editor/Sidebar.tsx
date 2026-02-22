@@ -109,27 +109,26 @@ export function SqlSidebar({
       <aside className="layout-nav">
         <div className="layout-nav-header">
           <div className="nav-title">SQL Editor</div>
-        </div>
-
-        <div className="layout-nav-tabs">
-          <button
-            className={`nav-tab ${activeNavTab === 'explorer' ? 'active' : ''}`}
-            onClick={() => onChangeNavTab('explorer')}
-          >
-            Explorer
-          </button>
-          <button
-            className={`nav-tab ${activeNavTab === 'snippets' ? 'active' : ''}`}
-            onClick={() => onChangeNavTab('snippets')}
-          >
-            Snippets{connectionName ? ` · ${connectionName}` : ''}
-          </button>
-          <button
-            className={`nav-tab ${activeNavTab === 'history' ? 'active' : ''}`}
-            onClick={() => onChangeNavTab('history')}
-          >
-            History
-          </button>
+          <div className="nav-tabs-inline">
+            <button
+              className={`nav-tab ${activeNavTab === 'explorer' ? 'active' : ''}`}
+              onClick={() => onChangeNavTab('explorer')}
+            >
+              Explorer
+            </button>
+            <button
+              className={`nav-tab ${activeNavTab === 'snippets' ? 'active' : ''}`}
+              onClick={() => onChangeNavTab('snippets')}
+            >
+              Snippets{connectionName ? ` · ${connectionName}` : ''}
+            </button>
+            <button
+              className={`nav-tab ${activeNavTab === 'history' ? 'active' : ''}`}
+              onClick={() => onChangeNavTab('history')}
+            >
+              History
+            </button>
+          </div>
         </div>
 
         <div className="layout-nav-controls">
