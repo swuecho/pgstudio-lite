@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { NotebookInputCellMetadata, NotebookInputOption, NotebookInputType } from './types'
 
 type InputCellEditorProps = {
@@ -20,6 +21,15 @@ const INPUT_TYPE_OPTIONS: Array<{ value: NotebookInputType; label: string }> = [
 ]
 
 export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showValueLabel = true }: InputCellEditorProps) {
+  const [optionsDraft, setOptionsDraft] = useState(() => optionsToText(metadata.options))
+  const [optionsEditing, setOptionsEditing] = useState(false)
+  const serializedOptions = optionsToText(metadata.options)
+
+  useEffect(() => {
+    if (optionsEditing) return
+    setOptionsDraft(serializedOptions)
+  }, [optionsEditing, serializedOptions])
+
   function patch(next: Partial<NotebookInputCellMetadata>) {
     onChange({ ...metadata, ...next })
   }
@@ -90,7 +100,11 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
               if (inputType === 'checkbox') next.value = Boolean(metadata.value)
               else if (inputType === 'number' || inputType === 'range') next.value = metadata.value === null ? null : Number(metadata.value)
               else if (inputType === 'multiselect') next.value = Array.isArray(metadata.value) ? metadata.value : []
-              else next.value = metadata.value === null || metadata.value === undefined ? '' : String(metadata.value)
+              else if (inputType === 'select') {
+                const options = ensureSelectOptions(metadata.options)
+                next.options = options
+                next.value = coerceSelectValue(metadata.value, options, metadata.required === true)
+              } else next.value = metadata.value === null || metadata.value === undefined ? '' : String(metadata.value)
               patch(next)
             }}
           >
@@ -157,9 +171,15 @@ export function InputCellEditor({ metadata, disabled, onChange, valueOnly, showV
           Options (`value|label` per line)
           <textarea
             className="min-h-[84px] w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 font-mono text-xs text-[var(--text)]"
-            value={optionsToText(metadata.options)}
+            value={optionsDraft}
             disabled={disabled}
-            onChange={(event) => setOptionsFromText(event.target.value)}
+            onFocus={() => setOptionsEditing(true)}
+            onBlur={() => setOptionsEditing(false)}
+            onChange={(event) => {
+              const nextDraft = event.target.value
+              setOptionsDraft(nextDraft)
+              setOptionsFromText(nextDraft)
+            }}
           />
         </label>
       )}
@@ -308,4 +328,18 @@ function InputValueControl({
       onChange={(event) => patchValue(event.target.value)}
     />
   )
+}
+
+function ensureSelectOptions(options: NotebookInputOption[] | undefined) {
+  if (options && options.length > 0) return options
+  return [{ value: 'option_1', label: 'Option 1' }]
+}
+
+function coerceSelectValue(value: NotebookInputCellMetadata['value'], options: NotebookInputOption[], required: boolean) {
+  const current = value === null || value === undefined ? '' : String(value)
+  if (!options.length) return required ? '' : current
+  if (!current && required) return options[0].value
+  if (!current && !required) return ''
+  if (options.some((option) => option.value === current)) return current
+  return required ? options[0].value : ''
 }
