@@ -143,6 +143,31 @@ select {
   color: inherit;
 }
 
+/* Global scrollbar styling */
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--surface-scroll-track);
+  border: 1px solid var(--surface-scroll-border);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--surface-scroll-thumb);
+  border-radius: 999px;
+  border: 2px solid var(--surface-scroll-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-scroll-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--surface-scroll-track);
+}
+
 .layout-root {
   height: 100vh;
   display: grid;
@@ -266,9 +291,10 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--control-bg);
-  padding: 4px 9px;
+  padding: 6px 9px;
   color: var(--text);
-  height: var(--control-h);
+  height: 36px;
+  font-size: 13px;
 }
 
 .layout-nav-controls input {
@@ -1007,8 +1033,9 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  height: var(--header-h);
   border-top: 1px solid var(--border);
-  padding: 10px 12px;
+  padding: 0 12px;
   background: var(--panel);
 }
 
@@ -1226,6 +1253,38 @@ pre {
   display: none;
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.notebook-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 46px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
+}
+
+.notebook-cell-count {
+  flex-shrink: 0;
+}
+
+.notebook-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.table-shortcuts {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .table-shortcuts {
+    display: inline-flex;
+  }
 }
 
 @media (min-width: 1536px) {

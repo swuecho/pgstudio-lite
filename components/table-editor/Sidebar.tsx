@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import ThemeToggle from '../theme-toggle'
 import { TableInfo } from './types'
 
 type TableSidebarProps = {
@@ -28,6 +29,9 @@ export function TableSidebar({
         <Link className="rail-btn link-btn" href="/notebook">
           NB
         </Link>
+        <div className="mt-auto flex justify-center">
+          <ThemeToggle />
+        </div>
       </aside>
 
       <aside className="layout-nav">

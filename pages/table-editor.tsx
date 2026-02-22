@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
-import ThemeToggle from '../components/theme-toggle'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
@@ -131,7 +130,6 @@ export default function TableEditorPage() {
             <button className="btn small" onClick={() => setManagingConnections(true)}>
               Manage
             </button>
-            <ThemeToggle />
           </div>
         </div>
 
