@@ -25,7 +25,7 @@ jobs:
         run: npm run typecheck
 
       - name: Init test DB schema
-        run: npm run db:migrate
+        run: mkdir -p data && npm run db:migrate
 
       - name: Run tests
         env:
