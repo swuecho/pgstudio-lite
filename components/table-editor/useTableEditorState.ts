@@ -33,6 +33,7 @@ export function useTableEditorState() {
       page: state.page,
       totalRows: actions.totalRows,
       readOnlyConnection: actions.connectionReadOnly,
+      visibleColumns: state.visibleColumns,
       onChangeSortBy: state.setSortBy,
       onChangeSortOrder: state.setSortOrder,
       onChangeFilterColumn: state.setFilterColumn,
@@ -53,6 +54,13 @@ export function useTableEditorState() {
       },
       onPrevPage: () => state.setPage((p) => Math.max(0, p - 1)),
       onNextPage: () => state.setPage((p) => p + 1),
+      onToggleVisibleColumn: state.toggleVisibleColumn,
+      onShowAllColumns: () => {
+        state.setVisibleColumns(actions.columns.map(c => c.name))
+      },
+      onHideAllColumns: () => {
+        state.setVisibleColumns([])
+      },
     }
   }
 
