@@ -10,6 +10,7 @@ type TableEditorLocalStore = {
   filterColumn: string
   filterValue: string
   filterMode: 'contains' | 'equals'
+  visibleColumns: string[]
   setActiveTable: (value: string) => void
   setStatus: (value: string) => void
   setPage: (value: number | ((prev: number) => number)) => void
@@ -19,6 +20,8 @@ type TableEditorLocalStore = {
   setFilterColumn: (value: string) => void
   setFilterValue: (value: string) => void
   setFilterMode: (value: 'contains' | 'equals') => void
+  setVisibleColumns: (value: string[]) => void
+  toggleVisibleColumn: (columnName: string) => void
 }
 
 export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => ({
@@ -31,6 +34,7 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   filterColumn: '',
   filterValue: '',
   filterMode: 'contains',
+  visibleColumns: [],
   setActiveTable: (value) => set({ activeTable: value }),
   setStatus: (value) => set({ status: value }),
   setPage: (value) => set((state) => ({ page: typeof value === 'function' ? value(state.page) : value })),
@@ -40,4 +44,10 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   setFilterColumn: (value) => set({ filterColumn: value }),
   setFilterValue: (value) => set({ filterValue: value }),
   setFilterMode: (value) => set({ filterMode: value }),
+  setVisibleColumns: (value) => set({ visibleColumns: value }),
+  toggleVisibleColumn: (columnName) => set((state) => ({
+    visibleColumns: state.visibleColumns.includes(columnName)
+      ? state.visibleColumns.filter((c) => c !== columnName)
+      : [...state.visibleColumns, columnName],
+  })),
 }))

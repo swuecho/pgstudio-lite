@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { RefObject } from 'react'
 import { ColumnInfo, RowData } from './types'
+import { ColumnsSelector } from './ColumnsSelector'
 
 type TableGridPanelProps = {
   columns: ColumnInfo[]
@@ -16,6 +17,7 @@ type TableGridPanelProps = {
   page: number
   totalRows: number
   readOnlyConnection: boolean
+  visibleColumns: string[]
   onChangeSortBy: (value: string) => void
   onChangeSortOrder: (value: 'asc' | 'desc') => void
   onChangeFilterColumn: (value: string) => void
@@ -27,6 +29,9 @@ type TableGridPanelProps = {
   onDeleteRow: (ctid: string) => void
   onPrevPage: () => void
   onNextPage: () => void
+  onToggleVisibleColumn: (columnName: string) => void
+  onShowAllColumns: () => void
+  onHideAllColumns: () => void
 }
 
 type GridDialogState = {
@@ -53,6 +58,7 @@ export function TableGridPanel({
   page,
   totalRows,
   readOnlyConnection,
+  visibleColumns,
   onChangeSortBy,
   onChangeSortOrder,
   onChangeFilterColumn,
@@ -64,6 +70,9 @@ export function TableGridPanel({
   onDeleteRow,
   onPrevPage,
   onNextPage,
+  onToggleVisibleColumn,
+  onShowAllColumns,
+  onHideAllColumns,
 }: TableGridPanelProps) {
   const [dialog, setDialog] = useState<GridDialogState | null>(null)
 
@@ -207,6 +216,12 @@ export function TableGridPanel({
 
   const hasFilters = Boolean(filterColumn || filterValue.trim())
 
+  // Filter columns based on visibleColumns selection
+  // If no columns are selected, show all columns (backward compatible)
+  const displayColumns = visibleColumns.length > 0
+    ? columns.filter(col => visibleColumns.includes(col.name))
+    : columns
+
   return (
     <>
       <div className="table-grid-wrap">
@@ -250,12 +265,19 @@ export function TableGridPanel({
           <button className="btn small" onClick={onClearFilters} disabled={!hasFilters}>
             Clear filters
           </button>
+          <ColumnsSelector
+            columns={columns}
+            visibleColumns={visibleColumns}
+            onToggleColumn={onToggleVisibleColumn}
+            onShowAll={onShowAllColumns}
+            onHideAll={onHideAllColumns}
+          />
         </div>
         <div className="table-scroll-area">
           <table className="table-grid-table">
             <thead>
               <tr>
-                {columns.map((col) => (
+                {displayColumns.map((col) => (
                   <th key={col.name}>{col.name}</th>
                 ))}
                 <th className="table-actions-col">actions</th>
@@ -264,7 +286,7 @@ export function TableGridPanel({
             <tbody>
               {rows.map((row) => (
                 <tr key={row._ctid}>
-                  {columns.map((col) => {
+                  {displayColumns.map((col) => {
                   if (col.name === '_ctid') {
                     return (
                       <td key={col.name}>

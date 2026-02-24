@@ -22,6 +22,9 @@ export function useTableEditorLocalState() {
   const setFilterValue = useTableEditorLocalStore((s) => s.setFilterValue)
   const filterMode = useTableEditorLocalStore((s) => s.filterMode)
   const setFilterMode = useTableEditorLocalStore((s) => s.setFilterMode)
+  const visibleColumns = useTableEditorLocalStore((s) => s.visibleColumns)
+  const setVisibleColumns = useTableEditorLocalStore((s) => s.setVisibleColumns)
+  const toggleVisibleColumn = useTableEditorLocalStore((s) => s.toggleVisibleColumn)
 
   return {
     connectionName,
@@ -44,5 +47,8 @@ export function useTableEditorLocalState() {
     setFilterValue,
     filterMode,
     setFilterMode,
+    visibleColumns,
+    setVisibleColumns,
+    toggleVisibleColumn,
   }
 }
