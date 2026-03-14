@@ -14,6 +14,9 @@ export default function TableEditorPage() {
   const sidebarProps = state.getSidebarProps()
   const gridProps = state.getGridProps(filterValueInputRef)
 
+  // Debug: log the activeTable state
+  console.log('TableEditorPage - activeTable:', state.activeTable, 'type:', typeof state.activeTable)
+
   const takeFirst = (value: string | string[] | undefined) => {
     if (!value) return ''
     return Array.isArray(value) ? value[0] || '' : value
@@ -114,7 +117,9 @@ export default function TableEditorPage() {
         <div className="editor-panel-header table-main-header">
           <div className="table-header-title">
             <div className="editor-title">Table Editor</div>
-            <code className="table-header-table">{state.activeTable || '-'}</code>
+            <code className="table-header-table" title={`Raw: ${JSON.stringify(state.activeTable)}`}>
+              {state.activeTable ?? 'EMPTY'}
+            </code>
           </div>
           <div className="editor-header-right">
             {state.connectionReadOnly ? <span className="pill">Read-only connection</span> : null}
