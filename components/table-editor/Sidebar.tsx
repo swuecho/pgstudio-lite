@@ -114,10 +114,10 @@ export function TableSidebar({
                 className={`history-item table-nav-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
                 onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
               >
-                <div className="history-query">
-                  {table.schema}.{table.table}
+                <div className="table-nav-row">
+                  <span className="table-nav-name">{table.table || `${table.schema}.(unknown)`}</span>
+                  <span className="history-meta table-nav-rows">~{table.estimatedRows} rows</span>
                 </div>
-                <div className="history-meta">~{table.estimatedRows} rows</div>
               </button>
             ))
           )}
