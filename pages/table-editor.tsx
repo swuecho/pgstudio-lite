@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
+import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 import { useSidebarResizer } from '../hooks/useSidebarResizer'
 
@@ -15,9 +16,6 @@ export default function TableEditorPage() {
   const didInitUrlSyncRef = useRef(false)
   const sidebarProps = state.getSidebarProps()
   const gridProps = state.getGridProps(filterValueInputRef)
-
-  // Debug: log the activeTable state
-  console.log('TableEditorPage - activeTable:', state.activeTable, 'type:', typeof state.activeTable)
 
   const takeFirst = (value: string | string[] | undefined) => {
     if (!value) return ''
@@ -51,8 +49,9 @@ export default function TableEditorPage() {
   useEffect(() => {
     if (!router.isReady || !didInitUrlSyncRef.current) return
 
-    const [schema = 'public', ...tableParts] = state.activeTable.split('.')
-    const table = tableParts.join('.')
+    const parsedTarget = parseActiveTableKey(state.activeTable)
+    const table = parsedTarget.table
+    const schema = parsedTarget.schema
     const currentConnection = takeFirst(router.query.connectionName)
     const currentSchema = takeFirst(router.query.schema)
     const currentTable = takeFirst(router.query.table)
@@ -126,8 +125,8 @@ export default function TableEditorPage() {
         <div className="editor-panel-header table-main-header">
           <div className="table-header-title">
             <div className="editor-title">Table Editor</div>
-            <code className="table-header-table" title={`Raw: ${JSON.stringify(state.activeTable)}`}>
-              {state.activeTable ?? 'EMPTY'}
+            <code className="table-header-table">
+              {state.activeTable || 'No table selected'}
             </code>
           </div>
           <div className="editor-header-right">
