@@ -423,14 +423,34 @@ select {
 }
 
 .table-nav-item {
-  min-height: 60px;
-  padding: 8px 12px;
-  gap: 6px;
+  min-height: 0;
+  padding: 6px 10px;
 }
 
-.table-nav-item .history-query {
-  max-height: 2.5em;
-  line-height: 1.25;
+.table-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.table-nav-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.table-nav-rows {
+  flex: none;
+  width: auto;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .history-top,
