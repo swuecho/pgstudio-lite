@@ -442,34 +442,6 @@ select {
   outline-offset: 1px;
 }
 
-.table-nav-item {
-  min-height: 0;
-  padding: 6px 10px;
-  gap: 2px;
-}
-
-.table-nav-name {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.2;
-  display: block;
-  width: 100%;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.table-nav-rows {
-  display: flex;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.1;
-  width: 100%;
-  min-width: 0;
-}
-
 /* Table Cards */
 .table-cards-list {
   display: flex;
@@ -544,7 +516,6 @@ select {
   border-radius: 4px;
 }
 
-.history-top,
 .history-meta {
   display: flex;
   gap: 8px;
@@ -555,7 +526,6 @@ select {
   min-width: 0;
 }
 
-.history-top > span,
 .history-meta > span {
   min-width: 0;
   overflow: hidden;
@@ -576,30 +546,6 @@ select {
   text-overflow: ellipsis;
   word-break: break-word;
   font-family: var(--font-mono);
-}
-
-.snippet-item {
-  min-height: 138px;
-}
-
-.snippet-query {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-height: 1.4;
-  max-height: none;
-  padding-bottom: 1px;
-}
-
-.snippet-title-input {
-  min-width: 0;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--control-bg);
-  color: var(--text);
-  padding: 2px 6px;
-  font-size: 12px;
 }
 
 .history-actions {
@@ -1087,13 +1033,6 @@ pre {
 .table-typed-input {
   min-height: 26px;
   min-width: 0;
-}
-
-.table-json-input {
-  min-height: 34px;
-  max-height: 120px;
-  resize: vertical;
-  font-family: var(--font-mono);
 }
 
 /* JSONB preview button in table cell */
