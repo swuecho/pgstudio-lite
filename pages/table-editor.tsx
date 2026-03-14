@@ -5,10 +5,15 @@ import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 
+const MIN_SIDEBAR_WIDTH = 260
+const MAX_SIDEBAR_WIDTH = 600
+const SPLITTER_WIDTH = 6
+
 export default function TableEditorPage() {
   const router = useRouter()
   const state = useTableEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(360)
   const filterValueInputRef = useRef<HTMLInputElement>(null)
   const didInitUrlSyncRef = useRef(false)
   const sidebarProps = state.getSidebarProps()
@@ -105,10 +110,31 @@ export default function TableEditorPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [state.filterValue, state.setFilterValue, state.setPage])
 
+  const handleWidthResizerMouseDown = (event: React.MouseEvent) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = sidebarWidth
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, startWidth + deltaX))
+      setSidebarWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
   return (
-    <div className="layout-root">
+    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <TableSidebar
         {...sidebarProps}
+        onWidthResizerMouseDown={handleWidthResizerMouseDown}
       />
 
       <ConnectionManagerModal
