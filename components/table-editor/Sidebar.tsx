@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '../theme-toggle'
 import { TableInfo } from './types'
+import styles from './TableEditorStyles.module.css'
 
 type TableSidebarProps = {
   tables: TableInfo[]
@@ -100,7 +101,7 @@ export function TableSidebar({
           </button>
         </div>
 
-        <div className="layout-nav-list table-cards-list">
+        <div className={`layout-nav-list ${styles.tableCardsList}`}>
           {visibleTables.length === 0 ? (
             <div className="empty-state">
               {tables.length === 0
@@ -113,12 +114,12 @@ export function TableSidebar({
             visibleTables.map((table) => (
               <button
                 key={`${table.schema}.${table.table}`}
-                className={`table-card ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
+                className={`${styles.tableCard} ${activeTable === toActiveTableKey(table.schema, table.table) ? styles.tableCardActive : ''}`}
                 onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
               >
-                <div className="table-card-header">
-                  <div className="table-card-name">{table.table}</div>
-                  <div className="table-card-rows">~{table.estimatedRows} rows</div>
+                <div className={styles.tableCardHeader}>
+                  <div className={styles.tableCardName}>{table.table}</div>
+                  <div className={styles.tableCardRows}>~{table.estimatedRows} rows</div>
                 </div>
               </button>
             ))
