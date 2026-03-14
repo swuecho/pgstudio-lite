@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
+import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 
 export default function TableEditorPage() {
@@ -46,8 +47,9 @@ export default function TableEditorPage() {
   useEffect(() => {
     if (!router.isReady || !didInitUrlSyncRef.current) return
 
-    const [schema = 'public', ...tableParts] = state.activeTable.split('.')
-    const table = tableParts.join('.')
+    const parsedTarget = parseActiveTableKey(state.activeTable)
+    const table = parsedTarget.table
+    const schema = parsedTarget.schema
     const currentConnection = takeFirst(router.query.connectionName)
     const currentSchema = takeFirst(router.query.schema)
     const currentTable = takeFirst(router.query.table)
