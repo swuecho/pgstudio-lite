@@ -522,26 +522,26 @@ export default function NotebookPage() {
   }
 
   return (
-    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
-      <aside className="layout-rail">
-        <Link className="rail-btn link-btn" href="/">
+    <div className={styles.layoutRoot} style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
+      <aside className={styles.layoutRail}>
+        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/">
           SQL
         </Link>
-        <Link className="rail-btn link-btn" href="/table-editor">
+        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/table-editor">
           TB
         </Link>
-        <button className="rail-btn active">NB</button>
+        <button className={`${styles.railBtn} ${styles.active}`}>NB</button>
         <div className="mt-auto flex justify-center">
           <ThemeToggle />
         </div>
       </aside>
 
-      <aside className="layout-nav">
-        <div className="layout-nav-header">
-          <div className="nav-title">Notebook</div>
+      <aside className={styles.layoutNav}>
+        <div className={styles.layoutNavHeader}>
+          <div className={styles.navTitle}>Notebook</div>
         </div>
 
-        <div className="layout-nav-controls">
+        <div className={styles.layoutNavControls}>
           <input
             placeholder="Search notebooks"
             value={notebookSearch}
@@ -552,7 +552,7 @@ export default function NotebookPage() {
           </button>
         </div>
 
-        <div className="layout-nav-list">
+        <div className={styles.layoutNavList}>
           {notebooks
             .filter((item) =>
               !notebookSearch.trim() ||
@@ -562,14 +562,14 @@ export default function NotebookPage() {
             .map((item) => (
             <button
               key={item.id}
-              className={`history-item ${item.id === activeNotebookId ? 'active-item' : ''}`}
+              className={`${styles.historyItem} ${item.id === activeNotebookId ? styles.activeItem : ''}`}
               onClick={() => setActiveNotebookId(item.id)}
             >
-              <div className="history-top">
+              <div className={styles.historyTop}>
                 <span className="pill ok">Notebook</span>
                 <span>{item.connection_name}</span>
               </div>
-              <div className="history-query">{item.title}</div>
+              <div className={styles.historyQuery}>{item.title}</div>
               <div className="history-actions">
                 <button
                   type="button"
@@ -599,13 +599,13 @@ export default function NotebookPage() {
           ))}
         </div>
 
-        <div className="width-resizer" onMouseDown={handleWidthResizerMouseDown} title="Drag to resize sidebar" />
+        <div className={styles.widthResizer} onMouseDown={handleWidthResizerMouseDown} title="Drag to resize sidebar" />
       </aside>
 
-      <main className="layout-main">
-        <div className="editor-panel-header">
-          <div className="editor-title truncate">Notebook · {activeNotebook?.title || '-'}</div>
-          <div className={`editor-header-right ${styles.headerActions}`}>
+      <main className={styles.layoutMain}>
+        <div className={styles.editorPanelHeader}>
+          <div className={`${styles.editorTitle} truncate`}>Notebook · {activeNotebook?.title || '-'}</div>
+          <div className={`${styles.editorHeaderRight} ${styles.headerActions}`}>
             <span className={`status-pill ${styles.statusPill}`}>{status}</span>
             <select
               className={styles.connectionSelect}
