@@ -1,3 +1,5 @@
+import styles from './NotebookHelpPanel.module.css'
+
 type NotebookHelpPanelProps = {
   promptTask: string
   setPromptTask: (value: string) => void
@@ -14,7 +16,7 @@ type NotebookHelpPanelProps = {
 
 export function NotebookHelpPanel(props: NotebookHelpPanelProps) {
   return (
-    <section className="notebook-help-panel">
+    <section className={styles.helpPanel}>
       <h3>Notebook Import/Export Help</h3>
       <p>Use this page as a presentation layer. Generate notebook JSON with Codex/Claude, then import it.</p>
       <p>
@@ -28,8 +30,8 @@ export function NotebookHelpPanel(props: NotebookHelpPanelProps) {
       <p>
         Use prompt template: <code>docs/notebook-llm-prompt-template.md</code>.
       </p>
-      <div className="notebook-help-grid">
-        <label className="notebook-help-field">
+      <div className={styles.helpGrid}>
+        <label className={styles.helpField}>
           <span>Task</span>
           <textarea
             value={props.promptTask}
@@ -37,7 +39,7 @@ export function NotebookHelpPanel(props: NotebookHelpPanelProps) {
             placeholder="Describe the notebook goal"
           />
         </label>
-        <label className="notebook-help-field">
+        <label className={styles.helpField}>
           <span>DB Context</span>
           <textarea
             value={props.promptDbContext}
@@ -45,7 +47,7 @@ export function NotebookHelpPanel(props: NotebookHelpPanelProps) {
             placeholder="Tables, columns, relationships"
           />
         </label>
-        <label className="notebook-help-field">
+        <label className={styles.helpField}>
           <span>Style</span>
           <textarea
             value={props.promptStyle}
@@ -53,7 +55,7 @@ export function NotebookHelpPanel(props: NotebookHelpPanelProps) {
             placeholder="Narrative/format preference"
           />
         </label>
-        <label className="notebook-help-field">
+        <label className={styles.helpField}>
           <span>Patch Request</span>
           <textarea
             value={props.promptPatchTask}
@@ -62,23 +64,23 @@ export function NotebookHelpPanel(props: NotebookHelpPanelProps) {
           />
         </label>
       </div>
-      <div className="notebook-help-actions">
-        <button className="btn small notebook-help-copy-btn" onClick={props.copyGeneratePrompt}>
+      <div className={styles.helpActions}>
+        <button className={`btn small ${styles.copyButton}`} onClick={props.copyGeneratePrompt}>
           Generate New Notebook Prompt
         </button>
-        <button className="btn small notebook-help-copy-btn" onClick={props.copyPatchPromptPrefilled}>
+        <button className={`btn small ${styles.copyButton}`} onClick={props.copyPatchPromptPrefilled}>
           Copy Patch Prompt (Prefilled)
         </button>
-        <button className="btn small notebook-help-copy-btn" onClick={() => props.copyHelpApiSnippet('curl-import')}>
+        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('curl-import')}>
           Copy import cURL
         </button>
-        <button className="btn small notebook-help-copy-btn" onClick={() => props.copyHelpApiSnippet('curl-export')}>
+        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('curl-export')}>
           Copy export cURL
         </button>
-        <button className="btn small notebook-help-copy-btn" onClick={() => props.copyHelpApiSnippet('curl-patch')}>
+        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('curl-patch')}>
           Copy patch cURL
         </button>
-        <button className="btn small notebook-help-copy-btn" onClick={() => props.copyHelpApiSnippet('fetch-import')}>
+        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('fetch-import')}>
           Copy import fetch
         </button>
       </div>
