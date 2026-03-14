@@ -7,6 +7,7 @@ import { SqlTabsBar } from '../components/sql-editor/TabsBar'
 import { useSqlEditorState } from '../components/sql-editor/useSqlEditorState'
 import { formatCell, formatTime } from '../components/sql-editor/utils'
 import { useSidebarResizer } from '../hooks/useSidebarResizer'
+import styles from './SqlEditorPage.module.css'
 
 export default function SqlEditorPage() {
   const MIN_EDITOR_HEIGHT = 140
@@ -133,7 +134,7 @@ export default function SqlEditorPage() {
   }
 
   return (
-    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
+    <div className={styles.layoutRoot} style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <SqlSidebar
         searchInputRef={sidebarSearchRef}
         connectionName={state.connectionName}
@@ -202,14 +203,14 @@ export default function SqlEditorPage() {
         onChangeConnection={state.setConnectionName}
       />
 
-      <main className="layout-main">
-        <div className="editor-panel-header">
-          <div className="editor-title">SQL Editor</div>
-          <div className="editor-header-right">
+      <main className={styles.layoutMain}>
+        <div className={styles.editorPanelHeader}>
+          <div className={styles.editorTitle}>SQL Editor</div>
+          <div className={styles.editorHeaderRight}>
             <button className="btn small" onClick={() => state.createQueryTab()}>
               New
             </button>
-            <span className={`status-pill ${state.status.tone}`}>{state.status.text}</span>
+            <span className={`${styles.statusPill} ${styles[state.status.tone] || ''}`}>{state.status.text}</span>
               <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
                 {state.connections.map((c) => (
                   <option key={c.name} value={c.name}>
@@ -232,7 +233,7 @@ export default function SqlEditorPage() {
           onCloseTab={state.closeTab}
         />
 
-        <div className="editor-panel-body" ref={editorPanelBodyRef}>
+        <div className={styles.editorPanelBody} ref={editorPanelBodyRef}>
           <EditorPane
             value={state.activeQueryTab?.query || ''}
             onChangeValue={(value) => state.setActiveTabQuery(value)}
@@ -249,7 +250,7 @@ export default function SqlEditorPage() {
           />
 
           <div
-            className={`editor-splitter${isResizing ? ' active' : ''}`}
+            className={`${styles.editorSplitter} ${isResizing ? styles.active : ''}`.trim()}
             role="separator"
             aria-label="Resize editor and results panels"
             aria-orientation="horizontal"
@@ -263,7 +264,7 @@ export default function SqlEditorPage() {
             style={{ flexBasis: `${resultsHeight}px` }}
           />
 
-          <div className="editor-footer" ref={editorFooterRef}>
+          <div className={styles.editorFooter} ref={editorFooterRef}>
             <button className="btn primary" disabled={state.running} onClick={() => void state.runCurrentQuery()}>
               {state.running ? 'Running...' : state.runLabel}
             </button>
