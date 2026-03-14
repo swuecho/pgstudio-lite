@@ -709,6 +709,9 @@ export async function executeQuery({
   try {
     const client = await pool.connect()
     try {
+      if (connection.readOnly) {
+        await client.query('set default_transaction_read_only = on')
+      }
       const statements = splitStatements(query)
       if (values && statements.length !== 1) {
         const error = new Error('Parameterized execution supports exactly one SQL statement') as Error & {
@@ -774,6 +777,13 @@ export async function executeQuery({
         ranAt: finishedAt.toISOString(),
       }
     } finally {
+      if (connection.readOnly) {
+        try {
+          await client.query('set default_transaction_read_only = off')
+        } catch {
+          // Avoid masking original query errors during connection cleanup.
+        }
+      }
       client.release()
     }
   } catch (error) {
@@ -798,7 +808,12 @@ export async function executeQuery({
       .run()
 
     const err = new Error(message) as Error & { statusCode?: number }
-    err.statusCode = (error as { statusCode?: number })?.statusCode || 400
+    const pgCode = (error as { code?: string })?.code
+    if (connection.readOnly && pgCode === '25006') {
+      err.statusCode = 403
+    } else {
+      err.statusCode = (error as { statusCode?: number })?.statusCode || 400
+    }
     throw err
   } finally {
     // Pools are intentionally reused across requests.
@@ -952,7 +967,12 @@ export async function updateTableRowByCtid(
     const setClause = keys.map((k, i) => `${sqlIdent(k)} = $${i + 1}`).join(', ')
     const values = keys.map((k) => patch[k])
     const sql = `update ${qTable} set ${setClause} where ctid::text = $${keys.length + 1}`
-    await client.query(sql, [...values, ctid])
+    const result = await client.query(sql, [...values, ctid])
+    if ((result.rowCount || 0) === 0) {
+      const error = new Error('row not found') as Error & { statusCode?: number }
+      error.statusCode = 404
+      throw error
+    }
   })
 }
 
@@ -971,6 +991,11 @@ export async function deleteTableRowByCtid(
   return withClient(connectionName, async (client) => {
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const sql = `delete from ${qTable} where ctid::text = $1`
-    await client.query(sql, [ctid])
+    const result = await client.query(sql, [ctid])
+    if ((result.rowCount || 0) === 0) {
+      const error = new Error('row not found') as Error & { statusCode?: number }
+      error.statusCode = 404
+      throw error
+    }
   })
 }
