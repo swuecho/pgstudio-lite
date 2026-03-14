@@ -1,0 +1,57 @@
+.sqlTabsBar {
+  height: 46px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  display: flex;
+  gap: 6px;
+  overflow: auto hidden;
+  background: var(--panel);
+  align-items: center;
+}
+
+.sqlTab {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-2);
+  flex: 0 0 auto;
+}
+
+.sqlTab.active {
+  background: var(--panel);
+}
+
+.sqlTabMain,
+.sqlTabClose {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sqlTabMain {
+  height: 100%;
+  padding: 0 8px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabUnsavedBadge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--muted);
+}
+
+.sqlTabClose {
+  height: 100%;
+  width: 22px;
+  font-size: 15px;
+  opacity: 0.8;
+}

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import styles from './ResultsPanel.module.css'
 import type { CSSProperties } from 'react'
 import { QueryResult } from './types'
 
@@ -11,25 +12,25 @@ type SqlResultsPanelProps = {
 
 export function SqlResultsPanel({ result, formatCell, connectionName, style }: SqlResultsPanelProps) {
   return (
-    <div className="results-wrap" style={style}>
-      <div className="results-head">
+    <div className={styles.resultsWrap} style={style}>
+      <div className={styles.resultsHead}>
         <span>Results</span>
         <span className="history-meta">{result ? `${result.totalRows} rows` : ''}</span>
       </div>
-      <div className="results-body">
+      <div className={styles.resultsBody}>
         {!result ? (
-          <div className="empty-state">Run a query to see results.</div>
+          <div className={styles.emptyState}>Run a query to see results.</div>
         ) : (
-          <div className="results-stack">
+          <div className={styles.resultsStack}>
             {result.statements.map((statement, index) => (
-              <div key={`${statement.command}-${index}`} className="result-block">
-                <div className="result-block-head">
+              <div key={`${statement.command}-${index}`} className={styles.resultBlock}>
+                <div className={styles.resultBlockHead}>
                   <span>#{index + 1}</span>
                   <span>{statement.command}</span>
                   <span>{statement.rowCount} rows</span>
                   {statement.tableTarget ? (
                     <Link
-                      className="result-open-link"
+                      className={styles.resultOpenLink}
                       href={{
                         pathname: '/table-editor',
                         query: {
@@ -44,7 +45,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                   ) : null}
                 </div>
                 {statement.fields.length > 0 ? (
-                  <div className="table-wrap">
+                  <div className={styles.tableWrap}>
                     <table>
                       <thead>
                         <tr>
@@ -67,7 +68,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                     </table>
                   </div>
                 ) : (
-                  <div className="empty-state">Command executed successfully.</div>
+                  <div className={styles.emptyState}>Command executed successfully.</div>
                 )}
               </div>
             ))}
