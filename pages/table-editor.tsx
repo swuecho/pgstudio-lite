@@ -6,6 +6,7 @@ import { TableSidebar } from '../components/table-editor/Sidebar'
 import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 import { useSidebarResizer } from '../hooks/useSidebarResizer'
+import pageStyles from './TableEditorPage.module.css'
 import tableStyles from '../components/table-editor/TableEditorStyles.module.css'
 
 export default function TableEditorPage() {
@@ -108,7 +109,7 @@ export default function TableEditorPage() {
   }, [state.filterValue, state.setFilterValue, state.setPage])
 
   return (
-    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
+    <div className={pageStyles.layoutRoot} style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <TableSidebar
         {...sidebarProps}
         onWidthResizerMouseDown={handleWidthResizerMouseDown}
@@ -122,17 +123,17 @@ export default function TableEditorPage() {
         onChangeConnection={state.setConnectionName}
       />
 
-      <main className="layout-main">
-        <div className={`editor-panel-header ${tableStyles.tableMainHeader}`}>
+      <main className={pageStyles.layoutMain}>
+        <div className={`${pageStyles.editorPanelHeader} ${tableStyles.tableMainHeader}`}>
           <div className={tableStyles.tableHeaderTitle}>
-            <div className="editor-title">Table Editor</div>
+            <div className={pageStyles.editorTitle}>Table Editor</div>
             <code className={tableStyles.tableHeaderTable}>
               {state.activeTable || 'No table selected'}
             </code>
           </div>
-          <div className="editor-header-right">
-            {state.connectionReadOnly ? <span className="pill">Read-only connection</span> : null}
-            <span className="status-pill">{state.status}</span>
+          <div className={pageStyles.editorHeaderRight}>
+            {state.connectionReadOnly ? <span className={pageStyles.readonlyPill}>Read-only connection</span> : null}
+            <span className={pageStyles.statusPill}>{state.status}</span>
             <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
               {state.connections.map((c) => (
                 <option key={c.name} value={c.name}>
