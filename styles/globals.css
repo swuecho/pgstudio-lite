@@ -423,14 +423,19 @@ select {
 }
 
 .table-nav-item {
-  min-height: 60px;
-  padding: 8px 12px;
-  gap: 6px;
+  min-height: 0;
+  padding: 6px 10px;
+  gap: 2px;
 }
 
 .table-nav-item .history-query {
-  max-height: 2.5em;
-  line-height: 1.25;
+  max-height: none;
+  line-height: 1.2;
+}
+
+.table-nav-item .history-meta {
+  font-size: 10px;
+  line-height: 1.1;
 }
 
 .history-top,
