@@ -425,32 +425,17 @@ select {
 .table-nav-item {
   min-height: 0;
   padding: 6px 10px;
+  gap: 2px;
 }
 
-.table-nav-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-}
-
-.table-nav-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 12px;
+.table-nav-item .history-query {
+  max-height: none;
   line-height: 1.2;
 }
 
-.table-nav-rows {
-  flex: none;
-  width: auto;
+.table-nav-item .history-meta {
   font-size: 10px;
   line-height: 1.1;
-  white-space: nowrap;
 }
 
 .history-top,
