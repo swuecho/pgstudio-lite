@@ -34,6 +34,7 @@ import {
 } from '../features/notebook/notebook.service'
 import { extractTemplateKeys } from '../lib/notebook-params'
 import { useSidebarResizer } from '../hooks/useSidebarResizer'
+import styles from '../components/notebook/NotebookPage.module.css'
 
 const NOTEBOOKS_KEY = ['notebooks']
 
@@ -604,10 +605,10 @@ export default function NotebookPage() {
       <main className="layout-main">
         <div className="editor-panel-header">
           <div className="editor-title truncate">Notebook · {activeNotebook?.title || '-'}</div>
-          <div className="editor-header-right notebook-header-actions">
-            <span className="status-pill notebook-status-pill">{status}</span>
+          <div className={`editor-header-right ${styles.headerActions}`}>
+            <span className={`status-pill ${styles.statusPill}`}>{status}</span>
             <select
-              className="notebook-conn-select"
+              className={styles.connectionSelect}
               value={activeNotebook?.connection_name || ''}
               onChange={(event) => {
                 if (!activeNotebook?.id) return
@@ -621,23 +622,23 @@ export default function NotebookPage() {
                 </option>
               ))}
             </select>
-            <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowImportModal(true)}>
+            <button className={`btn small ${styles.actionButton}`} onClick={() => notebookImport.setShowImportModal(true)}>
               Import
             </button>
-            <button className="btn small notebook-action-btn" disabled={!activeNotebookId} onClick={notebookImport.exportNotebookJson}>
+            <button className={`btn small ${styles.actionButton}`} disabled={!activeNotebookId} onClick={notebookImport.exportNotebookJson}>
               Export
             </button>
-            <button className="btn small notebook-action-btn" onClick={() => notebookImport.setShowHelp((prev) => !prev)}>
+            <button className={`btn small ${styles.actionButton}`} onClick={() => notebookImport.setShowHelp((prev) => !prev)}>
               {notebookImport.showHelp ? 'Hide Help' : 'Help'}
             </button>
           </div>
         </div>
 
-        <div className="notebook-toolbar">
-          <div className="notebook-cell-count">
+        <div className={styles.toolbar}>
+          <div className={styles.cellCount}>
             <span className="history-meta">{sortedCells.length} {sortedCells.length === 1 ? 'cell' : 'cells'}</span>
           </div>
-          <div className="notebook-toolbar-actions">
+          <div className={styles.toolbarActions}>
             <button className="btn small" disabled={!activeNotebookId || runningAll} onClick={() => addCellMutation.mutate('sql')}>
               Add SQL
             </button>
@@ -669,7 +670,7 @@ export default function NotebookPage() {
           />
         ) : null}
 
-        <div className="notebook-cells">
+        <div className={styles.cells}>
           {!activeNotebookId ? (
             <div className="empty-state">Create a notebook to begin.</div>
           ) : detailQuery.isLoading ? (
@@ -693,13 +694,13 @@ export default function NotebookPage() {
                   }}
                   onMouseDown={() => setSelectedCellId(cell.id)}
                   onFocusCapture={() => setSelectedCellId(cell.id)}
-                  className={`notebook-cell ${selectedCellId === cell.id ? 'is-selected' : ''} ${cell.collapsed ? 'collapsed' : ''}`}
+                  className={[styles.cell, selectedCellId === cell.id ? styles.cellSelected : '', cell.collapsed ? styles.cellCollapsed : ''].filter(Boolean).join(' ')}
                 >
-                  <div className={`notebook-cell-head ${cell.collapsed ? 'compact' : ''}`}>
+                  <div className={[styles.cellHead, cell.collapsed ? styles.cellHeadCompact : ''].filter(Boolean).join(' ')}>
                     <span className="pill">{cell.type === 'markdown' ? 'MD' : cell.type === 'input' ? 'IN' : 'SQL'}</span>
                     <span className="history-meta">#{cell.position + 1}</span>
                     {cell.last_run_at ? <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span> : null}
-                    <div className="notebook-cell-actions">
+                    <div className={styles.cellActions}>
                       <button
                         className="btn small icon-btn"
                         onClick={() => toggleCellCollapsed(cell)}
@@ -768,9 +769,9 @@ export default function NotebookPage() {
                             }}
                           />
                           {notebookInputs.length ? (
-                            <div className="notebook-param-controls">
+                            <div className={styles.paramControls}>
                               <select
-                                className="notebook-param-select"
+                                className={styles.paramSelect}
                                 value={selectedInsertParam}
                                 onChange={(event) =>
                                   setSelectedInsertParamByCell((prev) => ({ ...prev, [cell.id]: event.target.value }))
@@ -793,7 +794,7 @@ export default function NotebookPage() {
                             </div>
                           ) : null}
                           {sqlKeys.length ? (
-                            <div className="notebook-input-tags">
+                            <div className={styles.inputTags}>
                               <span className="history-meta">Inputs:</span>
                               {sqlKeys.map((key) => (
                                 <button
@@ -808,7 +809,7 @@ export default function NotebookPage() {
                               ))}
                             </div>
                           ) : null}
-                          <div className="notebook-run-row">
+                          <div className={styles.runRow}>
                             <button
                               className="btn small primary"
                               disabled={running || runningAll || !draft.trim()}
@@ -831,12 +832,12 @@ export default function NotebookPage() {
                         </>
                       ) : (
                         <>
-                          <div className="notebook-sql-preview">
+                          <div className={styles.sqlPreview}>
                             {toCompactSqlPreview(draft)}
                           </div>
                           {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
                           {lastResult ? (
-                            <div className="notebook-result-preview">
+                            <div className={styles.resultPreview}>
                               <CellResult result={lastResult} />
                             </div>
                           ) : (
@@ -857,8 +858,8 @@ export default function NotebookPage() {
                         ) : null
                       ) : (
                         inputMeta ? (
-                          <div className="notebook-input-collapsed">
-                            <span className="notebook-input-key">
+                          <div className={styles.inputCollapsed}>
+                            <span className={styles.inputKey}>
                               {inputMeta.key || 'input'}
                             </span>
                             <InputCellEditor
@@ -875,7 +876,7 @@ export default function NotebookPage() {
                   ) : (
                     <>
                       {!cell.collapsed ? (
-                        <div className="notebook-markdown-actions">
+                        <div className={styles.markdownActions}>
                           <button
                             className="btn small"
                             onClick={() =>
@@ -890,12 +891,12 @@ export default function NotebookPage() {
                         </div>
                       ) : null}
                       {cell.collapsed || previewMarkdown[cell.id] ? (
-                        <div className={`notebook-markdown-shell ${cell.collapsed ? 'collapsed' : ''}`}>
+                        <div className={[styles.markdownShell, cell.collapsed ? styles.markdownShellCollapsed : ''].filter(Boolean).join(' ')}>
                           <MarkdownPreview source={draft} />
                         </div>
                       ) : (
                         <textarea
-                          className="notebook-markdown-textarea"
+                          className={styles.markdownTextarea}
                           value={draft}
                           onChange={(event) => onChangeCell(cell, event.target.value)}
                         />
@@ -1002,7 +1003,7 @@ function isSameValue(a: unknown, b: unknown) {
 
 function MarkdownPreview({ source }: { source: string }) {
   return (
-    <div className="markdown-preview">
+    <div className={styles.markdownPreview}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSanitize]}
@@ -1012,7 +1013,7 @@ function MarkdownPreview({ source }: { source: string }) {
             const isBlock = Boolean(className)
             if (!isBlock) return <code {...props}>{children}</code>
             return (
-              <pre className="markdown-code-block">
+              <pre className={styles.markdownCodeBlock}>
                 <code className={className} {...props}>
                   {children}
                 </code>
