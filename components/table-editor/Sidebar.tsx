@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '../theme-toggle'
 import { TableInfo } from './types'
@@ -18,6 +19,40 @@ export function TableSidebar({
   onRefreshTables,
 }: TableSidebarProps) {
   const toActiveTableKey = (schema: string, table: string) => `${schema}.${table}`
+  const [selectedSchema, setSelectedSchema] = useState('')
+  const [tableSearch, setTableSearch] = useState('')
+
+  const availableSchemas = useMemo(
+    () => Array.from(new Set(tables.map((table) => table.schema))).sort((a, b) => a.localeCompare(b)),
+    [tables],
+  )
+
+  useEffect(() => {
+    if (availableSchemas.length === 0) {
+      setSelectedSchema('')
+      return
+    }
+
+    const activeSchema = activeTable.split('.')[0] || ''
+
+    setSelectedSchema((prev) => {
+      if (prev && availableSchemas.includes(prev)) return prev
+      if (activeSchema && availableSchemas.includes(activeSchema)) return activeSchema
+      return availableSchemas[0]
+    })
+  }, [activeTable, availableSchemas])
+
+  const visibleTables = useMemo(() => {
+    const query = tableSearch.trim().toLowerCase()
+
+    return tables.filter((table) => {
+      if (selectedSchema && table.schema !== selectedSchema) return false
+      if (!query) return true
+
+      const fullName = `${table.schema}.${table.table}`.toLowerCase()
+      return fullName.includes(query) || table.table.toLowerCase().includes(query)
+    })
+  }, [selectedSchema, tableSearch, tables])
 
   return (
     <>
@@ -40,25 +75,50 @@ export function TableSidebar({
         </div>
 
         <div className="layout-nav-controls">
-          <input placeholder="Search tables" />
+          <select
+            aria-label="Schema"
+            value={selectedSchema}
+            onChange={(event) => setSelectedSchema(event.target.value)}
+            disabled={availableSchemas.length === 0}
+          >
+            {availableSchemas.map((schema) => (
+              <option key={schema} value={schema}>
+                {schema}
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Search tables"
+            value={tableSearch}
+            onChange={(event) => setTableSearch(event.target.value)}
+            aria-label="Search tables"
+          />
           <button className="btn small" onClick={onRefreshTables}>
             {loadingTables ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
 
         <div className="layout-nav-list">
-          {tables.length === 0 ? (
-            <div className="empty-state">No tables found for this connection.</div>
+          {visibleTables.length === 0 ? (
+            <div className="empty-state">
+              {tables.length === 0
+                ? 'No tables found for this connection.'
+                : tableSearch.trim()
+                  ? 'No tables match your search in this schema.'
+                  : 'No tables found in this schema.'}
+            </div>
           ) : (
-            tables.map((table) => (
-            <button
-              key={`${table.schema}.${table.table}`}
-              className={`history-item table-nav-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
-              onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
-            >
-              <div className="history-query">{table.schema}.{table.table}</div>
-              <div className="history-meta">~{table.estimatedRows} rows</div>
-            </button>
+            visibleTables.map((table) => (
+              <button
+                key={`${table.schema}.${table.table}`}
+                className={`history-item table-nav-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
+                onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
+              >
+                <div className="history-query">
+                  {table.schema}.{table.table}
+                </div>
+                <div className="history-meta">~{table.estimatedRows} rows</div>
+              </button>
             ))
           )}
         </div>
