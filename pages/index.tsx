@@ -7,6 +7,9 @@ import { SqlTabsBar } from '../components/sql-editor/TabsBar'
 import { useSqlEditorState } from '../components/sql-editor/useSqlEditorState'
 import { formatCell, formatTime } from '../components/sql-editor/utils'
 
+const MIN_SIDEBAR_WIDTH = 260
+const MAX_SIDEBAR_WIDTH = 600
+
 export default function SqlEditorPage() {
   const MIN_EDITOR_HEIGHT = 140
   const MIN_RESULTS_HEIGHT = 120
@@ -14,6 +17,7 @@ export default function SqlEditorPage() {
 
   const state = useSqlEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(360)
   const [resultsHeight, setResultsHeight] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
   const sidebarSearchRef = useRef<HTMLInputElement>(null)
@@ -130,8 +134,28 @@ export default function SqlEditorPage() {
     window.addEventListener('mouseup', onMouseUp)
   }
 
+  const handleWidthResizerMouseDown = (event: ReactMouseEvent) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = sidebarWidth
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, startWidth + deltaX))
+      setSidebarWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
   return (
-    <div className="layout-root">
+    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <SqlSidebar
         searchInputRef={sidebarSearchRef}
         connectionName={state.connectionName}
@@ -189,6 +213,7 @@ export default function SqlEditorPage() {
         onInsertTableName={(schema, table) => state.insertIntoEditor(`${schema}.${table}`)}
         onInsertColumnName={state.insertIntoEditor}
         formatTime={formatTime}
+        onWidthResizerMouseDown={handleWidthResizerMouseDown}
       />
 
       <ConnectionManagerModal

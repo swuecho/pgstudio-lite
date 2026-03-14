@@ -44,6 +44,7 @@ type SqlSidebarProps = {
   onInsertTableName: (schema: string, table: string) => void
   onInsertColumnName: (column: string) => void
   formatTime: (iso: string) => string
+  onWidthResizerMouseDown?: (event: React.MouseEvent) => void
 }
 
 export function SqlSidebar({
@@ -87,6 +88,7 @@ export function SqlSidebar({
   onInsertTableName,
   onInsertColumnName,
   formatTime,
+  onWidthResizerMouseDown,
 }: SqlSidebarProps) {
   const searchPlaceholder =
     activeNavTab === 'history'
@@ -331,6 +333,10 @@ export function SqlSidebar({
             )
           )}
         </div>
+
+        {onWidthResizerMouseDown && (
+          <div className="width-resizer" onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
+        )}
       </aside>
     </>
   )
