@@ -1,0 +1,129 @@
+.layoutRoot {
+  height: 100vh;
+  display: grid;
+  background: var(--bg);
+}
+
+.layoutMain {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-3);
+  overflow: hidden;
+}
+
+.editorPanelHeader {
+  height: var(--header-h);
+  min-height: var(--header-h);
+  max-height: var(--header-h);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.editorTitle {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.editorHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.statusPill {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px 9px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.statusPill.ok {
+  color: var(--status-ok-text);
+  border-color: var(--status-ok-border);
+  background: var(--status-ok-bg);
+}
+
+.statusPill.warning,
+.statusPill.error {
+  color: var(--status-error-text);
+  border-color: var(--status-error-border);
+  background: var(--status-error-bg);
+}
+
+.editorHeaderRight select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  padding: 6px 9px;
+  color: var(--text);
+  height: 36px;
+  font-size: 13px;
+}
+
+.editorPanelBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.editorSplitter {
+  height: 12px;
+  flex: 0 0 12px;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+}
+
+.editorSplitter::before {
+  content: '';
+  width: 100%;
+  max-width: 56px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.editorSplitter:hover::before,
+.editorSplitter.active::before {
+  background: var(--link);
+}
+
+.editorFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  height: var(--header-h);
+  border-top: 1px solid var(--border);
+  background: var(--surface-editor-footer);
+}
+
+@media (max-width: 980px) {
+  .layoutRoot {
+    grid-template-columns: 1fr !important;
+  }
+
+  .editorPanelHeader {
+    padding: 0 10px;
+  }
+}
