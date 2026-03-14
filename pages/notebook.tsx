@@ -33,10 +33,9 @@ import {
   updateNotebook,
 } from '../features/notebook/notebook.service'
 import { extractTemplateKeys } from '../lib/notebook-params'
+import { useSidebarResizer } from '../hooks/useSidebarResizer'
 
 const NOTEBOOKS_KEY = ['notebooks']
-const MIN_SIDEBAR_WIDTH = 260
-const MAX_SIDEBAR_WIDTH = 600
 
 export default function NotebookPage() {
   const queryClient = useQueryClient()
@@ -51,7 +50,7 @@ export default function NotebookPage() {
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
   const [notebookSearch, setNotebookSearch] = useState('')
-  const [sidebarWidth, setSidebarWidth] = useState(360)
+  const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | null }>>({})
@@ -519,26 +518,6 @@ export default function NotebookPage() {
       setRunningAll(false)
       if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
     }
-  }
-
-  const handleWidthResizerMouseDown = (event: React.MouseEvent) => {
-    event.preventDefault()
-    const startX = event.clientX
-    const startWidth = sidebarWidth
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX
-      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, startWidth + deltaX))
-      setSidebarWidth(newWidth)
-    }
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
   }
 
   return (
