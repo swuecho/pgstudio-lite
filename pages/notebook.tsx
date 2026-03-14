@@ -33,6 +33,7 @@ import {
   updateNotebook,
 } from '../features/notebook/notebook.service'
 import { extractTemplateKeys } from '../lib/notebook-params'
+import { useSidebarResizer } from '../hooks/useSidebarResizer'
 
 const NOTEBOOKS_KEY = ['notebooks']
 
@@ -49,6 +50,7 @@ export default function NotebookPage() {
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
   const [notebookSearch, setNotebookSearch] = useState('')
+  const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | null }>>({})
@@ -519,7 +521,7 @@ export default function NotebookPage() {
   }
 
   return (
-    <div className="layout-root">
+    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <aside className="layout-rail">
         <Link className="rail-btn link-btn" href="/">
           SQL
@@ -595,6 +597,8 @@ export default function NotebookPage() {
             </button>
           ))}
         </div>
+
+        <div className="width-resizer" onMouseDown={handleWidthResizerMouseDown} title="Drag to resize sidebar" />
       </aside>
 
       <main className="layout-main">

@@ -4,11 +4,13 @@ import { ConnectionManagerModal } from '../components/connections/ConnectionMana
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
+import { useSidebarResizer } from '../hooks/useSidebarResizer'
 
 export default function TableEditorPage() {
   const router = useRouter()
   const state = useTableEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
+  const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const filterValueInputRef = useRef<HTMLInputElement>(null)
   const didInitUrlSyncRef = useRef(false)
   const sidebarProps = state.getSidebarProps()
@@ -106,9 +108,10 @@ export default function TableEditorPage() {
   }, [state.filterValue, state.setFilterValue, state.setPage])
 
   return (
-    <div className="layout-root">
+    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <TableSidebar
         {...sidebarProps}
+        onWidthResizerMouseDown={handleWidthResizerMouseDown}
       />
 
       <ConnectionManagerModal
