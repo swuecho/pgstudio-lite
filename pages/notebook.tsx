@@ -35,6 +35,8 @@ import {
 import { extractTemplateKeys } from '../lib/notebook-params'
 
 const NOTEBOOKS_KEY = ['notebooks']
+const MIN_SIDEBAR_WIDTH = 260
+const MAX_SIDEBAR_WIDTH = 600
 
 export default function NotebookPage() {
   const queryClient = useQueryClient()
@@ -49,6 +51,7 @@ export default function NotebookPage() {
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
   const [notebookSearch, setNotebookSearch] = useState('')
+  const [sidebarWidth, setSidebarWidth] = useState(360)
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | null }>>({})
@@ -518,8 +521,28 @@ export default function NotebookPage() {
     }
   }
 
+  const handleWidthResizerMouseDown = (event: React.MouseEvent) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = sidebarWidth
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const newWidth = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, startWidth + deltaX))
+      setSidebarWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
   return (
-    <div className="layout-root">
+    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <aside className="layout-rail">
         <Link className="rail-btn link-btn" href="/">
           SQL
@@ -595,6 +618,8 @@ export default function NotebookPage() {
             </button>
           ))}
         </div>
+
+        <div className="width-resizer" onMouseDown={handleWidthResizerMouseDown} title="Drag to resize sidebar" />
       </aside>
 
       <main className="layout-main">

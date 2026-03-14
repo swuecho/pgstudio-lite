@@ -209,6 +209,26 @@ select {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.width-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background-color 0.15s ease;
+}
+
+.width-resizer:hover {
+  background: rgba(124, 124, 130, 0.5);
+}
+
+.width-resizer:active {
+  background: rgba(10, 132, 255, 0.5);
 }
 
 .layout-nav-header {
