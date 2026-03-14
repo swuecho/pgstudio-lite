@@ -1,0 +1,385 @@
+.tableNavItem {
+  min-height: 0;
+  padding: 6px 10px;
+  gap: 2px;
+}
+
+.tableNavName {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.2;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tableNavRows {
+  display: flex;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.1;
+  width: 100%;
+  min-width: 0;
+}
+
+.tableCardsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.tableCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 48px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.tableCard:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  transform: translateX(2px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.tableCardActive {
+  background: var(--bg-active);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.tableCard:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+.tableCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.tableCardName {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.tableCardRows {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  background: var(--bg-subtle);
+  border-radius: 4px;
+}
+
+.tableMainHeader {
+  background: linear-gradient(180deg, var(--surface-table-main-start), var(--surface-table-main-end));
+}
+
+.tableHeaderTitle {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.tableHeaderTable {
+  min-width: 0;
+  max-width: min(56vw, 760px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tablePage {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.tableGridWrap {
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.tableToolbar {
+  display: grid;
+  grid-template-columns: 1fr auto auto 1fr minmax(120px, 1fr) auto auto auto;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
+  height: 46px;
+  align-items: center;
+  z-index: 10;
+  position: relative;
+}
+
+.tableToolbar select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 4px 9px;
+  height: var(--control-h);
+}
+
+.tableToolbar :global(.cell-input) {
+  height: var(--control-h);
+  padding: 4px 9px;
+}
+
+.tableScrollArea {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.tableGridTable {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+.tableGridTable th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+  background: linear-gradient(180deg, var(--surface-table-head-start), var(--surface-table-head-end));
+}
+
+.tableGridTable td {
+  min-width: 118px;
+  max-width: 260px;
+  white-space: normal;
+  overflow: hidden;
+}
+
+.tableGridTable tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface-sticky-col);
+}
+
+.tableActionsCol {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--surface-sticky-col);
+  min-width: 110px;
+}
+
+.tablePagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--header-h);
+  border-top: 1px solid var(--border);
+  padding: 0 12px;
+  background: var(--panel);
+}
+
+.tablePagination :global(.history-actions) {
+  margin-top: 0;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.cellInput {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.tableCellEditor {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tableCellKind {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0 6px;
+  font-size: 9px;
+  line-height: 1.45;
+  color: var(--muted);
+  background: var(--panel-2);
+  letter-spacing: 0.03em;
+}
+
+.tableTypedInput {
+  min-height: 26px;
+  min-width: 0;
+}
+
+.jsonbPreviewButton {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 26px;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.jsonbPreviewButton:hover {
+  background: var(--panel-2);
+  border-color: var(--primary);
+}
+
+.jsonbPreviewText {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.jsonbMonacoWrapper {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.jsonbEditorModal {
+  min-width: 600px;
+  max-width: 900px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.jsonbEditorModal :global(.modal-body) {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+}
+
+.tableBoolToggle {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+  color: var(--muted);
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.tableBoolToggleOn {
+  color: var(--accent);
+  border-color: #9ddfc1;
+  background: linear-gradient(180deg, #f0fff7, #e6faef);
+}
+
+.tableGridTable td code {
+  display: block;
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1200px) {
+  .tablePage {
+    grid-template-columns: 1fr;
+  }
+
+  .tableGridWrap {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tableToolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+:global([data-theme='dark']) .tableMainHeader {
+  background: linear-gradient(180deg, var(--surface-table-main-start), var(--surface-table-main-end));
+}
+
+:global([data-theme='dark']) .tableHeaderTable {
+  background: #111b2b;
+}
+
+:global([data-theme='dark']) .cellInput {
+  background: var(--control-bg);
+}
+
+:global([data-theme='dark']) .tableToolbar {
+  background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
+}
+
+:global([data-theme='dark']) .tableGridTable th {
+  background: linear-gradient(180deg, var(--surface-table-head-start), var(--surface-table-head-end));
+}
+
+:global([data-theme='dark']) .tableGridTable tbody td:first-child,
+:global([data-theme='dark']) .tableActionsCol {
+  background: var(--surface-sticky-col);
+}
