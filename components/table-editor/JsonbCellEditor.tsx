@@ -3,6 +3,7 @@ import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useCallback, useRef } from 'react'
 import { getCurrentTheme } from '../sql-editor/utils'
+import styles from './TableEditorStyles.module.css'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -118,7 +119,7 @@ export function JsonbCellEditor({ value, onSave, onCancel }: JsonbCellEditorProp
   }, [])
 
   return (
-    <div className="jsonb-monaco-wrapper">
+    <div className={styles.jsonbMonacoWrapper}>
       <MonacoEditor
         height="400px"
         language="json"

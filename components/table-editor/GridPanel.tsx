@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import { ColumnInfo, RowData } from './types'
 import { ColumnsSelector } from './ColumnsSelector'
 import { JsonbCellEditor } from './JsonbCellEditor'
+import styles from './TableEditorStyles.module.css'
 
 type TableGridPanelProps = {
   columns: ColumnInfo[]
@@ -262,8 +263,8 @@ export function TableGridPanel({
 
   return (
     <>
-      <div className="table-grid-wrap">
-        <div className="table-toolbar">
+      <div className={styles.tableGridWrap}>
+        <div className={styles.tableToolbar}>
           <select value={sortBy} onChange={(e) => onChangeSortBy(e.target.value)}>
             <option value="_ctid">Default order</option>
             {columns.map((col) => (
@@ -290,7 +291,7 @@ export function TableGridPanel({
           </select>
           <input
             ref={filterValueInputRef}
-            className="cell-input"
+            className={styles.cellInput}
             placeholder="Filter value"
             value={filterValue}
             onChange={(e) => onChangeFilterValue(e.target.value)}
@@ -311,14 +312,14 @@ export function TableGridPanel({
             onHideAll={onHideAllColumns}
           />
         </div>
-        <div className="table-scroll-area">
-          <table className="table-grid-table">
+        <div className={styles.tableScrollArea}>
+          <table className={styles.tableGridTable}>
             <thead>
               <tr>
                 {displayColumns.map((col) => (
                   <th key={col.name}>{col.name}</th>
                 ))}
-                <th className="table-actions-col">actions</th>
+                <th className={styles.tableActionsCol}>actions</th>
               </tr>
             </thead>
             <tbody>
@@ -339,9 +340,9 @@ export function TableGridPanel({
                       {readOnly ? (
                         <code>{String(row[col.name] ?? '')}</code>
                       ) : isBooleanColumn(col.dataType) ? (
-                        <div className="table-cell-editor">
+                        <div className={styles.tableCellEditor}>
                           <button
-                            className={`table-bool-toggle ${row[col.name] === true ? 'on' : 'off'}`}
+                            className={`${styles.tableBoolToggle} ${row[col.name] === true ? styles.tableBoolToggleOn : ''}`}
                             onClick={() => {
                               commitRowChange(row, col.name, row[col.name] !== true, col.dataType)
                             }}
@@ -351,9 +352,9 @@ export function TableGridPanel({
                           </button>
                         </div>
                       ) : isDateColumn(col.dataType) ? (
-                        <div className="table-cell-editor">
+                        <div className={styles.tableCellEditor}>
                           <input
-                            className="cell-input table-typed-input"
+                            className={`${styles.cellInput} ${styles.tableTypedInput}`}
                             type="date"
                             defaultValue={toDateInputValue(row[col.name])}
                             onBlur={(e) => {
@@ -368,9 +369,9 @@ export function TableGridPanel({
                           />
                         </div>
                       ) : isDateTimeColumn(col.dataType) ? (
-                        <div className="table-cell-editor">
+                        <div className={styles.tableCellEditor}>
                           <input
-                            className="cell-input table-typed-input"
+                            className={`${styles.cellInput} ${styles.tableTypedInput}`}
                             type="datetime-local"
                             defaultValue={toDateTimeInputValue(row[col.name])}
                             onBlur={(e) => {
@@ -385,23 +386,23 @@ export function TableGridPanel({
                           />
                         </div>
                       ) : isJsonColumn(col.dataType) ? (
-                        <div className="table-cell-editor">
-                          <span className="table-cell-kind">JSON</span>
+                        <div className={styles.tableCellEditor}>
+                          <span className={styles.tableCellKind}>JSON</span>
                           <button
-                            className="jsonb-preview-button"
+                            className={styles.jsonbPreviewButton}
                             onClick={() => openJsonbEditor(row, col.name)}
                             title="Click to edit JSON"
                           >
-                            <code className="jsonb-preview-text">
+                            <code className={styles.jsonbPreviewText}>
                               {truncate(formatJsonbPreview(row[col.name]), 150)}
                             </code>
                           </button>
                         </div>
                       ) : (
-                        <div className="table-cell-editor">
-                          {editorKind ? <span className="table-cell-kind">{editorKind.toUpperCase()}</span> : null}
+                        <div className={styles.tableCellEditor}>
+                          {editorKind ? <span className={styles.tableCellKind}>{editorKind.toUpperCase()}</span> : null}
                           <input
-                            className="cell-input table-typed-input"
+                            className={`${styles.cellInput} ${styles.tableTypedInput}`}
                             defaultValue={String(row[col.name] ?? '')}
                             onBlur={(e) => {
                               const target = e.currentTarget
@@ -417,7 +418,7 @@ export function TableGridPanel({
                     </td>
                   )
                 })}
-                  <td className="table-actions-col">
+                  <td className={styles.tableActionsCol}>
                     <button
                       className="btn small danger"
                       disabled={readOnlyConnection}
@@ -440,7 +441,7 @@ export function TableGridPanel({
             </tbody>
           </table>
         </div>
-        <div className="table-pagination">
+        <div className={styles.tablePagination}>
           <span className="history-meta">
             {totalRows} rows total · page {page + 1} / {Math.max(1, Math.ceil(totalRows / pageSize))}
           </span>
@@ -507,7 +508,7 @@ export function TableGridPanel({
 
       {jsonbEditCell ? (
         <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-card jsonb-editor-modal">
+          <div className={`modal-card ${styles.jsonbEditorModal}`}>
             <div className="modal-head">
               <div className="nav-title">Edit JSONB: {jsonbEditCell.column}</div>
               <button className="btn small" onClick={closeJsonbEditor}>
