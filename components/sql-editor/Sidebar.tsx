@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { RefObject } from 'react'
 import ThemeToggle from '../theme-toggle'
 import { HistoryItem, SchemaTable, SnippetItem } from './types'
+import styles from './Sidebar.module.css'
 
 type SqlSidebarProps = {
   searchInputRef: RefObject<HTMLInputElement | null>
@@ -99,12 +100,12 @@ export function SqlSidebar({
 
   return (
     <>
-      <aside className="layout-rail">
-        <button className="rail-btn active">SQL</button>
-        <Link className="rail-btn link-btn" href="/table-editor">
+      <aside className={styles.layoutRail}>
+        <button className={`${styles.railBtn} ${styles.active}`}>SQL</button>
+        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/table-editor">
           TB
         </Link>
-        <Link className="rail-btn link-btn" href="/notebook">
+        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/notebook">
           NB
         </Link>
         <div className="mt-auto flex justify-center">
@@ -112,24 +113,24 @@ export function SqlSidebar({
         </div>
       </aside>
 
-      <aside className="layout-nav">
-        <div className="layout-nav-header">
-          <div className="nav-title">SQL Editor</div>
-          <div className="nav-tabs-inline">
+      <aside className={styles.layoutNav}>
+        <div className={styles.layoutNavHeader}>
+          <div className={styles.navTitle}>SQL Editor</div>
+          <div className={styles.navTabsInline}>
             <button
-              className={`nav-tab ${activeNavTab === 'explorer' ? 'active' : ''}`}
+              className={`${styles.navTab} ${activeNavTab === 'explorer' ? styles.active : ''}`}
               onClick={() => onChangeNavTab('explorer')}
             >
               Explorer
             </button>
             <button
-              className={`nav-tab ${activeNavTab === 'snippets' ? 'active' : ''}`}
+              className={`${styles.navTab} ${activeNavTab === 'snippets' ? styles.active : ''}`}
               onClick={() => onChangeNavTab('snippets')}
             >
               Snippets{connectionName ? ` · ${connectionName}` : ''}
             </button>
             <button
-              className={`nav-tab ${activeNavTab === 'history' ? 'active' : ''}`}
+              className={`${styles.navTab} ${activeNavTab === 'history' ? styles.active : ''}`}
               onClick={() => onChangeNavTab('history')}
             >
               History
@@ -137,7 +138,7 @@ export function SqlSidebar({
           </div>
         </div>
 
-        <div className="layout-nav-controls">
+        <div className={styles.layoutNavControls}>
           <input
             ref={searchInputRef}
             value={historySearch}
@@ -180,7 +181,7 @@ export function SqlSidebar({
           )}
         </div>
 
-        <div className="layout-nav-list">
+        <div className={styles.layoutNavList}>
           {activeNavTab === 'history' ? (
             filteredHistory.length === 0 ? (
               <div className="empty-state">
@@ -190,7 +191,7 @@ export function SqlSidebar({
             filteredHistory.map((item) => (
               <div
                 key={item.id}
-                className="history-item"
+                className={styles.historyItem}
                 role="button"
                 tabIndex={0}
                 onClick={() => onLoadHistoryQuery(item.query_text)}
@@ -198,11 +199,11 @@ export function SqlSidebar({
                   if (event.key === 'Enter' || event.key === ' ') onLoadHistoryQuery(item.query_text)
                 }}
               >
-                <div className="history-top">
+                <div className={styles.historyTop}>
                   <span className={`pill ${item.status === 'success' ? 'ok' : 'error'}`}>{item.status}</span>
                   <span>{item.duration_ms}ms</span>
                 </div>
-                <div className="history-query">{item.query_text.split('\n').join(' ').slice(0, 140)}</div>
+                <div className={styles.historyQuery}>{item.query_text.split('\n').join(' ').slice(0, 140)}</div>
                 <div className="history-meta">{formatTime(item.executed_at)}</div>
               </div>
             ))
@@ -216,12 +217,12 @@ export function SqlSidebar({
               </div>
             ) : (
             filteredSnippets.map((item) => (
-              <div key={item.id} className="history-item snippet-item">
-                <div className="history-top">
+              <div key={item.id} className={`${styles.historyItem} ${styles.snippetItem}`}>
+                <div className={styles.historyTop}>
                   <span className="pill ok">snippet</span>
                   {renamingSnippetId === item.id ? (
                     <input
-                      className="snippet-title-input"
+                      className={styles.snippetTitleInput}
                       value={renameDraft}
                       autoFocus
                       onChange={(event) => onChangeRenameDraft(event.target.value)}
@@ -240,7 +241,7 @@ export function SqlSidebar({
                     <span>{item.title}</span>
                   )}
                 </div>
-                <div className="history-query snippet-query">{item.query_text.split('\n').join(' ').slice(0, 180)}</div>
+                <div className={`${styles.historyQuery} ${styles.snippetQuery}`}>{item.query_text.split('\n').join(' ').slice(0, 180)}</div>
                 <div className="history-meta">
                   <span>{formatTime(item.updated_at)}</span>
                 </div>
@@ -279,9 +280,9 @@ export function SqlSidebar({
               </div>
             ) : (
             schemaGroups.map(([schema, tables]) => (
-              <div key={schema} className="explorer-group">
-                <button className="explorer-schema explorer-toggle-row" onClick={() => onToggleSchema(schema)}>
-                  <span className="explorer-chevron">{expandedSchemas[schema] === false ? '▸' : '▾'}</span>
+              <div key={schema} className={styles.explorerGroup}>
+                <button className={`${styles.explorerSchema} ${styles.explorerToggleRow}`} onClick={() => onToggleSchema(schema)}>
+                  <span className={styles.explorerChevron}>{expandedSchemas[schema] === false ? '▸' : '▾'}</span>
                   <span>{schema}</span>
                 </button>
                 {expandedSchemas[schema] !== false &&
@@ -289,18 +290,18 @@ export function SqlSidebar({
                     const tableKey = `${schema}.${table.table}`
                     const isExpanded = expandedTables[tableKey] === true
                     return (
-                      <div key={tableKey} className="explorer-item">
+                      <div key={tableKey} className={styles.explorerItem}>
                         <button
-                          className="explorer-table explorer-toggle-row"
+                          className={`${styles.explorerTable} ${styles.explorerToggleRow}`}
                           onClick={() => onToggleTable(schema, table.table)}
                           title={`${isExpanded ? 'Collapse' : 'Expand'} ${schema}.${table.table}`}
                         >
-                          <span className="explorer-chevron">{isExpanded ? '▾' : '▸'}</span>
+                          <span className={styles.explorerChevron}>{isExpanded ? '▾' : '▸'}</span>
                           <span>{table.table}</span>
                         </button>
-                        <div className="explorer-actions">
+                        <div className={styles.explorerActions}>
                           <button
-                            className="explorer-action-btn"
+                            className={styles.explorerActionBtn}
                             onClick={() => onInsertTableName(schema, table.table)}
                             title={`Insert ${schema}.${table.table}`}
                           >
@@ -308,14 +309,14 @@ export function SqlSidebar({
                           </button>
                         </div>
                         {isExpanded && (
-                          <div className="explorer-columns">
+                          <div className={styles.explorerColumns}>
                             {loadingColumnsByKey[tableKey] ? (
                               <div className="history-meta">Loading columns...</div>
                             ) : (
                               (tableColumnsByKey[tableKey] || []).slice(0, 80).map((column) => (
                                 <button
                                   key={`${schema}.${table.table}.${column}`}
-                                  className="explorer-col"
+                                  className={styles.explorerCol}
                                   onClick={() => onInsertColumnName(column)}
                                   title={`Insert ${column}`}
                                 >
@@ -335,7 +336,7 @@ export function SqlSidebar({
         </div>
 
         {onWidthResizerMouseDown && (
-          <div className="width-resizer" onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
+          <div className={styles.widthResizer} onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
         )}
       </aside>
     </>
