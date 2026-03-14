@@ -6,6 +6,7 @@ import { SqlSidebar } from '../components/sql-editor/Sidebar'
 import { SqlTabsBar } from '../components/sql-editor/TabsBar'
 import { useSqlEditorState } from '../components/sql-editor/useSqlEditorState'
 import { formatCell, formatTime } from '../components/sql-editor/utils'
+import { useSidebarResizer } from '../hooks/useSidebarResizer'
 
 export default function SqlEditorPage() {
   const MIN_EDITOR_HEIGHT = 140
@@ -14,6 +15,7 @@ export default function SqlEditorPage() {
 
   const state = useSqlEditorState()
   const [managingConnections, setManagingConnections] = useState(false)
+  const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const [resultsHeight, setResultsHeight] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
   const sidebarSearchRef = useRef<HTMLInputElement>(null)
@@ -131,7 +133,7 @@ export default function SqlEditorPage() {
   }
 
   return (
-    <div className="layout-root">
+    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <SqlSidebar
         searchInputRef={sidebarSearchRef}
         connectionName={state.connectionName}
@@ -189,6 +191,7 @@ export default function SqlEditorPage() {
         onInsertTableName={(schema, table) => state.insertIntoEditor(`${schema}.${table}`)}
         onInsertColumnName={state.insertIntoEditor}
         formatTime={formatTime}
+        onWidthResizerMouseDown={handleWidthResizerMouseDown}
       />
 
       <ConnectionManagerModal
