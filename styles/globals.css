@@ -443,7 +443,6 @@ select {
 }
 
 
-.history-top,
 .history-meta {
   display: flex;
   gap: 8px;
@@ -454,7 +453,6 @@ select {
   min-width: 0;
 }
 
-.history-top > span,
 .history-meta > span {
   min-width: 0;
   overflow: hidden;
@@ -475,30 +473,6 @@ select {
   text-overflow: ellipsis;
   word-break: break-word;
   font-family: var(--font-mono);
-}
-
-.snippet-item {
-  min-height: 138px;
-}
-
-.snippet-query {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-height: 1.4;
-  max-height: none;
-  padding-bottom: 1px;
-}
-
-.snippet-title-input {
-  min-width: 0;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--control-bg);
-  color: var(--text);
-  padding: 2px 6px;
-  font-size: 12px;
 }
 
 .history-actions {

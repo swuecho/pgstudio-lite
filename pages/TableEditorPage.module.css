@@ -1,0 +1,112 @@
+.layoutRoot {
+  height: 100vh;
+  display: grid;
+  background: var(--bg);
+}
+
+.layoutMain {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-3);
+  overflow: hidden;
+}
+
+.editorPanelHeader {
+  height: var(--header-h);
+  min-height: var(--header-h);
+  max-height: var(--header-h);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.tableMainHeader {
+  background: linear-gradient(180deg, var(--surface-table-main-start), var(--surface-table-main-end));
+}
+
+.tableHeaderTitle {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.editorTitle {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tableHeaderTable {
+  min-width: 0;
+  max-width: min(56vw, 760px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.editorHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.editorHeaderRight select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  padding: 6px 9px;
+  color: var(--text);
+  height: 36px;
+  font-size: 13px;
+}
+
+.statusPill {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px 9px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.tablePage {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1200px) {
+  .tablePage {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .layoutRoot {
+    grid-template-columns: 1fr !important;
+  }
+
+  .editorPanelHeader {
+    padding: 0 10px;
+  }
+}
