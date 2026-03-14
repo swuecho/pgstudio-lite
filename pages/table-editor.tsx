@@ -32,12 +32,18 @@ export default function TableEditorPage() {
 
     if (nextConnectionName && nextConnectionName !== state.connectionName) {
       state.setConnectionName(nextConnectionName)
+      // Clear activeTable when connection changes to avoid showing stale table names
+      if (state.activeTable) {
+        state.setActiveTable('')
+      }
     }
-    if (nextActiveTable && nextActiveTable !== state.activeTable) {
+    // Always sync activeTable with URL (including clearing when empty)
+    if (nextActiveTable !== state.activeTable) {
       state.setActiveTable(nextActiveTable)
       state.setPage(0)
     }
     didInitUrlSyncRef.current = true
+    // Don't include state.activeTable in deps - only track URL changes to avoid infinite loop
   }, [router.isReady, router.query.connectionName, router.query.schema, router.query.table, state.setActiveTable, state.setConnectionName, state.setPage])
 
   useEffect(() => {
