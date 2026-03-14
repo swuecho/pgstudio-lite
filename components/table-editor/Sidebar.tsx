@@ -9,6 +9,7 @@ type TableSidebarProps = {
   activeTable: string
   onSelectTable: (table: string) => void
   onRefreshTables: () => void
+  onWidthResizerMouseDown?: (event: React.MouseEvent) => void
 }
 
 export function TableSidebar({
@@ -17,6 +18,7 @@ export function TableSidebar({
   activeTable,
   onSelectTable,
   onRefreshTables,
+  onWidthResizerMouseDown,
 }: TableSidebarProps) {
   const toActiveTableKey = (schema: string, table: string) => `${schema}.${table}`
   const [selectedSchema, setSelectedSchema] = useState('')
@@ -122,6 +124,10 @@ export function TableSidebar({
             ))
           )}
         </div>
+
+        {onWidthResizerMouseDown && (
+          <div className="width-resizer" onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
+        )}
       </aside>
     </>
   )
