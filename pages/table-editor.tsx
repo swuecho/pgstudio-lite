@@ -6,6 +6,7 @@ import { TableSidebar } from '../components/table-editor/Sidebar'
 import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 import { useSidebarResizer } from '../hooks/useSidebarResizer'
+import tableStyles from '../components/table-editor/TableEditorStyles.module.css'
 
 export default function TableEditorPage() {
   const router = useRouter()
@@ -122,10 +123,10 @@ export default function TableEditorPage() {
       />
 
       <main className="layout-main">
-        <div className="editor-panel-header table-main-header">
-          <div className="table-header-title">
+        <div className={`editor-panel-header ${tableStyles.tableMainHeader}`}>
+          <div className={tableStyles.tableHeaderTitle}>
             <div className="editor-title">Table Editor</div>
-            <code className="table-header-table">
+            <code className={tableStyles.tableHeaderTable}>
               {state.activeTable || 'No table selected'}
             </code>
           </div>
@@ -146,7 +147,7 @@ export default function TableEditorPage() {
           </div>
         </div>
 
-        <div className="table-page">
+        <div className={tableStyles.tablePage}>
           <TableGridPanel
             {...gridProps}
           />
