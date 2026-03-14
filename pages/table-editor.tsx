@@ -6,7 +6,6 @@ import { TableSidebar } from '../components/table-editor/Sidebar'
 import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 import { useSidebarResizer } from '../hooks/useSidebarResizer'
-import styles from './TableEditorPage.module.css'
 
 export default function TableEditorPage() {
   const router = useRouter()
@@ -108,7 +107,7 @@ export default function TableEditorPage() {
   }, [state.filterValue, state.setFilterValue, state.setPage])
 
   return (
-    <div className={styles.layoutRoot} style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
+    <div className="layout-root" style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <TableSidebar
         {...sidebarProps}
         onWidthResizerMouseDown={handleWidthResizerMouseDown}
@@ -122,17 +121,17 @@ export default function TableEditorPage() {
         onChangeConnection={state.setConnectionName}
       />
 
-      <main className={styles.layoutMain}>
-        <div className={`${styles.editorPanelHeader} ${styles.tableMainHeader}`}>
-          <div className={styles.tableHeaderTitle}>
-            <div className={styles.editorTitle}>Table Editor</div>
-            <code className={styles.tableHeaderTable}>
+      <main className="layout-main">
+        <div className="editor-panel-header table-main-header">
+          <div className="table-header-title">
+            <div className="editor-title">Table Editor</div>
+            <code className="table-header-table">
               {state.activeTable || 'No table selected'}
             </code>
           </div>
-          <div className={styles.editorHeaderRight}>
+          <div className="editor-header-right">
             {state.connectionReadOnly ? <span className="pill">Read-only connection</span> : null}
-            <span className={styles.statusPill}>{state.status}</span>
+            <span className="status-pill">{state.status}</span>
             <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
               {state.connections.map((c) => (
                 <option key={c.name} value={c.name}>
@@ -147,7 +146,7 @@ export default function TableEditorPage() {
           </div>
         </div>
 
-        <div className={styles.tablePage}>
+        <div className="table-page">
           <TableGridPanel
             {...gridProps}
           />

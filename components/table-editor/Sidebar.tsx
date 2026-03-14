@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '../theme-toggle'
 import { TableInfo } from './types'
-import sharedStyles from '../sql-editor/Sidebar.module.css'
-import styles from './Sidebar.module.css'
 
 type TableSidebarProps = {
   tables: TableInfo[]
@@ -60,12 +58,12 @@ export function TableSidebar({
 
   return (
     <>
-      <aside className={sharedStyles.layoutRail}>
-        <Link className={`${sharedStyles.railBtn} ${sharedStyles.linkBtn}`} href="/">
+      <aside className="layout-rail">
+        <Link className="rail-btn link-btn" href="/">
           SQL
         </Link>
-        <button className={`${sharedStyles.railBtn} ${sharedStyles.active}`}>TB</button>
-        <Link className={`${sharedStyles.railBtn} ${sharedStyles.linkBtn}`} href="/notebook">
+        <button className="rail-btn active">TB</button>
+        <Link className="rail-btn link-btn" href="/notebook">
           NB
         </Link>
         <div className="mt-auto flex justify-center">
@@ -73,12 +71,12 @@ export function TableSidebar({
         </div>
       </aside>
 
-      <aside className={sharedStyles.layoutNav}>
-        <div className={sharedStyles.layoutNavHeader}>
-          <div className={sharedStyles.navTitle}>Table Editor</div>
+      <aside className="layout-nav">
+        <div className="layout-nav-header">
+          <div className="nav-title">Table Editor</div>
         </div>
 
-        <div className={sharedStyles.layoutNavControls}>
+        <div className="layout-nav-controls">
           <select
             aria-label="Schema"
             value={selectedSchema}
@@ -102,7 +100,7 @@ export function TableSidebar({
           </button>
         </div>
 
-        <div className={`${sharedStyles.layoutNavList} ${styles.tableCardsList}`}>
+        <div className="layout-nav-list table-cards-list">
           {visibleTables.length === 0 ? (
             <div className="empty-state">
               {tables.length === 0
@@ -115,12 +113,12 @@ export function TableSidebar({
             visibleTables.map((table) => (
               <button
                 key={`${table.schema}.${table.table}`}
-                className={`${styles.tableCard} ${activeTable === toActiveTableKey(table.schema, table.table) ? styles.activeItem : ''}`}
+                className={`table-card ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
                 onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
               >
-                <div className={styles.tableCardHeader}>
-                  <div className={styles.tableCardName}>{table.table}</div>
-                  <div className={styles.tableCardRows}>~{table.estimatedRows} rows</div>
+                <div className="table-card-header">
+                  <div className="table-card-name">{table.table}</div>
+                  <div className="table-card-rows">~{table.estimatedRows} rows</div>
                 </div>
               </button>
             ))
@@ -128,7 +126,7 @@ export function TableSidebar({
         </div>
 
         {onWidthResizerMouseDown && (
-          <div className={sharedStyles.widthResizer} onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
+          <div className="width-resizer" onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
         )}
       </aside>
     </>
