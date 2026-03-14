@@ -111,11 +111,11 @@ export function TableSidebar({
             visibleTables.map((table) => (
               <button
                 key={`${table.schema}.${table.table}`}
-                className={`history-item table-nav-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
+                className={`table-nav-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
                 onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
               >
-                <div className="history-query">{table.table}</div>
-                <div className="history-meta">~{table.estimatedRows} rows</div>
+                <div className="table-nav-name">{table.table}</div>
+                <div className="table-nav-rows">~{table.estimatedRows} rows</div>
               </button>
             ))
           )}
