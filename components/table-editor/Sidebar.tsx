@@ -98,7 +98,7 @@ export function TableSidebar({
           </button>
         </div>
 
-        <div className="layout-nav-list">
+        <div className="layout-nav-list table-cards-list">
           {visibleTables.length === 0 ? (
             <div className="empty-state">
               {tables.length === 0
@@ -111,11 +111,13 @@ export function TableSidebar({
             visibleTables.map((table) => (
               <button
                 key={`${table.schema}.${table.table}`}
-                className={`table-nav-item ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
+                className={`table-card ${activeTable === toActiveTableKey(table.schema, table.table) ? 'active-item' : ''}`}
                 onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
               >
-                <div className="table-nav-name">{table.table}</div>
-                <div className="table-nav-rows">~{table.estimatedRows} rows</div>
+                <div className="table-card-header">
+                  <div className="table-card-name">{table.table}</div>
+                  <div className="table-card-rows">~{table.estimatedRows} rows</div>
+                </div>
               </button>
             ))
           )}
