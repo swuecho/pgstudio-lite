@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import styles from './ColumnsSelector.module.css'
 import type { ColumnInfo } from './types'
 
 type ColumnsSelectorProps = {
@@ -40,7 +41,7 @@ export function ColumnsSelector({
   const selectedCount = visibleColumns.length
 
   return (
-    <div className="columns-selector" ref={containerRef}>
+    <div className={styles.columnsSelector} ref={containerRef}>
       <button
         className="btn small"
         onClick={() => setIsOpen(!isOpen)}
@@ -49,10 +50,10 @@ export function ColumnsSelector({
         Columns {someSelected && !allSelected ? `(${selectedCount}/${columns.length})` : allSelected ? '(All)' : '(None)'}
       </button>
       {isOpen && (
-        <div className="columns-selector-dropdown">
-          <div className="columns-selector-header">
-            <span className="columns-selector-title">Select Columns</span>
-            <div className="columns-selector-actions">
+        <div className={styles.columnsSelectorDropdown}>
+          <div className={styles.columnsSelectorHeader}>
+            <span className={styles.columnsSelectorTitle}>Select Columns</span>
+            <div className={styles.columnsSelectorActions}>
               <button className="btn small" onClick={onShowAll}>
                 All
               </button>
@@ -61,16 +62,16 @@ export function ColumnsSelector({
               </button>
             </div>
           </div>
-          <div className="columns-selector-list">
+          <div className={styles.columnsSelectorList}>
             {columns.map((col) => (
-              <label key={col.name} className="columns-selector-item">
+              <label key={col.name} className={styles.columnsSelectorItem}>
                 <input
                   type="checkbox"
                   checked={visibleColumns.includes(col.name)}
                   onChange={() => onToggleColumn(col.name)}
                 />
-                <span className="column-name">{col.name}</span>
-                <span className="column-type">{col.dataType}</span>
+                <span className={styles.columnName}>{col.name}</span>
+                <span className={styles.columnType}>{col.dataType}</span>
               </label>
             ))}
           </div>
