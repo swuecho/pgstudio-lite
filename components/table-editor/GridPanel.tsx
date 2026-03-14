@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { RefObject } from 'react'
 import { ColumnInfo, RowData } from './types'
 import { ColumnsSelector } from './ColumnsSelector'
+import { JsonbCellEditor } from './JsonbCellEditor'
 
 type TableGridPanelProps = {
   columns: ColumnInfo[]
@@ -75,9 +76,46 @@ export function TableGridPanel({
   onHideAllColumns,
 }: TableGridPanelProps) {
   const [dialog, setDialog] = useState<GridDialogState | null>(null)
+  const [jsonbEditCell, setJsonbEditCell] = useState<{row: RowData, column: string} | null>(null)
 
   function closeDialog() {
     setDialog(null)
+  }
+
+  function closeJsonbEditor() {
+    setJsonbEditCell(null)
+  }
+
+  function openJsonbEditor(row: RowData, column: string) {
+    setJsonbEditCell({ row, column })
+  }
+
+  function handleJsonbSave(value: unknown) {
+    if (jsonbEditCell) {
+      const { row, column } = jsonbEditCell
+      const colInfo = columns.find(c => c.name === column)
+      if (colInfo) {
+        onUpdateCell(row._ctid, column, value)
+      }
+    }
+    closeJsonbEditor()
+  }
+
+  function formatJsonbPreview(value: unknown): string {
+    if (value === null || value === undefined) return 'null'
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        return JSON.stringify(parsed, null, 2)
+      } catch {
+        return value
+      }
+    }
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch {
+      return String(value)
+    }
   }
 
   function previewValue(value: unknown) {
@@ -302,7 +340,6 @@ export function TableGridPanel({
                         <code>{String(row[col.name] ?? '')}</code>
                       ) : isBooleanColumn(col.dataType) ? (
                         <div className="table-cell-editor">
-                          <span className="table-cell-kind">BOOL</span>
                           <button
                             className={`table-bool-toggle ${row[col.name] === true ? 'on' : 'off'}`}
                             onClick={() => {
@@ -350,47 +387,15 @@ export function TableGridPanel({
                       ) : isJsonColumn(col.dataType) ? (
                         <div className="table-cell-editor">
                           <span className="table-cell-kind">JSON</span>
-                          <textarea
-                            className="cell-input table-json-input"
-                            rows={1}
-                            defaultValue={
-                              typeof row[col.name] === 'string'
-                                ? String(row[col.name])
-                                : JSON.stringify(row[col.name] ?? null, null, 2)
-                            }
-                            onBlur={(e) => {
-                              const target = e.currentTarget
-                              const raw = target.value.trim()
-                              try {
-                                const parsed = raw ? JSON.parse(raw) : null
-                                const result = commitRowChange(row, col.name, parsed, col.dataType, () => {
-                                  target.value =
-                                    typeof row[col.name] === 'string'
-                                      ? String(row[col.name])
-                                      : JSON.stringify(row[col.name] ?? null, null, 2)
-                                })
-                                if (result === 'unchanged') {
-                                  target.value =
-                                    typeof row[col.name] === 'string'
-                                      ? String(row[col.name])
-                                      : JSON.stringify(row[col.name] ?? null, null, 2)
-                                }
-                              } catch {
-                                setDialog({
-                                  title: 'Invalid JSON value',
-                                  lines: ['Please enter valid JSON before saving this cell.'],
-                                  confirmLabel: 'OK',
-                                  hideCancel: true,
-                                  onConfirm: () => {
-                                    target.value =
-                                      typeof row[col.name] === 'string'
-                                        ? String(row[col.name])
-                                        : JSON.stringify(row[col.name] ?? null, null, 2)
-                                  },
-                                })
-                              }
-                            }}
-                          />
+                          <button
+                            className="jsonb-preview-button"
+                            onClick={() => openJsonbEditor(row, col.name)}
+                            title="Click to edit JSON"
+                          >
+                            <code className="jsonb-preview-text">
+                              {truncate(formatJsonbPreview(row[col.name]), 150)}
+                            </code>
+                          </button>
                         </div>
                       ) : (
                         <div className="table-cell-editor">
@@ -495,6 +500,26 @@ export function TableGridPanel({
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {jsonbEditCell ? (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal-card jsonb-editor-modal">
+            <div className="modal-head">
+              <div className="nav-title">Edit JSONB: {jsonbEditCell.column}</div>
+              <button className="btn small" onClick={closeJsonbEditor}>
+                Cancel
+              </button>
+            </div>
+            <div className="modal-body">
+              <JsonbCellEditor
+                value={jsonbEditCell.row[jsonbEditCell.column]}
+                onSave={handleJsonbSave}
+                onCancel={closeJsonbEditor}
+              />
             </div>
           </div>
         </div>
