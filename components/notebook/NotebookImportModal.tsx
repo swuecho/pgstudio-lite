@@ -1,5 +1,6 @@
 import type { NotebookSpecV1 } from '../../features/notebook/notebook.service'
 import type { NotebookDiffSummary } from '../../lib/notebook-ui'
+import styles from './NotebookImportModal.module.css'
 
 type NotebookImportModalProps = {
   importMode: 'create' | 'replace' | 'upsert'
@@ -25,15 +26,15 @@ type NotebookImportModalProps = {
 
 export function NotebookImportModal(props: NotebookImportModalProps) {
   return (
-    <div className="notebook-modal-overlay" role="dialog" aria-modal="true" aria-label="Import notebook JSON">
-      <div className="notebook-modal">
-        <div className="notebook-modal-head">
+    <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label="Import notebook JSON">
+      <div className={styles.modal}>
+        <div className={styles.modalHead}>
           <strong>Import Notebook JSON</strong>
           <button className="btn small" onClick={props.onClose} disabled={props.isImporting}>
             Close
           </button>
         </div>
-        <div className="notebook-modal-controls">
+        <div className={styles.modalControls}>
           <label htmlFor="import-mode">Mode</label>
           <select
             id="import-mode"
@@ -85,14 +86,14 @@ export function NotebookImportModal(props: NotebookImportModalProps) {
           </button>
         </div>
         <textarea
-          className="notebook-import-textarea"
+          className={styles.importTextarea}
           value={props.importRawJson}
           onChange={(event) => props.setImportRawJson(event.target.value)}
           placeholder={`Paste notebook JSON here.\nTip: use docs/notebook-llm-prompt-template.md for LLM generation.`}
           disabled={props.isImporting || props.isValidating}
         />
         {props.importParseHint ? (
-          <div className="notebook-modal-panel error">
+          <div className={`${styles.modalPanel} ${styles.error}`}>
             JSON parse error: {props.importParseHint.message}
             {props.importParseHint.line !== null && props.importParseHint.column !== null
               ? ` (line ${props.importParseHint.line}, col ${props.importParseHint.column})`
@@ -100,15 +101,15 @@ export function NotebookImportModal(props: NotebookImportModalProps) {
           </div>
         ) : null}
         {props.importValidationSnapshot ? (
-          <div className="notebook-modal-panel">
+          <div className={styles.modalPanel}>
             Validation snapshot: <strong>{props.importValidationSnapshot.title}</strong> · {props.importValidationSnapshot.cells.length} cells
             {props.importValidationWarnings.length ? ` · ${props.importValidationWarnings.length} warning(s)` : ''}
           </div>
         ) : null}
         {props.importDiffSummary ? (
-          <div className="notebook-modal-panel">
+          <div className={styles.modalPanel}>
             Diff summary:
-            <ul className="notebook-modal-list">
+            <ul className={styles.modalList}>
               <li>Title changed: {props.importDiffSummary.titleChanged ? 'yes' : 'no'}</li>
               <li>Description changed: {props.importDiffSummary.descriptionChanged ? 'yes' : 'no'}</li>
               <li>Connection changed: {props.importDiffSummary.connectionChanged ? 'yes' : 'no'}</li>
@@ -121,9 +122,9 @@ export function NotebookImportModal(props: NotebookImportModalProps) {
           </div>
         ) : null}
         {props.importErrorDetails.length ? (
-          <div className="notebook-modal-panel error">
+          <div className={`${styles.modalPanel} ${styles.error}`}>
             <div>Validation errors:</div>
-            <table className="notebook-error-table">
+            <table className={styles.errorTable}>
               <thead>
                 <tr>
                   <th>Path</th>

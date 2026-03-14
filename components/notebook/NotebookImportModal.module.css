@@ -1,0 +1,104 @@
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(16 24 39 / 48%);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 18px;
+}
+
+.modal {
+  width: min(880px, 100%);
+  max-height: min(86vh, 920px);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--panel);
+  padding: 12px;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modalControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.modalControls label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.modalControls select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text);
+  height: var(--control-h);
+  padding: 0 8px;
+}
+
+.importTextarea {
+  width: 100%;
+  min-height: 320px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--control-bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 10px;
+}
+
+.modalPanel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.error {
+  border-color: var(--status-error-border);
+  background: var(--status-error-bg);
+  color: var(--status-error-text);
+}
+
+.modalList {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}
+
+.errorTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.errorTable th,
+.errorTable td {
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.errorTable th {
+  background: var(--panel);
+}
