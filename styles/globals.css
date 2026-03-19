@@ -654,6 +654,34 @@ body.resizing-sql-split {
   filter: brightness(0.97);
 }
 
+.results-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.result-block {
+  display: grid;
+  gap: 8px;
+}
+
+.result-block-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.result-block-head > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--panel-2);
+  padding: 0 8px;
+}
 
 .table-wrap {
   overflow: auto;

@@ -224,13 +224,13 @@ describe('notebook API e2e', () => {
           cells: [
             { id: 'c1', type: 'markdown', content: '# Hello' },
             {
-              id: 'c2',
-              type: 'input',
+              id: 'w1',
+              type: 'widget',
               content: '',
               metadata: {
+                widgetType: 'date',
                 key: 'start_date',
                 label: 'Start Date',
-                inputType: 'date',
                 value: '2026-01-01',
                 required: true,
                 autoRun: true,
@@ -271,10 +271,107 @@ describe('notebook API e2e', () => {
       metadata: { source: 'vitest' },
       cells: [
         { id: 'c1', type: 'markdown', content: '# Hello' },
-        { id: 'c2', type: 'input' },
+        { id: 'w1', type: 'widget' },
         { id: 'c3', type: 'sql', content: 'select {{start_date}} as d;' },
       ],
     })
+  })
+
+  it('widget flow: imports widget cells and executes SQL with widget params', async () => {
+    const importResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'create',
+        notebook: {
+          spec_version: '1.0',
+          title: 'Widget Notebook',
+          cells: [
+            {
+              id: 'w1',
+              type: 'widget',
+              content: '',
+              metadata: {
+                widgetType: 'radio-group',
+                key: 'status',
+                label: 'Status',
+                value: 'open',
+                options: [
+                  { label: 'Open', value: 'open' },
+                  { label: 'Closed', value: 'closed' },
+                ],
+              },
+            },
+            {
+              id: 'w2',
+              type: 'widget',
+              content: '',
+              metadata: {
+                widgetType: 'date-range',
+                label: 'Date Range',
+                value: { start: '2026-01-01', end: '2026-01-31' },
+                config: { startKey: 'start_date', endKey: 'end_date' },
+              },
+            },
+            {
+              id: 'sql1',
+              type: 'sql',
+              content: 'select {{status}} as status, {{start_date}} as start_date, {{end_date}} as end_date;',
+            },
+          ],
+        },
+      },
+    })
+
+    expect(importResponse.statusCode).toBe(200)
+    const notebookId = (importResponse.payload as { notebook_id: string }).notebook_id
+
+    const exportResponse = await invokeApi(notebookExportHandler, {
+      method: 'GET',
+      query: { id: notebookId },
+    })
+
+    expect(exportResponse.statusCode).toBe(200)
+    expect(exportResponse.payload).toMatchObject({
+      title: 'Widget Notebook',
+      cells: [
+        {
+          id: 'w1',
+          type: 'widget',
+          metadata: {
+            widgetType: 'radio-group',
+            key: 'status',
+          },
+        },
+        {
+          id: 'w2',
+          type: 'widget',
+          metadata: {
+            widgetType: 'date-range',
+            config: { startKey: 'start_date', endKey: 'end_date' },
+          },
+        },
+        {
+          id: 'sql1',
+          type: 'sql',
+        },
+      ],
+    })
+
+    const runResponse = await invokeApi(runCellHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: {
+        cellId: 'sql1',
+        query: 'select {{status}} as status, {{start_date}} as start_date, {{end_date}} as end_date;',
+      },
+    })
+
+    expect(runResponse.statusCode).toBe(200)
+    expect(vi.mocked(executeQuery)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        values: ['open', '2026-01-01', '2026-01-31'],
+      })
+    )
   })
 
   it('patch flow: updates title and inserts markdown cell', async () => {
@@ -378,13 +475,13 @@ describe('notebook API e2e', () => {
           title: 'Bad Notebook',
           cells: [
             {
-              id: 'input-1',
-              type: 'input',
+              id: 'widget-1',
+              type: 'widget',
               content: '',
               metadata: {
+                widgetType: 'text',
                 key: '1bad',
                 label: 'Invalid key',
-                inputType: 'text',
                 value: '',
               },
             },

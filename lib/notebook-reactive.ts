@@ -1,5 +1,6 @@
-import type { NotebookCell, NotebookInputCellMetadata, NotebookInputValues } from '../components/notebook/types'
+import type { NotebookCell, NotebookInputValues, NotebookWidgetMetadata } from '../components/notebook/types'
 import { extractTemplateKeys } from './notebook-params'
+import { getWidgetParamValues, isWidgetMetadata } from './notebook-widgets'
 
 export type ReactiveNotebookState = {
   activeNotebookId: string
@@ -7,22 +8,22 @@ export type ReactiveNotebookState = {
   runningCellId: string
   sortedCells: NotebookCell[]
   draftByCell: Record<string, string>
-  inputDraftByCell: Record<string, NotebookInputCellMetadata>
+  widgetDraftByCell: Record<string, NotebookWidgetMetadata>
 }
 
-export function getInputMetadata(cell: NotebookCell, inputDraftByCell: Record<string, NotebookInputCellMetadata>) {
-  if (cell.type !== 'input') return null
-  const metadata = inputDraftByCell[cell.id] || cell.metadata_json
-  if (!metadata || !metadata.key) return null
-  return metadata
+export function getWidgetMetadata(cell: NotebookCell, widgetDraftByCell?: Record<string, NotebookWidgetMetadata>) {
+  if (cell.type !== 'widget') return null
+  const metadata = widgetDraftByCell?.[cell.id] || cell.metadata_json
+  if (!metadata || !isWidgetMetadata(metadata)) return null
+  return metadata as NotebookWidgetMetadata
 }
 
-export function buildInputValues(cells: NotebookCell[], inputDraftByCell: Record<string, NotebookInputCellMetadata>) {
+export function buildInputValues(cells: NotebookCell[], widgetDraftByCell: Record<string, NotebookWidgetMetadata> = {}) {
   const out: NotebookInputValues = {}
   for (const cell of cells) {
-    const metadata = getInputMetadata(cell, inputDraftByCell)
-    if (!metadata) continue
-    out[metadata.key] = metadata.value
+    const widgetMetadata = getWidgetMetadata(cell, widgetDraftByCell)
+    if (!widgetMetadata) continue
+    Object.assign(out, getWidgetParamValues(widgetMetadata))
   }
   return out
 }
@@ -36,6 +37,16 @@ export function getDependentSqlTargets(state: ReactiveNotebookState, inputCellId
     const query = state.draftByCell[cell.id] ?? cell.content
     return extractTemplateKeys(query).includes(inputKey)
   })
+}
+
+export function getDependentSqlTargetsForInputKeys(
+  state: ReactiveNotebookState,
+  inputCellId: string,
+  inputKeys: string[]
+) {
+  return [...new Map(
+    inputKeys.flatMap((key) => getDependentSqlTargets(state, inputCellId, key)).map((cell) => [cell.id, cell])
+  ).values()].sort((a, b) => a.position - b.position)
 }
 
 export async function runReactiveSqlCells({
@@ -69,7 +80,7 @@ export async function runReactiveSqlCells({
       notebookId,
       cellId: target.id,
       query,
-      inputValues: buildInputValues(state.sortedCells, state.inputDraftByCell),
+      inputValues: buildInputValues(state.sortedCells, state.widgetDraftByCell),
     })
     executedCellIds.push(target.id)
   }
