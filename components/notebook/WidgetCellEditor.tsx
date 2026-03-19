@@ -1,4 +1,5 @@
-import type { NotebookWidgetMetadata, NotebookWidgetType } from './types'
+import { InputCellEditor } from './InputCellEditor'
+import type { NotebookInputCellMetadata, NotebookInputType, NotebookWidgetMetadata, NotebookWidgetType } from './types'
 import styles from './NotebookPage.module.css'
 
 type WidgetCellEditorProps = {
@@ -12,6 +13,14 @@ type WidgetCellEditorProps = {
 }
 
 const WIDGET_OPTIONS: Array<{ value: NotebookWidgetType; label: string }> = [
+  { value: 'text', label: 'Text Input' },
+  { value: 'number', label: 'Number Input' },
+  { value: 'date', label: 'Date Input' },
+  { value: 'datetime-local', label: 'DateTime Input' },
+  { value: 'checkbox', label: 'Checkbox' },
+  { value: 'select', label: 'Select' },
+  { value: 'multiselect', label: 'Multi-select' },
+  { value: 'range', label: 'Range Slider' },
   { value: 'radio-group', label: 'Radio Group' },
   { value: 'date-range', label: 'Date Range' },
   { value: 'actions', label: 'Actions' },
@@ -30,6 +39,12 @@ export function WidgetCellEditor({
   if (collapsed || valueOnly) {
     return (
       <div className={styles.widgetCollapsedSummary}>
+        {isInputLikeWidget(metadata.widgetType) ? (
+          <div className={styles.widgetInlineRow}>
+            <span className={styles.widgetInlineLabel}>{metadata.key || metadata.label || 'param'}</span>
+            <InputLikeWidgetEditor metadata={metadata} disabled={disabled} onChange={onChange} valueOnly />
+          </div>
+        ) : null}
         {metadata.widgetType === 'radio-group' ? (
           <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} compact />
         ) : null}
@@ -100,6 +115,10 @@ export function WidgetCellEditor({
         )}
       </div>
 
+      {isInputLikeWidget(metadata.widgetType) ? (
+        <InputLikeWidgetEditor metadata={metadata} disabled={disabled} onChange={onChange} />
+      ) : null}
+
       {metadata.widgetType === 'radio-group' ? (
         <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} />
       ) : null}
@@ -125,6 +144,29 @@ export function WidgetCellEditor({
   )
 }
 
+function InputLikeWidgetEditor({
+  metadata,
+  disabled,
+  onChange,
+  valueOnly,
+}: {
+  metadata: NotebookWidgetMetadata
+  disabled?: boolean
+  onChange: (metadata: NotebookWidgetMetadata) => void
+  valueOnly?: boolean
+}) {
+  const inputMetadata = toLegacyInputMetadata(metadata)
+  return (
+    <InputCellEditor
+      metadata={inputMetadata}
+      disabled={disabled}
+      valueOnly={valueOnly}
+      showValueLabel={!valueOnly}
+      onChange={(next) => onChange(fromLegacyInputMetadata(metadata.widgetType as NotebookInputType, next))}
+    />
+  )
+}
+
 function RadioGroupEditor({
   metadata,
   disabled,
@@ -141,7 +183,7 @@ function RadioGroupEditor({
   if (compact) {
     return (
       <div className={styles.widgetInlineRow}>
-        <span className={styles.widgetInlineLabel}>{metadata.label || metadata.key || 'Choice'}</span>
+        <span className={styles.widgetInlineLabel}>{metadata.key || metadata.label || 'Choice'}</span>
         <div className={styles.widgetOptionRow}>
           {options.map((option) => (
             <label key={option.value} className={styles.widgetOptionChip}>
@@ -232,7 +274,9 @@ function DateRangeEditor({
   if (compact) {
     return (
       <div className={styles.widgetInlineRow}>
-        <span className={styles.widgetInlineLabel}>{metadata.label || 'Date Range'}</span>
+        <span className={styles.widgetInlineLabel}>
+          {metadata.config?.startKey || metadata.config?.endKey || metadata.label || 'Date Range'}
+        </span>
         <div className={styles.widgetDateCompact}>
           <input
             className={styles.widgetCompactInput}
@@ -506,6 +550,17 @@ function calloutToneClassName(tone: 'info' | 'success' | 'warning' | 'danger') {
 }
 
 function defaultMetadataForType(widgetType: NotebookWidgetType): NotebookWidgetMetadata {
+  if (isInputLikeWidget(widgetType)) {
+    return {
+      widgetType,
+      key: `param_${Math.random().toString(36).slice(2, 8)}`,
+      label: 'Input',
+      autoRun: true,
+      value:
+        widgetType === 'checkbox' ? false : widgetType === 'number' || widgetType === 'range' ? null : widgetType === 'multiselect' ? [] : '',
+      options: widgetType === 'select' || widgetType === 'multiselect' ? [{ label: 'Option 1', value: 'option_1' }] : undefined,
+    }
+  }
   if (widgetType === 'radio-group') {
     return {
       widgetType,
@@ -538,5 +593,62 @@ function defaultMetadataForType(widgetType: NotebookWidgetType): NotebookWidgetM
   return {
     widgetType: 'callout',
     config: { tone: 'info', title: 'Note', body: '' },
+  }
+}
+
+function isInputLikeWidget(
+  widgetType: NotebookWidgetType
+): widgetType is 'text' | 'number' | 'date' | 'datetime-local' | 'checkbox' | 'select' | 'range' | 'multiselect' {
+  return (
+    widgetType === 'text' ||
+    widgetType === 'number' ||
+    widgetType === 'date' ||
+    widgetType === 'datetime-local' ||
+    widgetType === 'checkbox' ||
+    widgetType === 'select' ||
+    widgetType === 'range' ||
+    widgetType === 'multiselect'
+  )
+}
+
+function toLegacyInputMetadata(metadata: NotebookWidgetMetadata): NotebookInputCellMetadata {
+  const widgetType = metadata.widgetType as NotebookInputType
+  return {
+    key: metadata.key || 'param',
+    label: metadata.label || 'Input',
+    inputType: widgetType,
+    value:
+      metadata.value === undefined
+        ? widgetType === 'checkbox'
+          ? false
+          : widgetType === 'number' || widgetType === 'range'
+            ? null
+            : widgetType === 'multiselect'
+              ? []
+              : ''
+        : (metadata.value as NotebookInputCellMetadata['value']),
+    required: metadata.required,
+    placeholder: metadata.placeholder,
+    options: metadata.options,
+    min: metadata.min,
+    max: metadata.max,
+    step: metadata.step,
+    autoRun: metadata.autoRun,
+  }
+}
+
+function fromLegacyInputMetadata(widgetType: NotebookInputType, metadata: NotebookInputCellMetadata): NotebookWidgetMetadata {
+  return {
+    widgetType,
+    key: metadata.key,
+    label: metadata.label,
+    value: metadata.value,
+    required: metadata.required,
+    placeholder: metadata.placeholder,
+    options: metadata.options,
+    min: metadata.min,
+    max: metadata.max,
+    step: metadata.step,
+    autoRun: metadata.autoRun,
   }
 }

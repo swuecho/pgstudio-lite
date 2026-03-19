@@ -106,13 +106,6 @@ export default function NotebookPage() {
             <button
               className="btn small"
               disabled={!controller.activeNotebookId || controller.runningAll}
-              onClick={() => controller.addCellMutation.mutate('input')}
-            >
-              Add Input
-            </button>
-            <button
-              className="btn small"
-              disabled={!controller.activeNotebookId || controller.runningAll}
               onClick={() => controller.addCellMutation.mutate('widget')}
             >
               Add Widget
