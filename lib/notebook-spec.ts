@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { notebookParamKeyPattern, notebookWidgetMetadataSchema } from './notebook-widgets'
 
 const inputOptionSchema = z.object({
   label: z.string(),
@@ -6,7 +7,7 @@ const inputOptionSchema = z.object({
 })
 
 const inputMetadataSchema = z.object({
-  key: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+  key: z.string().regex(notebookParamKeyPattern),
   label: z.string().trim().min(1),
   inputType: z.enum(['text', 'number', 'date', 'datetime-local', 'checkbox', 'select', 'range', 'multiselect']),
   value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
@@ -21,7 +22,7 @@ const inputMetadataSchema = z.object({
 
 const baseCellSchema = z.object({
   id: z.string().trim().min(1),
-  type: z.enum(['sql', 'markdown', 'input']),
+  type: z.enum(['sql', 'markdown', 'input', 'widget']),
   position: z.number().int().min(0).optional(),
   collapsed: z.boolean().optional(),
   content: z.string(),
@@ -52,6 +53,18 @@ export const notebookSpecV1Schema = z
       seen.add(cell.id)
       if (cell.type === 'input') {
         const parsed = inputMetadataSchema.safeParse(cell.metadata)
+        if (!parsed.success) {
+          for (const issue of parsed.error.issues) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['cells', i, 'metadata', ...issue.path],
+              message: issue.message,
+            })
+          }
+        }
+      }
+      if (cell.type === 'widget') {
+        const parsed = notebookWidgetMetadataSchema.safeParse(cell.metadata)
         if (!parsed.success) {
           for (const issue of parsed.error.issues) {
             ctx.addIssue({

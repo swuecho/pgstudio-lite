@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import type { QueryResult } from '../sql-editor/types'
-import type { NotebookCell, NotebookCellType, NotebookDetail, NotebookInputCellMetadata, NotebookInputValues } from './types'
+import type {
+  NotebookCell,
+  NotebookCellType,
+  NotebookDetail,
+  NotebookInputCellMetadata,
+  NotebookInputValues,
+  NotebookWidgetMetadata,
+} from './types'
 import {
   buildInputValues,
   getInputMetadata,
@@ -11,6 +18,7 @@ import {
 } from '../../lib/notebook-reactive'
 import { createCell, deleteCell, runCell, updateCell } from '../../features/notebook/notebook.service'
 import { extractTemplateKeys } from '../../lib/notebook-params'
+import { createDefaultWidgetMetadata, normalizeWidgetMetadata } from '../../lib/notebook-widgets'
 
 export function useNotebookCellState(params: {
   activeNotebookId: string
@@ -24,18 +32,20 @@ export function useNotebookCellState(params: {
   const [resultsByCell, setResultsByCell] = useState<Record<string, QueryResult>>({})
   const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
   const [inputDraftByCell, setInputDraftByCell] = useState<Record<string, NotebookInputCellMetadata>>({})
+  const [widgetDraftByCell, setWidgetDraftByCell] = useState<Record<string, NotebookWidgetMetadata>>({})
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | null }>>({})
+  const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | NotebookWidgetMetadata | null }>>({})
   const reactiveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const reactiveRunGenerationRef = useRef(0)
   const sqlEditorRefs = useRef<Record<string, MonacoEditorNs.IStandaloneCodeEditor>>({})
   const cellSectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const draftByCellRef = useRef<Record<string, string>>({})
   const inputDraftByCellRef = useRef<Record<string, NotebookInputCellMetadata>>({})
+  const widgetDraftByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
   const sortedCellsRef = useRef<NotebookCell[]>([])
   const activeNotebookIdRef = useRef('')
   const runningCellIdRef = useRef('')
@@ -51,6 +61,10 @@ export function useNotebookCellState(params: {
   useEffect(() => {
     inputDraftByCellRef.current = inputDraftByCell
   }, [inputDraftByCell])
+
+  useEffect(() => {
+    widgetDraftByCellRef.current = widgetDraftByCell
+  }, [widgetDraftByCell])
 
   useEffect(() => {
     sortedCellsRef.current = sortedCells
@@ -98,6 +112,23 @@ export function useNotebookCellState(params: {
 
   useEffect(() => {
     if (!cells.length) return
+    setWidgetDraftByCell((prev) => {
+      const next = { ...prev }
+      for (const cell of cells) {
+        if (cell.type !== 'widget') continue
+        if (next[cell.id] !== undefined) continue
+        if (cell.metadata_json && typeof cell.metadata_json === 'object' && 'widgetType' in cell.metadata_json) {
+          next[cell.id] = normalizeWidgetMetadata(cell.metadata_json as NotebookWidgetMetadata) as NotebookWidgetMetadata
+        } else {
+          next[cell.id] = createDefaultWidgetMetadata('callout') as NotebookWidgetMetadata
+        }
+      }
+      return next
+    })
+  }, [cells])
+
+  useEffect(() => {
+    if (!cells.length) return
     setResultsByCell((prev) => {
       const next = { ...prev }
       for (const cell of cells) {
@@ -121,17 +152,56 @@ export function useNotebookCellState(params: {
     }
   }, [])
 
-  const inputValues = useMemo(() => buildInputValues(sortedCells, inputDraftByCell), [sortedCells, inputDraftByCell])
+  const inputValues = useMemo(() => buildInputValues(sortedCells, inputDraftByCell, widgetDraftByCell), [sortedCells, inputDraftByCell, widgetDraftByCell])
   const inputKeys = useMemo(() => new Set(Object.keys(inputValues)), [inputValues])
   const notebookInputs = useMemo(
-    () =>
-      sortedCells
-        .filter((cell) => cell.type === 'input')
-        .map((cell) => inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell))
-        .filter((metadata): metadata is NotebookInputCellMetadata => Boolean(metadata))
-        .filter((metadata) => metadata.key)
-        .map((metadata) => ({ key: metadata.key, label: metadata.label, inputType: metadata.inputType })),
-    [sortedCells, inputDraftByCell]
+    () => {
+      const params: Array<{ key: string; label: string; inputType: string }> = []
+
+      for (const cell of sortedCells) {
+        if (cell.type === 'input') {
+          const metadata = inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell)
+          if (!metadata?.key) continue
+          params.push({ key: metadata.key, label: metadata.label, inputType: metadata.inputType })
+          continue
+        }
+
+        if (cell.type !== 'widget') continue
+        const metadata = widgetDraftByCell[cell.id]
+        if (!metadata) continue
+
+        if (metadata.widgetType === 'radio-group' && metadata.key) {
+          params.push({
+            key: metadata.key,
+            label: metadata.label || metadata.key,
+            inputType: 'widget-radio',
+          })
+          continue
+        }
+
+        if (metadata.widgetType === 'date-range') {
+          const startKey = metadata.config?.startKey?.trim()
+          const endKey = metadata.config?.endKey?.trim()
+          if (startKey) {
+            params.push({
+              key: startKey,
+              label: `${metadata.label || 'Date Range'} Start`,
+              inputType: 'widget-date',
+            })
+          }
+          if (endKey) {
+            params.push({
+              key: endKey,
+              label: `${metadata.label || 'Date Range'} End`,
+              inputType: 'widget-date',
+            })
+          }
+        }
+      }
+
+      return params
+    },
+    [sortedCells, inputDraftByCell, widgetDraftByCell]
   )
   const inputCellIdByKey = useMemo(() => {
     const out: Record<string, string> = {}
@@ -150,7 +220,12 @@ export function useNotebookCellState(params: {
       const position = selectedIndex === -1 ? undefined : selectedIndex + 1
       if (type === 'sql') return createCell(activeNotebookId, { type, content: 'select now();', position })
       if (type === 'markdown') return createCell(activeNotebookId, { type, content: '## Notes\n', position })
-      return createCell(activeNotebookId, { type: 'input', metadata: defaultInputMetadata(), position })
+      if (type === 'input') return createCell(activeNotebookId, { type: 'input', metadata: defaultInputMetadata(), position })
+      return createCell(activeNotebookId, {
+        type: 'widget',
+        metadata: createDefaultWidgetMetadata('callout') as NotebookWidgetMetadata,
+        position,
+      })
     },
     onSuccess: (data) => {
       setStatus('Cell added')
@@ -201,7 +276,7 @@ export function useNotebookCellState(params: {
     }
   }
 
-  function scheduleCellSave(cell: NotebookCell, patch: { content?: string; metadata?: NotebookInputCellMetadata | null }) {
+  function scheduleCellSave(cell: NotebookCell, patch: { content?: string; metadata?: NotebookInputCellMetadata | NotebookWidgetMetadata | null }) {
     if (!activeNotebookId) return
     const existing = saveTimersRef.current[cell.id]
     if (existing) clearTimeout(existing)
@@ -250,6 +325,14 @@ export function useNotebookCellState(params: {
     scheduleReactiveRuns(cell.id, next)
   }
 
+  function onWidgetMetadataChange(cell: NotebookCell, next: NotebookWidgetMetadata) {
+    const normalized = normalizeWidgetMetadata(next) as NotebookWidgetMetadata
+    const nextDrafts = { ...widgetDraftByCellRef.current, [cell.id]: normalized }
+    widgetDraftByCellRef.current = nextDrafts
+    setWidgetDraftByCell(nextDrafts)
+    scheduleCellSave(cell, { metadata: normalized })
+  }
+
   async function rerunDependentSqlCells(inputCellId: string, inputKey: string) {
     const generation = reactiveRunGenerationRef.current + 1
     reactiveRunGenerationRef.current = generation
@@ -261,6 +344,7 @@ export function useNotebookCellState(params: {
       sortedCells: sortedCellsRef.current,
       draftByCell: draftByCellRef.current,
       inputDraftByCell: inputDraftByCellRef.current,
+      widgetDraftByCell: widgetDraftByCellRef.current,
     })
 
     const targets = getState().sortedCells.filter((cell) => {
@@ -391,6 +475,36 @@ export function useNotebookCellState(params: {
     }
   }
 
+  async function runTargetSqlCells(cellIds: string[]) {
+    if (!activeNotebookId || runningAll) return
+    const targets = sortedCells.filter((cell) => cell.type === 'sql' && cellIds.includes(cell.id))
+    if (!targets.length) {
+      setStatus('No target SQL cells found')
+      return
+    }
+
+    setRunningAll(true)
+    let successCount = 0
+    try {
+      for (const cell of targets) {
+        const query = (draftByCell[cell.id] ?? cell.content).trim()
+        if (!query) continue
+        setRunningCellId(cell.id)
+        setStatus(`Running target cell #${cell.position + 1}...`)
+        const result = await runCell(activeNotebookId, cell.id, query, buildInputValues(sortedCells, inputDraftByCellRef.current, widgetDraftByCellRef.current))
+        setResultsByCell((prev) => ({ ...prev, [cell.id]: result }))
+        successCount += 1
+      }
+      setStatus(`Target run completed (${successCount}/${targets.length})`)
+    } catch (error) {
+      setStatus(`Target run stopped: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setRunningCellId('')
+      setRunningAll(false)
+      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
+    }
+  }
+
   function deleteCellById(cellId: string) {
     deleteCellMutation.mutate(cellId)
   }
@@ -409,6 +523,7 @@ export function useNotebookCellState(params: {
     onInputMetadataChange,
     previewMarkdown,
     resultsByCell,
+    runTargetSqlCells,
     runAllSqlCells,
     runningAll,
     runningCellId,
@@ -422,6 +537,8 @@ export function useNotebookCellState(params: {
     sqlEditorRefs,
     toggleCellCollapsed,
     insertParamIntoSqlCell,
+    widgetDraftByCell,
+    onWidgetMetadataChange,
   }
 }
 
