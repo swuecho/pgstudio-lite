@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { NotebookCell, NotebookWidgetMetadata } from '../components/notebook/types'
 import { getChangedWidgetParamKeys } from '../components/notebook/useNotebookCellState'
-import { buildInputValues, getDependentSqlTargets, runReactiveSqlCells, type ReactiveNotebookState } from '../lib/notebook-reactive'
+import {
+  buildInputValues,
+  getDependentSqlTargets,
+  getDependentSqlTargetsForInputKeys,
+  runReactiveSqlCells,
+  type ReactiveNotebookState,
+} from '../lib/notebook-reactive'
 
 function makeCell(partial: Partial<NotebookCell>): NotebookCell {
   return {
@@ -184,5 +190,51 @@ describe('notebook reactive runner', () => {
     })
 
     expect(getChangedWidgetParamKeys(previous, next).sort()).toEqual(['end_date', 'from_date', 'start_date'])
+  })
+
+  it('maps a widget edit to dependent SQL reruns with updated values', () => {
+    const previous = makeWidgetMetadata({
+      widgetType: 'date-range',
+      label: 'Date Range',
+      value: { start: '2026-01-01', end: '2026-01-31' },
+      config: { startKey: 'start_date', endKey: 'end_date' },
+    })
+    const next = makeWidgetMetadata({
+      widgetType: 'date-range',
+      label: 'Date Range',
+      value: { start: '2026-02-01', end: '2026-02-29' },
+      config: { startKey: 'start_date', endKey: 'end_date' },
+    })
+    const widgetCell = makeCell({ id: 'w-1', type: 'widget', position: 1, metadata_json: previous })
+    const sqlAbove = makeCell({ id: 'sql-above', type: 'sql', position: 0, content: 'select {{start_date}}' })
+    const sqlStart = makeCell({ id: 'sql-start', type: 'sql', position: 2, content: 'select {{start_date}}' })
+    const sqlEnd = makeCell({ id: 'sql-end', type: 'sql', position: 3, content: 'select {{end_date}}' })
+    const sqlBoth = makeCell({ id: 'sql-both', type: 'sql', position: 4, content: 'select {{start_date}}, {{end_date}}' })
+
+    const state: ReactiveNotebookState = {
+      activeNotebookId: 'nb-1',
+      runningAll: false,
+      runningCellId: '',
+      sortedCells: [sqlAbove, widgetCell, sqlStart, sqlEnd, sqlBoth],
+      draftByCell: {
+        'sql-above': 'select {{start_date}}',
+        'sql-start': 'select {{start_date}}',
+        'sql-end': 'select {{end_date}}',
+        'sql-both': 'select {{start_date}}, {{end_date}}',
+      },
+      widgetDraftByCell: {
+        'w-1': next,
+      },
+    }
+
+    const changedKeys = getChangedWidgetParamKeys(previous, next)
+    const targets = getDependentSqlTargetsForInputKeys(state, 'w-1', changedKeys)
+
+    expect(changedKeys.sort()).toEqual(['end_date', 'start_date'])
+    expect(targets.map((cell) => cell.id)).toEqual(['sql-start', 'sql-end', 'sql-both'])
+    expect(buildInputValues(state.sortedCells, state.widgetDraftByCell)).toMatchObject({
+      start_date: '2026-02-01',
+      end_date: '2026-02-29',
+    })
   })
 })
