@@ -5,8 +5,8 @@ import * as db from '../lib/db'
 vi.mock('../lib/db', () => ({
   getTableColumns: vi.fn(async () => []),
   getTableRows: vi.fn(async () => ({ rows: [], total: 0 })),
-  updateTableRowByCtid: vi.fn(async () => undefined),
-  deleteTableRowByCtid: vi.fn(async () => undefined),
+  updateTableRowByPrimaryKey: vi.fn(async () => undefined),
+  deleteTableRowByPrimaryKey: vi.fn(async () => undefined),
 }))
 
 type ApiResult = {
@@ -55,13 +55,13 @@ describe('table rows API', () => {
   })
 
   it('returns 404 when patch targets a missing row', async () => {
-    vi.mocked(db.updateTableRowByCtid).mockRejectedValueOnce(
+    vi.mocked(db.updateTableRowByPrimaryKey).mockRejectedValueOnce(
       Object.assign(new Error('row not found'), { statusCode: 404 })
     )
 
     const response = await invokeApi({
       method: 'PATCH',
-      body: { schema: 'public', connectionName: 'default', ctid: '(0,1)', patch: { title: 'updated' } },
+      body: { schema: 'public', connectionName: 'default', rowKey: { id: 1 }, patch: { title: 'updated' } },
     })
 
     expect(response.statusCode).toBe(404)
@@ -69,13 +69,13 @@ describe('table rows API', () => {
   })
 
   it('returns 404 when delete targets a missing row', async () => {
-    vi.mocked(db.deleteTableRowByCtid).mockRejectedValueOnce(
+    vi.mocked(db.deleteTableRowByPrimaryKey).mockRejectedValueOnce(
       Object.assign(new Error('row not found'), { statusCode: 404 })
     )
 
     const response = await invokeApi({
       method: 'DELETE',
-      body: { schema: 'public', connectionName: 'default', ctid: '(0,1)' },
+      body: { schema: 'public', connectionName: 'default', rowKey: { id: 1 } },
     })
 
     expect(response.statusCode).toBe(404)

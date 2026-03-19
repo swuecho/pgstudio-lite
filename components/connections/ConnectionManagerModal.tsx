@@ -6,6 +6,7 @@ import {
   setDefaultConnection,
   updateConnection,
 } from '../../features/connections/connections.service'
+import { CONNECTIONS_QUERY_KEY } from '../shared/hooks/useConnections'
 
 type ConnectionItem = {
   id?: string
@@ -51,10 +52,7 @@ export function ConnectionManagerModal({
   )
 
   async function invalidateConnectionQueries() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['sql', 'connections'] }),
-      queryClient.invalidateQueries({ queryKey: ['table', 'connections'] }),
-    ])
+    await queryClient.invalidateQueries({ queryKey: CONNECTIONS_QUERY_KEY })
   }
 
   const createMutation = useMutation({

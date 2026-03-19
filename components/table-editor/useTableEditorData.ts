@@ -44,5 +44,7 @@ export function useTableEditorData(state: TableEditorState) {
     loadingRows: queries.loadingRows,
     loadingTables: queries.loadingTables,
     connectionReadOnly: queries.connectionReadOnly,
+    rowMutationsReadOnly: queries.rowMutationsReadOnly,
+    rowMutationsDisabledReason: queries.rowMutationsDisabledReason,
   }
 }

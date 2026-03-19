@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  getConnections as getConnectionsService,
   getRows as getRowsService,
   getTables as getTablesService,
   patchRow,
   removeRow,
 } from '../../features/table/table.service'
+import { useConnections } from '../shared/hooks/useConnections'
 import { parseActiveTableKey } from './tableEditorContracts'
+import type { RowKey } from './types'
 
 type TableEditorState = {
   connectionName: string
@@ -28,11 +29,8 @@ type TableEditorState = {
 export function useTableEditorQueries(state: TableEditorState) {
   const selectedTarget = parseActiveTableKey(state.activeTable)
   const queryClient = useQueryClient()
-  const connectionsQuery = useQuery({
-    queryKey: ['table', 'connections'],
-    queryFn: getConnectionsService,
-  })
-  const connections = connectionsQuery.data?.connections || []
+  const connectionsQuery = useConnections()
+  const connections = connectionsQuery.connections
 
   const tablesQuery = useQuery({
     queryKey: ['table', 'tables', state.connectionName],
@@ -75,7 +73,17 @@ export function useTableEditorQueries(state: TableEditorState) {
   const columns = rowsQuery.data?.columns || []
   const rows = rowsQuery.data?.rows || []
   const totalRows = Number(rowsQuery.data?.total || 0)
-  const editableColumns = useMemo(() => columns.filter((c) => !c.isIdentity && c.name !== '_ctid'), [columns])
+  const hasPrimaryKey = columns.some((column) => column.isPrimaryKey)
+  const rowMutationsReadOnly = connectionReadOnly || !hasPrimaryKey
+  const rowMutationsDisabledReason = connectionReadOnly
+    ? 'Connection is read-only'
+    : hasPrimaryKey
+      ? ''
+      : 'Table has no primary key; row edits are disabled'
+  const editableColumns = useMemo(
+    () => columns.filter((c) => !c.isIdentity && !c.isPrimaryKey),
+    [columns]
+  )
 
   function invalidateRows() {
     return queryClient.invalidateQueries({
@@ -84,19 +92,19 @@ export function useTableEditorQueries(state: TableEditorState) {
   }
 
   const patchRowMutation = useMutation({
-    mutationFn: ({ ctid, column, value }: { ctid: string; column: string; value: unknown }) =>
+    mutationFn: ({ rowKey, column, value }: { rowKey: RowKey; column: string; value: unknown }) =>
       patchRow(selectedTarget.table, {
         connectionName: state.connectionName,
         schema: selectedTarget.schema,
-        ctid,
+        rowKey,
         patch: { [column]: value },
       }),
     onSuccess: invalidateRows,
   })
 
   const deleteRowMutation = useMutation({
-    mutationFn: (ctid: string) =>
-      removeRow(selectedTarget.table, { connectionName: state.connectionName, schema: selectedTarget.schema, ctid }),
+    mutationFn: (rowKey: RowKey) =>
+      removeRow(selectedTarget.table, { connectionName: state.connectionName, schema: selectedTarget.schema, rowKey }),
     onSuccess: invalidateRows,
   })
 
@@ -111,28 +119,28 @@ export function useTableEditorQueries(state: TableEditorState) {
     await rowsQuery.refetch()
   }
 
-  async function updateCell(ctid: string, column: string, value: unknown) {
-    if (connectionReadOnly) {
-      state.setStatus('Connection is read-only')
+  async function updateCell(rowKey: RowKey | null, column: string, value: unknown) {
+    if (rowMutationsReadOnly || !rowKey) {
+      state.setStatus(rowMutationsDisabledReason || 'Row edits are disabled')
       return
     }
     state.setStatus('Saving...')
     try {
-      await patchRowMutation.mutateAsync({ ctid, column, value })
+      await patchRowMutation.mutateAsync({ rowKey, column, value })
       state.setStatus('Saved')
     } catch (error) {
       state.setStatus(error instanceof Error ? error.message : 'Failed to save row')
     }
   }
 
-  async function deleteRow(ctid: string) {
-    if (connectionReadOnly) {
-      state.setStatus('Connection is read-only')
+  async function deleteRow(rowKey: RowKey | null) {
+    if (rowMutationsReadOnly || !rowKey) {
+      state.setStatus(rowMutationsDisabledReason || 'Row edits are disabled')
       return
     }
     state.setStatus('Deleting...')
     try {
-      await deleteRowMutation.mutateAsync(ctid)
+      await deleteRowMutation.mutateAsync(rowKey)
       state.setStatus('Deleted')
     } catch (error) {
       state.setStatus(error instanceof Error ? error.message : 'Failed to delete row')
@@ -155,5 +163,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     loadingRows: rowsQuery.isFetching,
     loadingTables: tablesQuery.isFetching,
     connectionReadOnly,
+    rowMutationsReadOnly,
+    rowMutationsDisabledReason,
   }
 }
