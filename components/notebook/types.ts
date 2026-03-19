@@ -7,7 +7,19 @@ export type NotebookInputOption = {
   value: string
 }
 
-export type NotebookWidgetType = 'radio-group' | 'date-range' | 'actions' | 'callout'
+export type NotebookWidgetType =
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'datetime-local'
+  | 'checkbox'
+  | 'select'
+  | 'range'
+  | 'multiselect'
+  | 'radio-group'
+  | 'date-range'
+  | 'actions'
+  | 'callout'
 
 export type NotebookWidgetOption = {
   label: string
@@ -28,9 +40,14 @@ export type NotebookWidgetMetadata = {
   autoRun?: boolean
   hidden?: boolean
   disabled?: boolean
-  value?: string | NotebookWidgetDateRangeValue
-  defaultValue?: string | NotebookWidgetDateRangeValue
+  value?: string | number | boolean | string[] | null | NotebookWidgetDateRangeValue
+  defaultValue?: string | number | boolean | string[] | null | NotebookWidgetDateRangeValue
+  required?: boolean
+  placeholder?: string
   options?: NotebookWidgetOption[]
+  min?: number
+  max?: number
+  step?: number
   config?: {
     startKey?: string
     endKey?: string
