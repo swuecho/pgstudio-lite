@@ -63,6 +63,12 @@
   padding: var(--space-3);
 }
 
+.widgetCell {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 7%, transparent), transparent 38%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, var(--accent) 4%), var(--panel));
+}
+
 .cellCollapsed {
   gap: var(--space-2);
   padding: 10px;
@@ -158,6 +164,173 @@
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
+}
+
+.widgetEditor {
+  display: grid;
+  gap: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-2) 88%, var(--accent) 12%), var(--panel-2));
+  padding: 12px;
+}
+
+.widgetCollapsedSummary {
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.widgetCollapsedShell {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--panel-2) 94%, var(--accent) 6%);
+  padding: 10px 12px;
+}
+
+.widgetInlineRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 240px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.widgetInlineLabel {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  padding: 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.widgetOptionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.widgetOptionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent) 12%);
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: var(--font-size-xs);
+}
+
+.widgetDateCompact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.widgetCompactInput {
+  min-width: 0;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  padding: 0 10px;
+  color: var(--text);
+  font-size: var(--font-size-xs);
+}
+
+.widgetDateSeparator {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.widgetTargetPicker {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent) 8%);
+  padding: 10px;
+}
+
+.widgetTargetPickerTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.widgetTargetList {
+  display: grid;
+  gap: 6px;
+}
+
+.widgetTargetItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: var(--font-size-xs);
+}
+
+.widgetTargetItem:hover {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--panel-2) 84%, var(--accent) 16%);
+}
+
+.widgetEmptyHint {
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+}
+
+.widgetTargetSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.widgetTag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--panel) 84%, var(--accent) 16%);
+  padding: 4px 8px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.widgetActionButton {
+  justify-self: start;
+  min-width: 120px;
+}
+
+.widgetCalloutPreview {
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .widgetInlineRow {
+    grid-template-columns: 1fr;
+  }
+
+  .widgetDateCompact {
+    flex-wrap: wrap;
+  }
 }
 
 .markdownActions {

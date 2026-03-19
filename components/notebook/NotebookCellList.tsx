@@ -3,6 +3,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { InputCellEditor } from './InputCellEditor'
 import { SqlCellEditor } from './SqlCellEditor'
+import { WidgetCellEditor } from './WidgetCellEditor'
 import type { NotebookPageController } from './useNotebookPageState'
 import { formatCell } from '../sql-editor/utils'
 import type { QueryResult } from '../sql-editor/types'
@@ -26,8 +27,10 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     notebookInputs,
     onChangeCell,
     onInputMetadataChange,
+    onWidgetMetadataChange,
     previewMarkdown,
     resultsByCell,
+    runTargetSqlCells,
     runningAll,
     runningCellId,
     runSqlCellWithShortcuts,
@@ -42,6 +45,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     deleteCellById,
     cellSectionRefs,
     insertParamIntoSqlCell,
+    widgetDraftByCell,
   } = controller
 
   if (!activeNotebookId) {
@@ -65,6 +69,12 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
         const sqlKeys = cell.type === 'sql' ? extractTemplateKeys(draft) : []
         const missingSqlKeys = sqlKeys.filter((key) => !inputKeys.has(key))
         const selectedInsertParam = selectedInsertParamByCell[cell.id] || notebookInputs[0]?.key || ''
+        const availableSqlTargets = sortedCells
+          .filter((item) => item.type === 'sql' && item.id !== cell.id)
+          .map((item) => ({
+            id: item.id,
+            label: `#${item.position + 1} ${toCompactSqlPreview(draftByCell[item.id] ?? item.content)}`,
+          }))
         return (
           <section
             key={cell.id}
@@ -75,6 +85,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
             onFocusCapture={() => setSelectedCellId(cell.id)}
             className={[
               styles.cell,
+              cell.type === 'widget' ? styles.widgetCell : '',
               selectedCellId === cell.id ? styles.cellSelected : '',
               cell.collapsed ? styles.cellCollapsed : '',
             ]
@@ -82,7 +93,9 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
               .join(' ')}
           >
             <div className={[styles.cellHead, cell.collapsed ? styles.cellHeadCompact : ''].filter(Boolean).join(' ')}>
-              <span className="pill">{cell.type === 'markdown' ? 'MD' : cell.type === 'input' ? 'IN' : 'SQL'}</span>
+              <span className="pill">
+                {cell.type === 'markdown' ? 'MD' : cell.type === 'input' ? 'IN' : cell.type === 'widget' ? 'WGT' : 'SQL'}
+              </span>
               <span className="history-meta">#{cell.position + 1}</span>
               {cell.last_run_at ? <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span> : null}
               <div className={styles.cellActions}>
@@ -251,6 +264,35 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                     />
                   </div>
                 ) : null}
+              </>
+            ) : cell.type === 'widget' ? (
+              <>
+                {!cell.collapsed ? (
+                  <WidgetCellEditor
+                    metadata={widgetDraftByCell[cell.id] || (cell.metadata_json as any)}
+                    disabled={runningAll}
+                    availableSqlTargets={availableSqlTargets}
+                    onChange={(next) => onWidgetMetadataChange(cell, next)}
+                    onTriggerAction={(metadata) => {
+                      const action = metadata.config?.action || 'run-all'
+                      if (action === 'run-targets') {
+                        void runTargetSqlCells(metadata.config?.targetCellIds || [])
+                        return
+                      }
+                      void controller.runAllSqlCells()
+                    }}
+                  />
+                ) : (
+                  <div className={styles.widgetCollapsedShell}>
+                    <WidgetCellEditor
+                      metadata={widgetDraftByCell[cell.id] || (cell.metadata_json as any)}
+                      collapsed
+                      disabled={runningAll}
+                      availableSqlTargets={availableSqlTargets}
+                      onChange={(next) => onWidgetMetadataChange(cell, next)}
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <>
