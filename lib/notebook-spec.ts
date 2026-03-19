@@ -1,27 +1,9 @@
 import { z } from 'zod'
-
-const inputOptionSchema = z.object({
-  label: z.string(),
-  value: z.string().min(1),
-})
-
-const inputMetadataSchema = z.object({
-  key: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
-  label: z.string().trim().min(1),
-  inputType: z.enum(['text', 'number', 'date', 'datetime-local', 'checkbox', 'select', 'range', 'multiselect']),
-  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
-  required: z.boolean().optional(),
-  placeholder: z.string().optional(),
-  options: z.array(inputOptionSchema).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  step: z.number().optional(),
-  autoRun: z.boolean().optional(),
-})
+import { notebookWidgetMetadataSchema } from './notebook-widgets'
 
 const baseCellSchema = z.object({
   id: z.string().trim().min(1),
-  type: z.enum(['sql', 'markdown', 'input']),
+  type: z.enum(['sql', 'markdown', 'widget']),
   position: z.number().int().min(0).optional(),
   collapsed: z.boolean().optional(),
   content: z.string(),
@@ -50,8 +32,8 @@ export const notebookSpecV1Schema = z
         })
       }
       seen.add(cell.id)
-      if (cell.type === 'input') {
-        const parsed = inputMetadataSchema.safeParse(cell.metadata)
+      if (cell.type === 'widget') {
+        const parsed = notebookWidgetMetadataSchema.safeParse(cell.metadata)
         if (!parsed.success) {
           for (const issue of parsed.error.issues) {
             ctx.addIssue({

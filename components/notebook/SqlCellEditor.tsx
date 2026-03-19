@@ -3,7 +3,6 @@ import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useRef } from 'react'
 import { getCurrentTheme } from '../sql-editor/utils'
-import type { NotebookInputType } from './types'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -19,7 +18,7 @@ loader.config({ paths: { vs: '/api/monaco' } })
 type SqlCellEditorProps = {
   value: string
   disabled?: boolean
-  params?: Array<{ key: string; label: string; inputType: NotebookInputType }>
+  params?: Array<{ key: string; label: string; inputType: string }>
   onChange: (value: string) => void
   onRun: () => void
   onRunAndFocusNext: () => void
