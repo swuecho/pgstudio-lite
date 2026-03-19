@@ -159,16 +159,28 @@ export function useNotebookCellState(params: {
       const params: Array<{ key: string; label: string; inputType: string }> = []
 
       for (const cell of sortedCells) {
-        if (cell.type === 'input') {
-          const metadata = inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell)
-          if (!metadata?.key) continue
-          params.push({ key: metadata.key, label: metadata.label, inputType: metadata.inputType })
-          continue
-        }
-
         if (cell.type !== 'widget') continue
         const metadata = widgetDraftByCell[cell.id]
         if (!metadata) continue
+
+        if (
+          metadata.widgetType === 'text' ||
+          metadata.widgetType === 'number' ||
+          metadata.widgetType === 'date' ||
+          metadata.widgetType === 'datetime-local' ||
+          metadata.widgetType === 'checkbox' ||
+          metadata.widgetType === 'select' ||
+          metadata.widgetType === 'range' ||
+          metadata.widgetType === 'multiselect'
+        ) {
+          if (!metadata.key) continue
+          params.push({
+            key: metadata.key,
+            label: metadata.label || metadata.key,
+            inputType: metadata.widgetType,
+          })
+          continue
+        }
 
         if (metadata.widgetType === 'radio-group' && metadata.key) {
           params.push({
@@ -206,13 +218,25 @@ export function useNotebookCellState(params: {
   const inputCellIdByKey = useMemo(() => {
     const out: Record<string, string> = {}
     for (const cell of sortedCells) {
+      if (cell.type === 'widget') {
+        const metadata = widgetDraftByCell[cell.id]
+        if (!metadata) continue
+        if (metadata.key) out[metadata.key] = cell.id
+        if (metadata.widgetType === 'date-range') {
+          const startKey = metadata.config?.startKey?.trim()
+          const endKey = metadata.config?.endKey?.trim()
+          if (startKey) out[startKey] = cell.id
+          if (endKey) out[endKey] = cell.id
+        }
+        continue
+      }
       if (cell.type !== 'input') continue
       const metadata = inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell)
       if (!metadata?.key) continue
       out[metadata.key] = cell.id
     }
     return out
-  }, [sortedCells, inputDraftByCell])
+  }, [sortedCells, inputDraftByCell, widgetDraftByCell])
 
   const addCellMutation = useMutation({
     mutationFn: (type: NotebookCellType) => {
@@ -220,10 +244,9 @@ export function useNotebookCellState(params: {
       const position = selectedIndex === -1 ? undefined : selectedIndex + 1
       if (type === 'sql') return createCell(activeNotebookId, { type, content: 'select now();', position })
       if (type === 'markdown') return createCell(activeNotebookId, { type, content: '## Notes\n', position })
-      if (type === 'input') return createCell(activeNotebookId, { type: 'input', metadata: defaultInputMetadata(), position })
       return createCell(activeNotebookId, {
         type: 'widget',
-        metadata: createDefaultWidgetMetadata('callout') as NotebookWidgetMetadata,
+        metadata: createDefaultWidgetMetadata('text') as NotebookWidgetMetadata,
         position,
       })
     },
