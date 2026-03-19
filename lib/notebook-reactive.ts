@@ -39,6 +39,16 @@ export function getDependentSqlTargets(state: ReactiveNotebookState, inputCellId
   })
 }
 
+export function getDependentSqlTargetsForInputKeys(
+  state: ReactiveNotebookState,
+  inputCellId: string,
+  inputKeys: string[]
+) {
+  return [...new Map(
+    inputKeys.flatMap((key) => getDependentSqlTargets(state, inputCellId, key)).map((cell) => [cell.id, cell])
+  ).values()].sort((a, b) => a.position - b.position)
+}
+
 export async function runReactiveSqlCells({
   inputCellId,
   inputKey,

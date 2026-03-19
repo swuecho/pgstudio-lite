@@ -12,6 +12,7 @@ import type {
 import {
   buildInputValues,
   getDependentSqlTargets,
+  getDependentSqlTargetsForInputKeys,
   type ReactiveNotebookState,
 } from '../../lib/notebook-reactive'
 import { createCell, deleteCell, runCell, updateCell } from '../../features/notebook/notebook.service'
@@ -342,9 +343,7 @@ export function useNotebookCellState(params: {
       widgetDraftByCell: widgetDraftByCellRef.current,
     })
 
-    const targets = [...new Map(
-      keys.flatMap((key) => getDependentSqlTargets(getState(), inputCellId, key)).map((cell) => [cell.id, cell])
-    ).values()]
+    const targets = getDependentSqlTargetsForInputKeys(getState(), inputCellId, keys)
     if (!targets.length) return
 
     const statusLabel = keys.length === 1 ? `'${keys[0]}'` : `${keys.length} widget input(s)`
