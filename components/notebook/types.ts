@@ -73,8 +73,8 @@ export type NotebookInputCellMetadata = {
   autoRun?: boolean
 }
 
-export type NotebookCellType = 'sql' | 'markdown' | 'input' | 'widget'
-export type NotebookCellMetadata = NotebookInputCellMetadata | NotebookWidgetMetadata | null
+export type NotebookCellType = 'sql' | 'markdown' | 'widget'
+export type NotebookCellMetadata = NotebookWidgetMetadata | null
 
 export type Notebook = {
   id: string

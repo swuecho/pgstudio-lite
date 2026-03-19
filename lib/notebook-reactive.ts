@@ -1,9 +1,4 @@
-import type {
-  NotebookCell,
-  NotebookInputCellMetadata,
-  NotebookInputValues,
-  NotebookWidgetMetadata,
-} from '../components/notebook/types'
+import type { NotebookCell, NotebookInputValues, NotebookWidgetMetadata } from '../components/notebook/types'
 import { extractTemplateKeys } from './notebook-params'
 import { getWidgetParamValues, isWidgetMetadata } from './notebook-widgets'
 
@@ -13,15 +8,7 @@ export type ReactiveNotebookState = {
   runningCellId: string
   sortedCells: NotebookCell[]
   draftByCell: Record<string, string>
-  inputDraftByCell: Record<string, NotebookInputCellMetadata>
   widgetDraftByCell: Record<string, NotebookWidgetMetadata>
-}
-
-export function getInputMetadata(cell: NotebookCell, inputDraftByCell: Record<string, NotebookInputCellMetadata>) {
-  if (cell.type !== 'input') return null
-  const metadata = inputDraftByCell[cell.id] || cell.metadata_json
-  if (!metadata || !metadata.key) return null
-  return metadata
 }
 
 export function getWidgetMetadata(cell: NotebookCell, widgetDraftByCell?: Record<string, NotebookWidgetMetadata>) {
@@ -31,18 +18,9 @@ export function getWidgetMetadata(cell: NotebookCell, widgetDraftByCell?: Record
   return metadata as NotebookWidgetMetadata
 }
 
-export function buildInputValues(
-  cells: NotebookCell[],
-  inputDraftByCell: Record<string, NotebookInputCellMetadata>,
-  widgetDraftByCell: Record<string, NotebookWidgetMetadata> = {}
-) {
+export function buildInputValues(cells: NotebookCell[], widgetDraftByCell: Record<string, NotebookWidgetMetadata> = {}) {
   const out: NotebookInputValues = {}
   for (const cell of cells) {
-    const metadata = getInputMetadata(cell, inputDraftByCell)
-    if (metadata) {
-      out[metadata.key] = metadata.value
-      continue
-    }
     const widgetMetadata = getWidgetMetadata(cell, widgetDraftByCell)
     if (!widgetMetadata) continue
     Object.assign(out, getWidgetParamValues(widgetMetadata))
@@ -92,7 +70,7 @@ export async function runReactiveSqlCells({
       notebookId,
       cellId: target.id,
       query,
-      inputValues: buildInputValues(state.sortedCells, state.inputDraftByCell, state.widgetDraftByCell),
+      inputValues: buildInputValues(state.sortedCells, state.widgetDraftByCell),
     })
     executedCellIds.push(target.id)
   }

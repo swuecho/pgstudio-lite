@@ -6,14 +6,12 @@ import type {
   NotebookCell,
   NotebookCellType,
   NotebookDetail,
-  NotebookInputCellMetadata,
   NotebookInputValues,
   NotebookWidgetMetadata,
 } from './types'
 import {
   buildInputValues,
   getDependentSqlTargets,
-  getInputMetadata,
   type ReactiveNotebookState,
 } from '../../lib/notebook-reactive'
 import { createCell, deleteCell, runCell, updateCell } from '../../features/notebook/notebook.service'
@@ -31,20 +29,18 @@ export function useNotebookCellState(params: {
   const [runningAll, setRunningAll] = useState(false)
   const [resultsByCell, setResultsByCell] = useState<Record<string, QueryResult>>({})
   const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
-  const [inputDraftByCell, setInputDraftByCell] = useState<Record<string, NotebookInputCellMetadata>>({})
   const [widgetDraftByCell, setWidgetDraftByCell] = useState<Record<string, NotebookWidgetMetadata>>({})
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookInputCellMetadata | NotebookWidgetMetadata | null }>>({})
+  const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>>({})
   const reactiveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const reactiveRunGenerationRef = useRef(0)
   const sqlEditorRefs = useRef<Record<string, MonacoEditorNs.IStandaloneCodeEditor>>({})
   const cellSectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const draftByCellRef = useRef<Record<string, string>>({})
-  const inputDraftByCellRef = useRef<Record<string, NotebookInputCellMetadata>>({})
   const widgetDraftByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
   const sortedCellsRef = useRef<NotebookCell[]>([])
   const activeNotebookIdRef = useRef('')
@@ -57,10 +53,6 @@ export function useNotebookCellState(params: {
   useEffect(() => {
     draftByCellRef.current = draftByCell
   }, [draftByCell])
-
-  useEffect(() => {
-    inputDraftByCellRef.current = inputDraftByCell
-  }, [inputDraftByCell])
 
   useEffect(() => {
     widgetDraftByCellRef.current = widgetDraftByCell
@@ -92,19 +84,6 @@ export function useNotebookCellState(params: {
       const next = { ...prev }
       for (const cell of cells) {
         if (next[cell.id] === undefined) next[cell.id] = cell.content
-      }
-      return next
-    })
-  }, [cells])
-
-  useEffect(() => {
-    if (!cells.length) return
-    setInputDraftByCell((prev) => {
-      const next = { ...prev }
-      for (const cell of cells) {
-        if (cell.type !== 'input') continue
-        if (next[cell.id] !== undefined) continue
-        next[cell.id] = getInputMetadata(cell, next) || defaultInputMetadata()
       }
       return next
     })
@@ -152,7 +131,7 @@ export function useNotebookCellState(params: {
     }
   }, [])
 
-  const inputValues = useMemo(() => buildInputValues(sortedCells, inputDraftByCell, widgetDraftByCell), [sortedCells, inputDraftByCell, widgetDraftByCell])
+  const inputValues = useMemo(() => buildInputValues(sortedCells, widgetDraftByCell), [sortedCells, widgetDraftByCell])
   const inputKeys = useMemo(() => new Set(Object.keys(inputValues)), [inputValues])
   const notebookInputs = useMemo(
     () => {
@@ -293,7 +272,7 @@ export function useNotebookCellState(params: {
     }
   }
 
-  function scheduleCellSave(cell: NotebookCell, patch: { content?: string; metadata?: NotebookInputCellMetadata | NotebookWidgetMetadata | null }) {
+  function scheduleCellSave(cell: NotebookCell, patch: { content?: string; metadata?: NotebookWidgetMetadata | null }) {
     if (!activeNotebookId) return
     const existing = saveTimersRef.current[cell.id]
     if (existing) clearTimeout(existing)
@@ -320,26 +299,6 @@ export function useNotebookCellState(params: {
   function onChangeCell(cell: NotebookCell, next: string) {
     setDraftByCell((prev) => ({ ...prev, [cell.id]: next }))
     scheduleCellSave(cell, { content: next })
-  }
-
-  function scheduleReactiveRuns(inputCellId: string, metadata: NotebookInputCellMetadata) {
-    const timer = reactiveTimersRef.current[inputCellId]
-    if (timer) clearTimeout(timer)
-    if (metadata.autoRun === false) return
-    reactiveTimersRef.current[inputCellId] = setTimeout(() => {
-      void rerunDependentSqlCells(inputCellId, metadata.key)
-    }, 350)
-  }
-
-  function onInputMetadataChange(cell: NotebookCell, next: NotebookInputCellMetadata) {
-    const previous = inputDraftByCellRef.current[cell.id] || getInputMetadata(cell, inputDraftByCellRef.current) || defaultInputMetadata()
-    const nextDrafts = { ...inputDraftByCellRef.current, [cell.id]: next }
-    inputDraftByCellRef.current = nextDrafts
-    setInputDraftByCell(nextDrafts)
-    scheduleCellSave(cell, { metadata: next })
-
-    if (isSameValue(previous.value, next.value) && previous.key === next.key) return
-    scheduleReactiveRuns(cell.id, next)
   }
 
   function onWidgetMetadataChange(cell: NotebookCell, next: NotebookWidgetMetadata) {
@@ -380,7 +339,6 @@ export function useNotebookCellState(params: {
       runningCellId: runningCellIdRef.current,
       sortedCells: sortedCellsRef.current,
       draftByCell: draftByCellRef.current,
-      inputDraftByCell: inputDraftByCellRef.current,
       widgetDraftByCell: widgetDraftByCellRef.current,
     })
 
@@ -402,7 +360,7 @@ export function useNotebookCellState(params: {
         if (!query) continue
 
         setRunningCellId(target.id)
-        const result = await runCell(notebookId, target.id, query, buildInputValues(state.sortedCells, state.inputDraftByCell, state.widgetDraftByCell))
+        const result = await runCell(notebookId, target.id, query, buildInputValues(state.sortedCells, state.widgetDraftByCell))
         if (reactiveRunGenerationRef.current !== generation) return
         setResultsByCell((prev) => ({ ...prev, [target.id]: result }))
       }
@@ -503,7 +461,7 @@ export function useNotebookCellState(params: {
           activeNotebookId,
           cell.id,
           query,
-          buildInputValues(sortedCells, inputDraftByCellRef.current, widgetDraftByCellRef.current)
+          buildInputValues(sortedCells, widgetDraftByCellRef.current)
         )
         setResultsByCell((prev) => ({ ...prev, [cell.id]: result }))
         successCount += 1
@@ -534,7 +492,7 @@ export function useNotebookCellState(params: {
         if (!query) continue
         setRunningCellId(cell.id)
         setStatus(`Running target cell #${cell.position + 1}...`)
-        const result = await runCell(activeNotebookId, cell.id, query, buildInputValues(sortedCells, inputDraftByCellRef.current, widgetDraftByCellRef.current))
+        const result = await runCell(activeNotebookId, cell.id, query, buildInputValues(sortedCells, widgetDraftByCellRef.current))
         setResultsByCell((prev) => ({ ...prev, [cell.id]: result }))
         successCount += 1
       }
@@ -557,13 +515,11 @@ export function useNotebookCellState(params: {
     cellSectionRefs,
     deleteCellById,
     draftByCell,
-    inputDraftByCell,
     inputKeys,
     jumpToInputCell,
     moveCell,
     notebookInputs,
     onChangeCell,
-    onInputMetadataChange,
     previewMarkdown,
     resultsByCell,
     runTargetSqlCells,
@@ -591,17 +547,6 @@ export function getChangedWidgetParamKeys(previous: NotebookWidgetMetadata, next
   const keys = new Set([...Object.keys(previousParams), ...Object.keys(nextParams)])
 
   return [...keys].filter((key) => !isSameValue(previousParams[key], nextParams[key]))
-}
-
-function defaultInputMetadata(): NotebookInputCellMetadata {
-  return {
-    key: `param_${Math.random().toString(36).slice(2, 8)}`,
-    label: 'Input',
-    inputType: 'text',
-    value: '',
-    required: false,
-    autoRun: true,
-  }
 }
 
 function isSameValue(a: unknown, b: unknown) {

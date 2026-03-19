@@ -224,13 +224,13 @@ describe('notebook API e2e', () => {
           cells: [
             { id: 'c1', type: 'markdown', content: '# Hello' },
             {
-              id: 'c2',
-              type: 'input',
+              id: 'w1',
+              type: 'widget',
               content: '',
               metadata: {
+                widgetType: 'date',
                 key: 'start_date',
                 label: 'Start Date',
-                inputType: 'date',
                 value: '2026-01-01',
                 required: true,
                 autoRun: true,
@@ -271,7 +271,7 @@ describe('notebook API e2e', () => {
       metadata: { source: 'vitest' },
       cells: [
         { id: 'c1', type: 'markdown', content: '# Hello' },
-        { id: 'c2', type: 'input' },
+        { id: 'w1', type: 'widget' },
         { id: 'c3', type: 'sql', content: 'select {{start_date}} as d;' },
       ],
     })
@@ -475,13 +475,13 @@ describe('notebook API e2e', () => {
           title: 'Bad Notebook',
           cells: [
             {
-              id: 'input-1',
-              type: 'input',
+              id: 'widget-1',
+              type: 'widget',
               content: '',
               metadata: {
+                widgetType: 'text',
                 key: '1bad',
                 label: 'Invalid key',
-                inputType: 'text',
                 value: '',
               },
             },
