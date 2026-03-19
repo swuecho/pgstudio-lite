@@ -3,44 +3,23 @@ import { z } from 'zod'
 import { createNotebookCell, deleteNotebookCell, getNotebookById, updateNotebookCell } from '../../../../lib/notebook-db'
 import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
 import { nonEmptyStringSchema, parseWithSchema } from '../../../../lib/api/validation'
-import { notebookParamKeyPattern, notebookWidgetMetadataSchema } from '../../../../lib/notebook-widgets'
+import { notebookWidgetMetadataSchema } from '../../../../lib/notebook-widgets'
 
 const paramsSchema = z.object({ id: nonEmptyStringSchema })
 
-const inputOptionSchema = z.object({
-  label: z.string(),
-  value: z.string(),
-})
-
-const inputMetadataSchema = z.object({
-  key: z.string().trim().regex(notebookParamKeyPattern),
-  label: z.string().trim().min(1),
-  inputType: z.enum(['text', 'number', 'date', 'datetime-local', 'checkbox', 'select', 'range', 'multiselect']),
-  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
-  required: z.boolean().optional(),
-  placeholder: z.string().optional(),
-  options: z.array(inputOptionSchema).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  step: z.number().optional(),
-  autoRun: z.boolean().optional(),
-})
-
-const cellMetadataSchema = z.union([inputMetadataSchema, notebookWidgetMetadataSchema])
-
 const createCellSchema = z.object({
-  type: z.enum(['sql', 'markdown', 'input', 'widget']),
+  type: z.enum(['sql', 'markdown', 'widget']),
   content: z.string().optional(),
-  metadata: cellMetadataSchema.nullable().optional(),
+  metadata: notebookWidgetMetadataSchema.nullable().optional(),
   position: z.coerce.number().int().min(0).optional(),
 })
 
 const patchCellSchema = z
   .object({
     cellId: nonEmptyStringSchema,
-    type: z.enum(['sql', 'markdown', 'input', 'widget']).optional(),
+    type: z.enum(['sql', 'markdown', 'widget']).optional(),
     content: z.string().optional(),
-    metadata: cellMetadataSchema.nullable().optional(),
+    metadata: notebookWidgetMetadataSchema.nullable().optional(),
     collapsed: z.boolean().optional(),
     position: z.coerce.number().int().min(0).optional(),
   })
