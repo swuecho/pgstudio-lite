@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { useTableEditorData } from './useTableEditorData'
 import { useTableEditorLocalState } from './useTableEditorLocalState'
+import type { RowKey } from './types'
 
 export function useTableEditorState() {
   const state = useTableEditorLocalState()
@@ -32,7 +33,8 @@ export function useTableEditorState() {
       pageSize: state.pageSize,
       page: state.page,
       totalRows: actions.totalRows,
-      readOnlyConnection: actions.connectionReadOnly,
+      readOnlyTable: actions.rowMutationsReadOnly,
+      readOnlyReason: actions.rowMutationsDisabledReason,
       visibleColumns: state.visibleColumns,
       onChangeSortBy: state.setSortBy,
       onChangeSortOrder: state.setSortOrder,
@@ -46,11 +48,11 @@ export function useTableEditorState() {
         state.setPage(0)
       },
       onChangePageSize: state.setPageSize,
-      onUpdateCell: (ctid: string, column: string, value: unknown) => {
-        void actions.updateCell(ctid, column, value)
+      onUpdateCell: (rowKey: RowKey | null, column: string, value: unknown) => {
+        void actions.updateCell(rowKey, column, value)
       },
-      onDeleteRow: (ctid: string) => {
-        void actions.deleteRow(ctid)
+      onDeleteRow: (rowKey: RowKey | null) => {
+        void actions.deleteRow(rowKey)
       },
       onPrevPage: () => state.setPage((p) => Math.max(0, p - 1)),
       onNextPage: () => state.setPage((p) => p + 1),

@@ -28,6 +28,11 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                   <span>#{index + 1}</span>
                   <span>{statement.command}</span>
                   <span>{statement.rowCount} rows</span>
+                  {statement.truncated ? (
+                    <span className={styles.resultNotice}>
+                      Showing {statement.returnedRowCount} of {statement.rowCount}
+                    </span>
+                  ) : null}
                   {statement.tableTarget ? (
                     <Link
                       className={styles.resultOpenLink}
@@ -44,6 +49,11 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                     </Link>
                   ) : null}
                 </div>
+                {statement.truncated ? (
+                  <div className={styles.resultAlert}>
+                    Result payload capped at {statement.returnedRowCount} rows. Refine the query or open the table view.
+                  </div>
+                ) : null}
                 {statement.fields.length > 0 ? (
                   <div className={styles.tableWrap}>
                     <table>
