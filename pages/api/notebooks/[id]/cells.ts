@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createNotebookCell, deleteNotebookCell, getNotebookById, updateNotebookCell } from '../../../../lib/notebook-db'
 import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
 import { nonEmptyStringSchema, parseWithSchema } from '../../../../lib/api/validation'
+import { notebookParamKeyPattern, notebookWidgetMetadataSchema } from '../../../../lib/notebook-widgets'
 
 const paramsSchema = z.object({ id: nonEmptyStringSchema })
 
@@ -12,7 +13,7 @@ const inputOptionSchema = z.object({
 })
 
 const inputMetadataSchema = z.object({
-  key: z.string().trim().min(1),
+  key: z.string().trim().regex(notebookParamKeyPattern),
   label: z.string().trim().min(1),
   inputType: z.enum(['text', 'number', 'date', 'datetime-local', 'checkbox', 'select', 'range', 'multiselect']),
   value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
@@ -25,19 +26,21 @@ const inputMetadataSchema = z.object({
   autoRun: z.boolean().optional(),
 })
 
+const cellMetadataSchema = z.union([inputMetadataSchema, notebookWidgetMetadataSchema])
+
 const createCellSchema = z.object({
-  type: z.enum(['sql', 'markdown', 'input']),
+  type: z.enum(['sql', 'markdown', 'input', 'widget']),
   content: z.string().optional(),
-  metadata: inputMetadataSchema.nullable().optional(),
+  metadata: cellMetadataSchema.nullable().optional(),
   position: z.coerce.number().int().min(0).optional(),
 })
 
 const patchCellSchema = z
   .object({
     cellId: nonEmptyStringSchema,
-    type: z.enum(['sql', 'markdown', 'input']).optional(),
+    type: z.enum(['sql', 'markdown', 'input', 'widget']).optional(),
     content: z.string().optional(),
-    metadata: inputMetadataSchema.nullable().optional(),
+    metadata: cellMetadataSchema.nullable().optional(),
     collapsed: z.boolean().optional(),
     position: z.coerce.number().int().min(0).optional(),
   })

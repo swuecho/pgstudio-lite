@@ -6,7 +6,6 @@ import { useNotebookCrudState } from './useNotebookCrudState'
 export type NotebookPageController = ReturnType<typeof useNotebookPageState>
 
 export function useNotebookPageState() {
-  const [runningAll, setRunningAll] = useState(false)
   const [status, setStatus] = useState('Notebook ready')
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
 

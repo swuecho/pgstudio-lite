@@ -1,5 +1,11 @@
-import type { NotebookCell, NotebookInputCellMetadata, NotebookInputValues } from '../components/notebook/types'
+import type {
+  NotebookCell,
+  NotebookInputCellMetadata,
+  NotebookInputValues,
+  NotebookWidgetMetadata,
+} from '../components/notebook/types'
 import { extractTemplateKeys } from './notebook-params'
+import { getWidgetParamValues, isWidgetMetadata } from './notebook-widgets'
 
 export type ReactiveNotebookState = {
   activeNotebookId: string
@@ -8,6 +14,7 @@ export type ReactiveNotebookState = {
   sortedCells: NotebookCell[]
   draftByCell: Record<string, string>
   inputDraftByCell: Record<string, NotebookInputCellMetadata>
+  widgetDraftByCell: Record<string, NotebookWidgetMetadata>
 }
 
 export function getInputMetadata(cell: NotebookCell, inputDraftByCell: Record<string, NotebookInputCellMetadata>) {
@@ -17,12 +24,28 @@ export function getInputMetadata(cell: NotebookCell, inputDraftByCell: Record<st
   return metadata
 }
 
-export function buildInputValues(cells: NotebookCell[], inputDraftByCell: Record<string, NotebookInputCellMetadata>) {
+export function getWidgetMetadata(cell: NotebookCell, widgetDraftByCell?: Record<string, NotebookWidgetMetadata>) {
+  if (cell.type !== 'widget') return null
+  const metadata = widgetDraftByCell?.[cell.id] || cell.metadata_json
+  if (!metadata || !isWidgetMetadata(metadata)) return null
+  return metadata as NotebookWidgetMetadata
+}
+
+export function buildInputValues(
+  cells: NotebookCell[],
+  inputDraftByCell: Record<string, NotebookInputCellMetadata>,
+  widgetDraftByCell: Record<string, NotebookWidgetMetadata> = {}
+) {
   const out: NotebookInputValues = {}
   for (const cell of cells) {
     const metadata = getInputMetadata(cell, inputDraftByCell)
-    if (!metadata) continue
-    out[metadata.key] = metadata.value
+    if (metadata) {
+      out[metadata.key] = metadata.value
+      continue
+    }
+    const widgetMetadata = getWidgetMetadata(cell, widgetDraftByCell)
+    if (!widgetMetadata) continue
+    Object.assign(out, getWidgetParamValues(widgetMetadata))
   }
   return out
 }
@@ -69,7 +92,7 @@ export async function runReactiveSqlCells({
       notebookId,
       cellId: target.id,
       query,
-      inputValues: buildInputValues(state.sortedCells, state.inputDraftByCell),
+      inputValues: buildInputValues(state.sortedCells, state.inputDraftByCell, state.widgetDraftByCell),
     })
     executedCellIds.push(target.id)
   }

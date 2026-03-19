@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { NotebookCell, NotebookInputCellMetadata } from '../components/notebook/types'
-import { getDependentSqlTargets, runReactiveSqlCells, type ReactiveNotebookState } from '../lib/notebook-reactive'
+import type { NotebookCell, NotebookInputCellMetadata, NotebookWidgetMetadata } from '../components/notebook/types'
+import { buildInputValues, getDependentSqlTargets, runReactiveSqlCells, type ReactiveNotebookState } from '../lib/notebook-reactive'
 
 function makeCell(partial: Partial<NotebookCell>): NotebookCell {
   return {
@@ -31,6 +31,13 @@ function makeInputMetadata(value: unknown): NotebookInputCellMetadata {
   }
 }
 
+function makeWidgetMetadata(partial: Partial<NotebookWidgetMetadata>): NotebookWidgetMetadata {
+  return {
+    widgetType: partial.widgetType || 'radio-group',
+    ...partial,
+  } as NotebookWidgetMetadata
+}
+
 describe('notebook reactive runner', () => {
   it('uses latest input state between dependent SQL executions (stale-state regression)', async () => {
     const inputCell = makeCell({ id: 'in-1', type: 'input', position: 0, metadata_json: makeInputMetadata(5) })
@@ -49,6 +56,7 @@ describe('notebook reactive runner', () => {
       inputDraftByCell: {
         'in-1': makeInputMetadata(5),
       },
+      widgetDraftByCell: {},
     }
 
     const seenValues: number[] = []
@@ -84,6 +92,7 @@ describe('notebook reactive runner', () => {
           'sql-below': 'select {{p}}',
         },
         inputDraftByCell: { 'in-1': makeInputMetadata(1) },
+        widgetDraftByCell: {},
       },
       'in-1',
       'p'
@@ -108,6 +117,7 @@ describe('notebook reactive runner', () => {
         sortedCells: [inputCell, sql1],
         draftByCell: { 'sql-1': 'select {{p}} as v1' },
         inputDraftByCell: { 'in-1': makeInputMetadata(5) },
+        widgetDraftByCell: {},
       }),
       runCell: async () => {
         callCount += 1
@@ -115,5 +125,40 @@ describe('notebook reactive runner', () => {
     })
 
     expect(callCount).toBe(0)
+  })
+
+  it('includes widget-derived params in built input values', () => {
+    const radioWidget = makeCell({
+      id: 'w-1',
+      type: 'widget',
+      position: 0,
+      metadata_json: makeWidgetMetadata({
+        widgetType: 'radio-group',
+        key: 'status',
+        label: 'Status',
+        value: 'open',
+        options: [
+          { label: 'Open', value: 'open' },
+          { label: 'Closed', value: 'closed' },
+        ],
+      }),
+    })
+    const dateRangeWidget = makeCell({
+      id: 'w-2',
+      type: 'widget',
+      position: 1,
+      metadata_json: makeWidgetMetadata({
+        widgetType: 'date-range',
+        label: 'Date Range',
+        value: { start: '2026-01-01', end: '2026-01-31' },
+        config: { startKey: 'start_date', endKey: 'end_date' },
+      }),
+    })
+
+    expect(buildInputValues([radioWidget, dateRangeWidget], {})).toEqual({
+      status: 'open',
+      start_date: '2026-01-01',
+      end_date: '2026-01-31',
+    })
   })
 })

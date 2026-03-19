@@ -5,6 +5,7 @@ import type {
   NotebookCell,
   NotebookCellType,
   NotebookDetail,
+  NotebookWidgetMetadata,
   NotebookInputCellMetadata,
   NotebookInputValues,
   RunCellResponse,
@@ -19,7 +20,7 @@ export type NotebookSpecV1 = {
   metadata?: Record<string, unknown>
   cells: Array<{
     id: string
-    type: 'sql' | 'markdown' | 'input'
+    type: 'sql' | 'markdown' | 'input' | 'widget'
     position?: number
     collapsed?: boolean
     content: string
@@ -69,7 +70,7 @@ export async function getNotebook(id: string) {
 
 export async function createCell(
   notebookId: string,
-  payload: { type: NotebookCellType; content?: string; metadata?: NotebookInputCellMetadata | null; position?: number }
+  payload: { type: NotebookCellType; content?: string; metadata?: NotebookInputCellMetadata | NotebookWidgetMetadata | null; position?: number }
 ) {
   return fetchJson<{ item: NotebookCell; cells: NotebookCell[] }>(`/api/notebooks/${encodeURIComponent(notebookId)}/cells`, {
     method: 'POST',
@@ -83,7 +84,7 @@ export async function updateCell(
     cellId: string
     type?: NotebookCellType
     content?: string
-    metadata?: NotebookInputCellMetadata | null
+    metadata?: NotebookInputCellMetadata | NotebookWidgetMetadata | null
     collapsed?: boolean
     position?: number
   }
