@@ -7,6 +7,58 @@ export type NotebookInputOption = {
   value: string
 }
 
+export type NotebookWidgetType =
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'datetime-local'
+  | 'checkbox'
+  | 'select'
+  | 'range'
+  | 'multiselect'
+  | 'radio-group'
+  | 'date-range'
+  | 'actions'
+  | 'callout'
+
+export type NotebookWidgetOption = {
+  label: string
+  value: string
+  description?: string
+}
+
+export type NotebookWidgetDateRangeValue = {
+  start: string
+  end: string
+}
+
+export type NotebookWidgetMetadata = {
+  widgetType: NotebookWidgetType
+  key?: string
+  label?: string
+  helpText?: string
+  autoRun?: boolean
+  hidden?: boolean
+  disabled?: boolean
+  value?: string | number | boolean | string[] | null | NotebookWidgetDateRangeValue
+  defaultValue?: string | number | boolean | string[] | null | NotebookWidgetDateRangeValue
+  required?: boolean
+  placeholder?: string
+  options?: NotebookWidgetOption[]
+  min?: number
+  max?: number
+  step?: number
+  config?: {
+    startKey?: string
+    endKey?: string
+    action?: 'run-all' | 'run-targets'
+    targetCellIds?: string[]
+    tone?: 'info' | 'success' | 'warning' | 'danger'
+    title?: string
+    body?: string
+  }
+}
+
 export type NotebookInputCellMetadata = {
   key: string
   label: string
@@ -21,7 +73,8 @@ export type NotebookInputCellMetadata = {
   autoRun?: boolean
 }
 
-export type NotebookCellType = 'sql' | 'markdown' | 'input'
+export type NotebookCellType = 'sql' | 'markdown' | 'widget'
+export type NotebookCellMetadata = NotebookWidgetMetadata | null
 
 export type Notebook = {
   id: string
@@ -46,7 +99,7 @@ export type NotebookCell = {
   last_row_count: number | null
   last_result_json: QueryResult | null
   last_error: string | null
-  metadata_json: NotebookInputCellMetadata | null
+  metadata_json: NotebookCellMetadata
   updated_at: string
 }
 
