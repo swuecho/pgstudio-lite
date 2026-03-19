@@ -9,8 +9,11 @@ export type ColumnInfo = {
   dataType: string
   isNullable: boolean
   isIdentity: boolean
+  isPrimaryKey: boolean
 }
 
-export type RowData = Record<string, unknown> & { _ctid: string }
+export type RowKey = Record<string, unknown>
+
+export type RowData = Record<string, unknown> & { _rowKey: RowKey | null }
 
 export type Connection = { id?: string; name: string; isDefault?: boolean; readOnly?: boolean }

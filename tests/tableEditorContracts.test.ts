@@ -43,8 +43,8 @@ describe('tableEditorContracts', () => {
   it('keeps sort and filter when columns still support them', () => {
     const result = resolveSortAndFilter(
       [
-        { name: '_ctid', dataType: 'tid', isNullable: false, isIdentity: false },
-        { name: 'name', dataType: 'text', isNullable: true, isIdentity: false },
+        { name: 'id', dataType: 'int4', isNullable: false, isIdentity: true, isPrimaryKey: true },
+        { name: 'name', dataType: 'text', isNullable: true, isIdentity: false, isPrimaryKey: false },
       ],
       'name',
       'name'
@@ -54,10 +54,10 @@ describe('tableEditorContracts', () => {
 
   it('resets invalid sort and filter columns', () => {
     const result = resolveSortAndFilter(
-      [{ name: 'id', dataType: 'int4', isNullable: false, isIdentity: true }],
+      [{ name: 'id', dataType: 'int4', isNullable: false, isIdentity: true, isPrimaryKey: true }],
       'deleted_column',
       'other_deleted_column'
     )
-    expect(result).toEqual({ nextSortBy: '_ctid', nextFilterColumn: '' })
+    expect(result).toEqual({ nextSortBy: '', nextFilterColumn: '' })
   })
 })

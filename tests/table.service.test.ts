@@ -81,14 +81,14 @@ describe('table service', () => {
     await tableService.patchRow('notes', {
       connectionName: 'default',
       schema: 'public',
-      ctid: '(0,1)',
+      rowKey: { id: 1 },
       patch: { title: 'new' },
     })
 
     expect(calls[0].path).toBe('/api/tables/notes/rows')
     expect(calls[0].options?.method).toBe('PATCH')
     expect(calls[0].options?.body).toBe(
-      JSON.stringify({ connectionName: 'default', schema: 'public', ctid: '(0,1)', patch: { title: 'new' } })
+      JSON.stringify({ connectionName: 'default', schema: 'public', rowKey: { id: 1 }, patch: { title: 'new' } })
     )
   })
 })

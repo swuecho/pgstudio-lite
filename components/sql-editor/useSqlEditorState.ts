@@ -1,13 +1,13 @@
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getConnections, runQuery } from '../../features/sql/sql.service'
+import { runQuery } from '../../features/sql/sql.service'
 import { detectOS, suffixWithLimit } from './utils'
 import type { QueryResult, SnippetItem } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'
 import { useSqlEditorHistory } from './useSqlEditorHistory'
 import { useSqlEditorSnippets } from './useSqlEditorSnippets'
 import { useSqlEditorTabs } from './useSqlEditorTabs'
+import { useConnections } from '../shared/hooks/useConnections'
 import { useActiveConnectionStore } from '../shared/stores/activeConnectionStore'
 
 export function useSqlEditorState() {
@@ -31,11 +31,8 @@ export function useSqlEditorState() {
     setStatus,
     setActiveNavTab,
   })
-  const connectionsQuery = useQuery({
-    queryKey: ['sql', 'connections'],
-    queryFn: getConnections,
-  })
-  const connections = connectionsQuery.data?.connections || []
+  const connectionsQuery = useConnections()
+  const connections = connectionsQuery.connections
 
   const runLabel = useMemo(() => {
     const shortcut = detectOS() === 'macos' ? '⌘↵' : 'Ctrl↵'
@@ -98,20 +95,25 @@ export function useSqlEditorState() {
 
 
   useEffect(() => {
-    if (!connectionsQuery.data) return
-    if (!connectionsQuery.data.configured) {
+    if (connectionsQuery.isLoading) return
+    if (!connectionsQuery.configured) {
       setStatus({ text: 'Set PG_CONNECTION_STRING to start', tone: 'warning' })
       return
     }
-    if (connectionsQuery.data.connections.length === 0) return
-    const currentExists = connectionsQuery.data.connections.some((connection) => connection.name === connectionName)
+    if (connections.length === 0) return
+    const currentExists = connections.some((connection) => connection.name === connectionName)
     if (!currentExists) {
-      const preferred =
-        connectionsQuery.data.connections.find((connection) => connection.isDefault)?.name ||
-        connectionsQuery.data.connections[0].name
+      const preferred = connectionsQuery.defaultConnectionName || connections[0].name
       setConnectionName(preferred)
     }
-  }, [connectionsQuery.data, connectionName])
+  }, [
+    connections,
+    connectionsQuery.configured,
+    connectionsQuery.defaultConnectionName,
+    connectionsQuery.isLoading,
+    connectionName,
+    setConnectionName,
+  ])
 
   return {
     editorRef,
