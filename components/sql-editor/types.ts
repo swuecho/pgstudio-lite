@@ -2,6 +2,8 @@ export type QueryResult = {
   statements: Array<{
     command: string
     rowCount: number
+    returnedRowCount: number
+    truncated: boolean
     fields: string[]
     rows: Record<string, unknown>[]
     tableTarget?: { schema: string; table: string } | null

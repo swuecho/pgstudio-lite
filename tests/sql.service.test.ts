@@ -37,7 +37,16 @@ describe('sql service', () => {
         ok: true,
         status: 200,
         payload: {
-          statements: [{ command: 'SELECT', rowCount: 1, fields: ['id'], rows: [{ id: 1 }] }],
+          statements: [
+            {
+              command: 'SELECT',
+              rowCount: 1,
+              returnedRowCount: 1,
+              truncated: false,
+              fields: ['id'],
+              rows: [{ id: 1 }],
+            },
+          ],
           totalRows: 1,
           durationMs: 5,
         },
@@ -51,6 +60,7 @@ describe('sql service', () => {
     expect(calls[0].options?.method).toBe('POST')
     expect(calls[0].options?.body).toBe(JSON.stringify({ connectionName: 'default', query: 'select 1;' }))
     expect(result.totalRows).toBe(1)
+    expect(result.statements[0]).toMatchObject({ returnedRowCount: 1, truncated: false })
   })
 
   it('getSchemaColumns URL-encodes params', async () => {

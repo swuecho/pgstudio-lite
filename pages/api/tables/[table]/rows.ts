@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import {
-  deleteTableRowByCtid,
+  deleteTableRowByPrimaryKey,
   getTableColumns,
   getTableRows,
-  updateTableRowByCtid,
+  updateTableRowByPrimaryKey,
 } from '../../../../lib/db'
 import { getRequestConnectionName } from '../../../../lib/api/connection'
 import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '../../../../lib/api/validation'
@@ -26,13 +26,13 @@ const rowsQuerySchema = z.object({
 
 const patchRowBodySchema = z.object({
   schema: optionalSchemaNameSchema.default('public'),
-  ctid: nonEmptyStringSchema,
+  rowKey: z.record(z.string(), z.unknown()).refine((value) => Object.keys(value).length > 0, 'rowKey is required'),
   patch: z.record(z.string(), z.unknown()).optional().default({}),
 })
 
 const deleteRowBodySchema = z.object({
   schema: optionalSchemaNameSchema.default('public'),
-  ctid: nonEmptyStringSchema,
+  rowKey: z.record(z.string(), z.unknown()).refine((value) => Object.keys(value).length > 0, 'rowKey is required'),
 })
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -61,14 +61,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'PATCH') {
-      const { schema, ctid, patch } = parseWithSchema(patchRowBodySchema, req.body || {})
-      await updateTableRowByCtid(connectionName, schema, table, ctid, patch)
+      const { schema, rowKey, patch } = parseWithSchema(patchRowBodySchema, req.body || {})
+      await updateTableRowByPrimaryKey(connectionName, schema, table, rowKey, patch)
       return res.status(200).json({ ok: true })
     }
 
     if (req.method === 'DELETE') {
-      const { schema, ctid } = parseWithSchema(deleteRowBodySchema, req.body || {})
-      await deleteTableRowByCtid(connectionName, schema, table, ctid)
+      const { schema, rowKey } = parseWithSchema(deleteRowBodySchema, req.body || {})
+      await deleteTableRowByPrimaryKey(connectionName, schema, table, rowKey)
       return res.status(200).json({ ok: true })
     }
 

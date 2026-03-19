@@ -1,5 +1,5 @@
 import { fetchJson } from '../../lib/http'
-import type { ColumnInfo, Connection, RowData, TableInfo } from '../../components/table-editor/types'
+import type { ColumnInfo, Connection, RowData, RowKey, TableInfo } from '../../components/table-editor/types'
 
 export async function getConnections() {
   return fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
@@ -44,7 +44,7 @@ export async function getRows(args: {
 
 export async function patchRow(
   table: string,
-  payload: { connectionName: string; schema?: string; ctid: string; patch: Record<string, unknown> }
+  payload: { connectionName: string; schema?: string; rowKey: RowKey; patch: Record<string, unknown> }
 ) {
   const body = { ...payload, schema: payload.schema || 'public' }
   return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
@@ -53,7 +53,7 @@ export async function patchRow(
   })
 }
 
-export async function removeRow(table: string, payload: { connectionName: string; schema?: string; ctid: string }) {
+export async function removeRow(table: string, payload: { connectionName: string; schema?: string; rowKey: RowKey }) {
   const body = { ...payload, schema: payload.schema || 'public' }
   return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
     method: 'DELETE',
