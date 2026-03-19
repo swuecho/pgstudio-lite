@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NotebookCell, NotebookInputCellMetadata, NotebookWidgetMetadata } from '../components/notebook/types'
+import { getChangedWidgetParamKeys } from '../components/notebook/useNotebookCellState'
 import { buildInputValues, getDependentSqlTargets, runReactiveSqlCells, type ReactiveNotebookState } from '../lib/notebook-reactive'
 
 function makeCell(partial: Partial<NotebookCell>): NotebookCell {
@@ -160,5 +161,22 @@ describe('notebook reactive runner', () => {
       start_date: '2026-01-01',
       end_date: '2026-01-31',
     })
+  })
+
+  it('tracks renamed and updated widget params for reactive reruns', () => {
+    const previous = makeWidgetMetadata({
+      widgetType: 'date-range',
+      label: 'Date Range',
+      value: { start: '2026-01-01', end: '2026-01-31' },
+      config: { startKey: 'start_date', endKey: 'end_date' },
+    })
+    const next = makeWidgetMetadata({
+      widgetType: 'date-range',
+      label: 'Date Range',
+      value: { start: '2026-02-01', end: '2026-02-29' },
+      config: { startKey: 'from_date', endKey: 'end_date' },
+    })
+
+    expect(getChangedWidgetParamKeys(previous, next).sort()).toEqual(['end_date', 'from_date', 'start_date'])
   })
 })
