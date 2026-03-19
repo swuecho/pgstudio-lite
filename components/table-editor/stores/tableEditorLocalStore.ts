@@ -29,7 +29,7 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   status: 'Ready',
   page: 0,
   pageSize: 50,
-  sortBy: '_ctid',
+  sortBy: '',
   sortOrder: 'asc',
   filterColumn: '',
   filterValue: '',

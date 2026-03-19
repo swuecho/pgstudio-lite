@@ -34,11 +34,11 @@ export function resolveNextActiveTable(
 
 export function resolveSortAndFilter(columns: ColumnInfo[], sortBy: string, filterColumn: string) {
   const hasColumns = columns.length > 0
-  const canSortByCurrent = hasColumns && (sortBy === '_ctid' || columns.some((col) => col.name === sortBy))
+  const canSortByCurrent = sortBy === '' || (hasColumns && columns.some((col) => col.name === sortBy))
   const canFilterByCurrent = !filterColumn || columns.some((col) => col.name === filterColumn)
 
   return {
-    nextSortBy: canSortByCurrent ? sortBy : '_ctid',
+    nextSortBy: canSortByCurrent ? sortBy : '',
     nextFilterColumn: canFilterByCurrent ? filterColumn : '',
   }
 }

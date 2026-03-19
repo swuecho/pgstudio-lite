@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { RefObject } from 'react'
-import { ColumnInfo, RowData } from './types'
+import { ColumnInfo, RowData, RowKey } from './types'
 import { ColumnsSelector } from './ColumnsSelector'
 import { JsonbCellEditor } from './JsonbCellEditor'
 import styles from './TableEditorStyles.module.css'
@@ -18,7 +18,8 @@ type TableGridPanelProps = {
   pageSize: number
   page: number
   totalRows: number
-  readOnlyConnection: boolean
+  readOnlyTable: boolean
+  readOnlyReason?: string
   visibleColumns: string[]
   onChangeSortBy: (value: string) => void
   onChangeSortOrder: (value: 'asc' | 'desc') => void
@@ -27,8 +28,8 @@ type TableGridPanelProps = {
   onChangeFilterValue: (value: string) => void
   onClearFilters: () => void
   onChangePageSize: (value: number) => void
-  onUpdateCell: (ctid: string, column: string, value: unknown) => void
-  onDeleteRow: (ctid: string) => void
+  onUpdateCell: (rowKey: RowKey | null, column: string, value: unknown) => void
+  onDeleteRow: (rowKey: RowKey | null) => void
   onPrevPage: () => void
   onNextPage: () => void
   onToggleVisibleColumn: (columnName: string) => void
@@ -59,7 +60,8 @@ export function TableGridPanel({
   pageSize,
   page,
   totalRows,
-  readOnlyConnection,
+  readOnlyTable,
+  readOnlyReason,
   visibleColumns,
   onChangeSortBy,
   onChangeSortOrder,
@@ -96,10 +98,19 @@ export function TableGridPanel({
       const { row, column } = jsonbEditCell
       const colInfo = columns.find(c => c.name === column)
       if (colInfo) {
-        onUpdateCell(row._ctid, column, value)
+        onUpdateCell(row._rowKey, column, value)
       }
     }
     closeJsonbEditor()
+  }
+
+  function formatRowKey(rowKey: RowKey | null) {
+    if (!rowKey) return 'Unavailable'
+    try {
+      return JSON.stringify(rowKey)
+    } catch {
+      return String(rowKey)
+    }
   }
 
   function formatJsonbPreview(value: unknown): string {
@@ -221,7 +232,7 @@ export function TableGridPanel({
     return {
       title: 'Preview row change',
       lines: [
-        `Row: ${row._ctid}`,
+        `Row: ${formatRowKey(row._rowKey)}`,
         `Column: ${column}`,
         `Before: ${truncate(previewValue(before))}`,
         `After: ${truncate(previewValue(after))}`,
@@ -246,7 +257,7 @@ export function TableGridPanel({
     setDialog({
       ...config,
       onConfirm: () => {
-        onUpdateCell(row._ctid, column, nextValue)
+        onUpdateCell(row._rowKey, column, nextValue)
       },
       onCancel,
     })
@@ -266,7 +277,7 @@ export function TableGridPanel({
       <div className={styles.tableGridWrap}>
         <div className={styles.tableToolbar}>
           <select value={sortBy} onChange={(e) => onChangeSortBy(e.target.value)}>
-            <option value="_ctid">Default order</option>
+            <option value="">Default order</option>
             {columns.map((col) => (
               <option key={`sort-${col.name}`} value={col.name}>
                 Sort: {col.name}
@@ -304,6 +315,7 @@ export function TableGridPanel({
           <button className="btn small" onClick={onClearFilters} disabled={!hasFilters}>
             Clear filters
           </button>
+          {readOnlyReason ? <span className="history-meta">{readOnlyReason}</span> : null}
           <ColumnsSelector
             columns={columns}
             visibleColumns={visibleColumns}
@@ -323,17 +335,10 @@ export function TableGridPanel({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row._ctid}>
+              {rows.map((row, rowIndex) => (
+                <tr key={row._rowKey ? formatRowKey(row._rowKey) : `row-${rowIndex}`}>
                   {displayColumns.map((col) => {
-                  if (col.name === '_ctid') {
-                    return (
-                      <td key={col.name}>
-                        <code>{String(row[col.name] ?? '')}</code>
-                      </td>
-                    )
-                  }
-                  const readOnly = readOnlyConnection || !editableColumns.some((c) => c.name === col.name)
+                  const readOnly = readOnlyTable || !editableColumns.some((c) => c.name === col.name)
                   const editorKind = getEditorKind(col.dataType)
                   return (
                     <td key={col.name}>
@@ -421,15 +426,15 @@ export function TableGridPanel({
                   <td className={styles.tableActionsCol}>
                     <button
                       className="btn small danger"
-                      disabled={readOnlyConnection}
+                      disabled={readOnlyTable}
                       onClick={() => {
                         const rowPreview = truncate(previewValue(row), 500)
                         setDialog({
                           title: 'Preview row delete',
-                          lines: [`Row: ${row._ctid}`, `Data: ${rowPreview}`],
+                          lines: [`Row: ${formatRowKey(row._rowKey)}`, `Data: ${rowPreview}`],
                           confirmLabel: 'Delete row',
                           cancelLabel: 'Cancel',
-                          onConfirm: () => onDeleteRow(row._ctid),
+                          onConfirm: () => onDeleteRow(row._rowKey),
                         })
                       }}
                     >
