@@ -1,14 +1,12 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
-import { InputCellEditor } from './InputCellEditor'
 import { SqlCellEditor } from './SqlCellEditor'
 import { WidgetCellEditor } from './WidgetCellEditor'
 import type { NotebookPageController } from './useNotebookPageState'
 import { formatCell } from '../sql-editor/utils'
 import type { QueryResult } from '../sql-editor/types'
 import { extractTemplateKeys } from '../../lib/notebook-params'
-import { getInputMetadata } from '../../lib/notebook-reactive'
 import styles from './NotebookPage.module.css'
 
 type NotebookCellListProps = {
@@ -20,13 +18,11 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     activeNotebookId,
     detailQuery,
     draftByCell,
-    inputDraftByCell,
     inputKeys,
     jumpToInputCell,
     moveCell,
     notebookInputs,
     onChangeCell,
-    onInputMetadataChange,
     onWidgetMetadataChange,
     previewMarkdown,
     resultsByCell,
@@ -55,7 +51,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     return <div className="empty-state">Loading notebook...</div>
   }
   if (sortedCells.length === 0) {
-    return <div className="empty-state">No cells yet. Add SQL, Input, or Markdown cells.</div>
+    return <div className="empty-state">No cells yet. Add SQL, Widget, or Markdown cells.</div>
   }
 
   return (
@@ -64,8 +60,6 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
         const draft = draftByCell[cell.id] ?? cell.content
         const lastResult = resultsByCell[cell.id]
         const running = runningCellId === cell.id
-        const inputMeta =
-          cell.type === 'input' ? inputDraftByCell[cell.id] || getInputMetadata(cell, inputDraftByCell) : null
         const sqlKeys = cell.type === 'sql' ? extractTemplateKeys(draft) : []
         const missingSqlKeys = sqlKeys.filter((key) => !inputKeys.has(key))
         const selectedInsertParam = selectedInsertParamByCell[cell.id] || notebookInputs[0]?.key || ''
@@ -94,7 +88,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
           >
             <div className={[styles.cellHead, cell.collapsed ? styles.cellHeadCompact : ''].filter(Boolean).join(' ')}>
               <span className="pill">
-                {cell.type === 'markdown' ? 'MD' : cell.type === 'input' ? 'IN' : cell.type === 'widget' ? 'WGT' : 'SQL'}
+                {cell.type === 'markdown' ? 'MD' : cell.type === 'widget' ? 'WGT' : 'SQL'}
               </span>
               <span className="history-meta">#{cell.position + 1}</span>
               {cell.last_run_at ? <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span> : null}
@@ -241,29 +235,6 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                     )}
                   </>
                 )}
-              </>
-            ) : cell.type === 'input' ? (
-              <>
-                {!cell.collapsed ? (
-                  inputMeta ? (
-                    <InputCellEditor
-                      metadata={inputMeta}
-                      disabled={runningAll}
-                      onChange={(next) => onInputMetadataChange(cell, next)}
-                    />
-                  ) : null
-                ) : inputMeta ? (
-                  <div className={styles.inputCollapsed}>
-                    <span className={styles.inputKey}>{inputMeta.key || 'input'}</span>
-                    <InputCellEditor
-                      metadata={inputMeta}
-                      valueOnly
-                      showValueLabel={false}
-                      disabled={runningAll}
-                      onChange={(next) => onInputMetadataChange(cell, next)}
-                    />
-                  </div>
-                ) : null}
               </>
             ) : cell.type === 'widget' ? (
               <>
