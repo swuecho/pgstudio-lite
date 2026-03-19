@@ -6,6 +6,8 @@ import { metaDb } from './meta-db'
 
 const { Pool } = pg
 const connectionPools = new Map<string, InstanceType<typeof Pool>>()
+const QUERY_STATEMENT_TIMEOUT_MS = 15_000
+const MAX_RESULT_ROWS = 500
 
 type DbConnection = {
   id: string
@@ -50,6 +52,7 @@ export type TableColumn = {
   dataType: string
   isNullable: boolean
   isIdentity: boolean
+  isPrimaryKey: boolean
 }
 
 export type SchemaTable = {
@@ -57,6 +60,8 @@ export type SchemaTable = {
   table: string
   estimatedRows: number
 }
+
+type RowKey = Record<string, unknown>
 
 type QueryTableTarget = {
   schema: string
@@ -201,6 +206,23 @@ async function withClient<T>(connectionName: string | undefined, fn: (client: an
   } finally {
     // Pools are intentionally reused across requests.
   }
+}
+
+async function getPrimaryKeyColumns(client: any, schema: string, table: string): Promise<string[]> {
+  const sql = `
+    select a.attname as column_name
+    from pg_index i
+    join pg_class c on c.oid = i.indrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    join unnest(i.indkey) with ordinality as k(attnum, ordinality) on true
+    join pg_attribute a on a.attrelid = c.oid and a.attnum = k.attnum
+    where i.indisprimary
+      and n.nspname = $1
+      and c.relname = $2
+    order by k.ordinality
+  `
+  const { rows } = await client.query(sql, [schema, table])
+  return rows.map((row: any) => String(row.column_name))
 }
 
 function getPool(connectionString: string) {
@@ -730,20 +752,28 @@ export async function executeQuery({
       const results: Array<{
         command: string
         rowCount: number
+        returnedRowCount: number
+        truncated: boolean
         fields: string[]
         rows: Record<string, unknown>[]
         tableTarget: QueryTableTarget | null
       }> = []
 
+      await client.query(`set statement_timeout = ${QUERY_STATEMENT_TIMEOUT_MS}`)
+
       for (const statement of statements) {
         const result = values
           ? await client.query({ text: statement, values })
           : await client.query(statement)
+        const rows =
+          result.rows.length > MAX_RESULT_ROWS ? result.rows.slice(0, MAX_RESULT_ROWS) : result.rows
         results.push({
           command: result.command,
           rowCount: result.rowCount ?? 0,
+          returnedRowCount: rows.length,
+          truncated: result.rows.length > MAX_RESULT_ROWS,
           fields: result.fields.map((f: { name: string }) => f.name),
-          rows: result.rows,
+          rows,
           tableTarget: extractPrimaryTableTarget(statement),
         })
       }
@@ -784,6 +814,11 @@ export async function executeQuery({
           // Avoid masking original query errors during connection cleanup.
         }
       }
+      try {
+        await client.query('set statement_timeout = default')
+      } catch {
+        // Avoid masking original query errors during connection cleanup.
+      }
       client.release()
     }
   } catch (error) {
@@ -811,6 +846,9 @@ export async function executeQuery({
     const pgCode = (error as { code?: string })?.code
     if (connection.readOnly && pgCode === '25006') {
       err.statusCode = 403
+    } else if (pgCode === '57014') {
+      err.message = `Query timed out after ${QUERY_STATEMENT_TIMEOUT_MS} ms`
+      err.statusCode = 408
     } else {
       err.statusCode = (error as { statusCode?: number })?.statusCode || 400
     }
@@ -849,6 +887,8 @@ export async function getTableColumns(
   schema = 'public'
 ): Promise<TableColumn[]> {
   return withClient(connectionName, async (client) => {
+    const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
+    const primaryKeySet = new Set(primaryKeyColumns)
     const sql = `
       select
         column_name,
@@ -866,6 +906,7 @@ export async function getTableColumns(
       dataType: String(r.data_type),
       isNullable: r.is_nullable === 'YES',
       isIdentity: r.is_identity === 'YES',
+      isPrimaryKey: primaryKeySet.has(String(r.column_name)),
     }))
   })
 }
@@ -887,7 +928,8 @@ export async function getTableRows(
   return withClient(connectionName, async (client) => {
     const limit = Math.max(1, Math.min(500, Number(options.limit || 100)))
     const offset = Math.max(0, Number(options.offset || 0))
-    const sortBy = options.sortBy ? sqlIdent(options.sortBy) : sqlIdent('_ctid')
+    const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
+    const sortBy = options.sortBy ? sqlIdent(options.sortBy) : ''
     const sortOrder = options.sortOrder === 'desc' ? 'desc' : 'asc'
     const filterMode = options.filterMode === 'equals' ? 'equals' : 'contains'
     const filterColumn = options.filterColumn ? sqlIdent(options.filterColumn) : ''
@@ -903,12 +945,17 @@ export async function getTableRows(
     const filterParam =
       filterColumn && filterValue ? (filterMode === 'equals' ? filterValue : `%${filterValue}%`) : undefined
     const params = filterParam ? [filterParam] : []
+    const defaultOrderClause =
+      primaryKeyColumns.length > 0
+        ? primaryKeyColumns.map((column) => `${sqlIdent(column)} asc`).join(', ')
+        : ''
+    const orderClause = sortBy ? `${sortBy} ${sortOrder}` : defaultOrderClause
 
     const sql = `
-      select ctid::text as _ctid, *
+      select *
       from ${qTable}
       ${whereClause}
-      order by ${sortBy} ${sortOrder}
+      ${orderClause ? `order by ${orderClause}` : ''}
       limit $${params.length + 1} offset $${params.length + 2}
     `
     const countSql = `select count(*)::bigint as total from ${qTable} ${whereClause}`
@@ -917,7 +964,13 @@ export async function getTableRows(
       client.query(countSql, params),
     ])
     return {
-      rows: rowsResult.rows as Record<string, unknown>[],
+      rows: (rowsResult.rows as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        _rowKey:
+          primaryKeyColumns.length > 0
+            ? Object.fromEntries(primaryKeyColumns.map((column) => [column, row[column]]))
+            : null,
+      })),
       total: Number(countResult.rows[0]?.total || 0),
     }
   })
@@ -946,11 +999,11 @@ export async function listSchemaObjects(connectionName?: string): Promise<Schema
   })
 }
 
-export async function updateTableRowByCtid(
+export async function updateTableRowByPrimaryKey(
   connectionName: string | undefined,
   schema: string,
   table: string,
-  ctid: string,
+  rowKey: RowKey,
   patch: Record<string, unknown>
 ) {
   const connection = getConnectionByName(connectionName)
@@ -963,11 +1016,27 @@ export async function updateTableRowByCtid(
   if (keys.length === 0) return
 
   return withClient(connectionName, async (client) => {
+    const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
+    if (primaryKeyColumns.length === 0) {
+      const error = new Error('table has no primary key') as Error & { statusCode?: number }
+      error.statusCode = 409
+      throw error
+    }
+    const missingPrimaryKey = primaryKeyColumns.find((column) => !(column in rowKey))
+    if (missingPrimaryKey) {
+      const error = new Error(`rowKey missing primary key column '${missingPrimaryKey}'`) as Error & { statusCode?: number }
+      error.statusCode = 400
+      throw error
+    }
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const setClause = keys.map((k, i) => `${sqlIdent(k)} = $${i + 1}`).join(', ')
     const values = keys.map((k) => patch[k])
-    const sql = `update ${qTable} set ${setClause} where ctid::text = $${keys.length + 1}`
-    const result = await client.query(sql, [...values, ctid])
+    const whereClause = primaryKeyColumns
+      .map((column, index) => `${sqlIdent(column)} = $${keys.length + index + 1}`)
+      .join(' and ')
+    const primaryKeyValues = primaryKeyColumns.map((column) => rowKey[column])
+    const sql = `update ${qTable} set ${setClause} where ${whereClause}`
+    const result = await client.query(sql, [...values, ...primaryKeyValues])
     if ((result.rowCount || 0) === 0) {
       const error = new Error('row not found') as Error & { statusCode?: number }
       error.statusCode = 404
@@ -976,11 +1045,11 @@ export async function updateTableRowByCtid(
   })
 }
 
-export async function deleteTableRowByCtid(
+export async function deleteTableRowByPrimaryKey(
   connectionName: string | undefined,
   schema: string,
   table: string,
-  ctid: string
+  rowKey: RowKey
 ) {
   const connection = getConnectionByName(connectionName)
   if (connection.readOnly) {
@@ -989,9 +1058,25 @@ export async function deleteTableRowByCtid(
     throw error
   }
   return withClient(connectionName, async (client) => {
+    const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
+    if (primaryKeyColumns.length === 0) {
+      const error = new Error('table has no primary key') as Error & { statusCode?: number }
+      error.statusCode = 409
+      throw error
+    }
+    const missingPrimaryKey = primaryKeyColumns.find((column) => !(column in rowKey))
+    if (missingPrimaryKey) {
+      const error = new Error(`rowKey missing primary key column '${missingPrimaryKey}'`) as Error & { statusCode?: number }
+      error.statusCode = 400
+      throw error
+    }
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
-    const sql = `delete from ${qTable} where ctid::text = $1`
-    const result = await client.query(sql, [ctid])
+    const whereClause = primaryKeyColumns
+      .map((column, index) => `${sqlIdent(column)} = $${index + 1}`)
+      .join(' and ')
+    const primaryKeyValues = primaryKeyColumns.map((column) => rowKey[column])
+    const sql = `delete from ${qTable} where ${whereClause}`
+    const result = await client.query(sql, primaryKeyValues)
     if ((result.rowCount || 0) === 0) {
       const error = new Error('row not found') as Error & { statusCode?: number }
       error.statusCode = 404
