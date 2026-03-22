@@ -32,9 +32,10 @@ function toValidationDetails(error: unknown): ValidationDetail[] {
 export function useNotebookImport(params: {
   activeNotebookId: string
   setActiveNotebookId: (id: string) => void
+  flushPendingSaves: (reason?: string) => Promise<boolean>
   setStatus: (value: string) => void
 }) {
-  const { activeNotebookId, setActiveNotebookId, setStatus } = params
+  const { activeNotebookId, setActiveNotebookId, flushPendingSaves, setStatus } = params
   const queryClient = useQueryClient()
 
   const [showImportModal, setShowImportModal] = useState(false)
@@ -110,11 +111,14 @@ export function useNotebookImport(params: {
     }
   }
 
-  function submitImportFromModal() {
+  async function submitImportFromModal() {
     const parsed = parseImportDraft()
     if (!parsed) return
     if (importMode === 'replace' && !activeNotebookId) {
       setStatus('Select a notebook before using replace mode')
+      return
+    }
+    if (!(await flushPendingSaves('import'))) {
       return
     }
     importNotebookMutation.mutate({
