@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { NotebookCell, NotebookWidgetMetadata } from '../components/notebook/types'
-import { getChangedWidgetParamKeys } from '../components/notebook/useNotebookCellState'
+import {
+  clearPendingSaveCell,
+  getPendingSaveEntries,
+  getChangedWidgetParamKeys,
+  getPendingSaveCount,
+  syncCellDraftState,
+} from '../components/notebook/useNotebookCellState'
 import {
   buildInputValues,
   getDependentSqlTargets,
@@ -236,5 +242,47 @@ describe('notebook reactive runner', () => {
       start_date: '2026-02-01',
       end_date: '2026-02-29',
     })
+  })
+
+  it('refreshes cell drafts when server content changes and there is no local edit', () => {
+    const synced = syncCellDraftState({
+      cells: [makeCell({ id: 'sql-1', type: 'sql', content: 'select 2;' })],
+      previousDrafts: { 'sql-1': 'select 1;' },
+      previousServerContent: { 'sql-1': 'select 1;' },
+      pendingSavePayloads: {},
+    })
+
+    expect(synced.drafts['sql-1']).toBe('select 2;')
+  })
+
+  it('preserves cell drafts when a local edit is still pending save', () => {
+    const synced = syncCellDraftState({
+      cells: [makeCell({ id: 'sql-1', type: 'sql', content: 'select 2;' })],
+      previousDrafts: { 'sql-1': 'select 1 where local = true;' },
+      previousServerContent: { 'sql-1': 'select 1;' },
+      pendingSavePayloads: { 'sql-1': { content: 'select 1 where local = true;' } },
+    })
+
+    expect(synced.drafts['sql-1']).toBe('select 1 where local = true;')
+  })
+
+  it('counts only active pending saves', () => {
+    expect(getPendingSaveCount({ a: true, b: false, c: true })).toBe(2)
+  })
+
+  it('clears one pending save without mutating unrelated entries', () => {
+    expect(clearPendingSaveCell({ a: true, b: true }, 'a')).toEqual({ b: true })
+  })
+
+  it('captures pending save payload entries for flush execution', () => {
+    expect(
+      getPendingSaveEntries({
+        a: { content: 'select 1;' },
+        b: { metadata: makeWidgetMetadata({ widgetType: 'text', key: 'q', value: 'abc' }) },
+      })
+    ).toEqual([
+      { cellId: 'a', payload: { content: 'select 1;' } },
+      { cellId: 'b', payload: { metadata: makeWidgetMetadata({ widgetType: 'text', key: 'q', value: 'abc' }) } },
+    ])
   })
 })

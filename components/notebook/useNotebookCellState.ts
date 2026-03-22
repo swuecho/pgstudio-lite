@@ -34,6 +34,7 @@ export function useNotebookCellState(params: {
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
+  const [pendingSaveByCell, setPendingSaveByCell] = useState<Record<string, boolean>>({})
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>>({})
@@ -43,6 +44,7 @@ export function useNotebookCellState(params: {
   const cellSectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const draftByCellRef = useRef<Record<string, string>>({})
   const widgetDraftByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
+  const lastSyncedContentByCellRef = useRef<Record<string, string>>({})
   const sortedCellsRef = useRef<NotebookCell[]>([])
   const activeNotebookIdRef = useRef('')
   const runningCellIdRef = useRef('')
@@ -72,6 +74,10 @@ export function useNotebookCellState(params: {
   }, [activeNotebookId])
 
   useEffect(() => {
+    setPendingSaveByCell({})
+  }, [activeNotebookId])
+
+  useEffect(() => {
     runningCellIdRef.current = runningCellId
   }, [runningCellId])
 
@@ -80,13 +86,15 @@ export function useNotebookCellState(params: {
   }, [runningAll])
 
   useEffect(() => {
-    if (!cells.length) return
     setDraftByCell((prev) => {
-      const next = { ...prev }
-      for (const cell of cells) {
-        if (next[cell.id] === undefined) next[cell.id] = cell.content
-      }
-      return next
+      const synced = syncCellDraftState({
+        cells,
+        previousDrafts: prev,
+        previousServerContent: lastSyncedContentByCellRef.current,
+        pendingSavePayloads: pendingSavePayloadRef.current,
+      })
+      lastSyncedContentByCellRef.current = synced.serverContentByCell
+      return synced.drafts
     })
   }, [cells])
 
@@ -275,24 +283,33 @@ export function useNotebookCellState(params: {
 
   function scheduleCellSave(cell: NotebookCell, patch: { content?: string; metadata?: NotebookWidgetMetadata | null }) {
     if (!activeNotebookId) return
+    const scheduledNotebookId = activeNotebookId
     const existing = saveTimersRef.current[cell.id]
     if (existing) clearTimeout(existing)
     pendingSavePayloadRef.current[cell.id] = {
       ...pendingSavePayloadRef.current[cell.id],
       ...patch,
     }
+    setPendingSaveByCell((prev) => ({ ...prev, [cell.id]: true }))
 
     saveTimersRef.current[cell.id] = setTimeout(() => {
       const payload = pendingSavePayloadRef.current[cell.id]
       delete pendingSavePayloadRef.current[cell.id]
+      delete saveTimersRef.current[cell.id]
       if (!payload) return
-      void updateCell(activeNotebookId, { cellId: cell.id, ...payload })
+      void updateCell(scheduledNotebookId, { cellId: cell.id, ...payload })
         .then(() => {
-          setStatus('Autosaved')
-          void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
+          setPendingSaveByCell((prev) => clearPendingSaveCell(prev, cell.id))
+          if (activeNotebookIdRef.current === scheduledNotebookId) {
+            setStatus('Autosaved')
+          }
+          void queryClient.invalidateQueries({ queryKey: ['notebook', scheduledNotebookId] })
         })
         .catch((error) => {
-          setStatus(error instanceof Error ? error.message : String(error))
+          setPendingSaveByCell((prev) => clearPendingSaveCell(prev, cell.id))
+          if (activeNotebookIdRef.current === scheduledNotebookId) {
+            setStatus(error instanceof Error ? error.message : String(error))
+          }
         })
     }, 700)
   }
@@ -509,6 +526,49 @@ export function useNotebookCellState(params: {
     deleteCellMutation.mutate(cellId)
   }
 
+  async function flushPendingSaves(reason?: string) {
+    const notebookId = activeNotebookIdRef.current
+    const entries = getPendingSaveEntries(pendingSavePayloadRef.current)
+    if (!notebookId || !entries.length) return true
+
+    setStatus(reason ? `Saving pending changes before ${reason}...` : 'Saving pending changes...')
+
+    for (const entry of entries) {
+      const timer = saveTimersRef.current[entry.cellId]
+      if (timer) clearTimeout(timer)
+      delete saveTimersRef.current[entry.cellId]
+    }
+
+    pendingSavePayloadRef.current = {}
+    setPendingSaveByCell({})
+
+    const failedEntries: Array<{ cellId: string; payload: { content?: string; metadata?: NotebookWidgetMetadata | null }; error: unknown }> = []
+
+    await Promise.all(
+      entries.map(async (entry) => {
+        try {
+          await updateCell(notebookId, { cellId: entry.cellId, ...entry.payload })
+        } catch (error) {
+          failedEntries.push({ ...entry, error })
+        }
+      })
+    )
+
+    if (failedEntries.length) {
+      pendingSavePayloadRef.current = Object.fromEntries(failedEntries.map((entry) => [entry.cellId, entry.payload]))
+      setPendingSaveByCell(Object.fromEntries(failedEntries.map((entry) => [entry.cellId, true])))
+      const firstError = failedEntries[0]?.error
+      setStatus(firstError instanceof Error ? firstError.message : String(firstError))
+      return false
+    }
+
+    void queryClient.invalidateQueries({ queryKey: ['notebook', notebookId] })
+    setStatus('All changes saved')
+    return true
+  }
+
+  const pendingSaveCount = useMemo(() => getPendingSaveCount(pendingSaveByCell), [pendingSaveByCell])
+
   return {
     addCellMutation,
     cellSectionRefs,
@@ -519,6 +579,8 @@ export function useNotebookCellState(params: {
     moveCell,
     notebookInputs,
     onChangeCell,
+    pendingSaveByCell,
+    pendingSaveCount,
     previewMarkdown,
     resultsByCell,
     runTargetSqlCells,
@@ -534,6 +596,7 @@ export function useNotebookCellState(params: {
     sortedCells,
     sqlEditorRefs,
     toggleCellCollapsed,
+    flushPendingSaves,
     insertParamIntoSqlCell,
     widgetDraftByCell,
     onWidgetMetadataChange,
@@ -546,6 +609,58 @@ export function getChangedWidgetParamKeys(previous: NotebookWidgetMetadata, next
   const keys = new Set([...Object.keys(previousParams), ...Object.keys(nextParams)])
 
   return [...keys].filter((key) => !isSameValue(previousParams[key], nextParams[key]))
+}
+
+export function syncCellDraftState(input: {
+  cells: NotebookCell[]
+  previousDrafts: Record<string, string>
+  previousServerContent: Record<string, string>
+  pendingSavePayloads: Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>
+}) {
+  const drafts: Record<string, string> = {}
+  const serverContentByCell: Record<string, string> = {}
+
+  for (const cell of input.cells) {
+    const previousDraft = input.previousDrafts[cell.id]
+    const previousServerContent = input.previousServerContent[cell.id]
+    const hasPendingContentSave = input.pendingSavePayloads[cell.id]?.content !== undefined
+
+    serverContentByCell[cell.id] = cell.content
+
+    if (previousDraft === undefined) {
+      drafts[cell.id] = cell.content
+      continue
+    }
+
+    const draftStillMatchesPreviousServer =
+      previousServerContent !== undefined && previousDraft === previousServerContent
+
+    if (!hasPendingContentSave && draftStillMatchesPreviousServer) {
+      drafts[cell.id] = cell.content
+      continue
+    }
+
+    drafts[cell.id] = previousDraft
+  }
+
+  return { drafts, serverContentByCell }
+}
+
+export function clearPendingSaveCell(pendingSaveByCell: Record<string, boolean>, cellId: string) {
+  if (!pendingSaveByCell[cellId]) return pendingSaveByCell
+  const next = { ...pendingSaveByCell }
+  delete next[cellId]
+  return next
+}
+
+export function getPendingSaveCount(pendingSaveByCell: Record<string, boolean>) {
+  return Object.values(pendingSaveByCell).filter(Boolean).length
+}
+
+export function getPendingSaveEntries(
+  pendingSavePayloads: Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>
+) {
+  return Object.entries(pendingSavePayloads).map(([cellId, payload]) => ({ cellId, payload }))
 }
 
 function isSameValue(a: unknown, b: unknown) {
