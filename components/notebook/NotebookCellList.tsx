@@ -16,6 +16,7 @@ type NotebookCellListProps = {
 export function NotebookCellList({ controller }: NotebookCellListProps) {
   const {
     activeNotebookId,
+    cellUiStateByCell,
     detailQuery,
     draftByCell,
     inputKeys,
@@ -30,12 +31,14 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     runningAll,
     runningCellId,
     runSqlCellWithShortcuts,
+    saveErrorByCell,
     selectedCellId,
     selectedInsertParamByCell,
     setPreviewMarkdown,
     setSelectedCellId,
     setSelectedInsertParamByCell,
     sortedCells,
+    staleResultByCell,
     sqlEditorRefs,
     toggleCellCollapsed,
     deleteCellById,
@@ -60,6 +63,11 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
         const draft = draftByCell[cell.id] ?? cell.content
         const lastResult = resultsByCell[cell.id]
         const running = runningCellId === cell.id
+        const staleResult = staleResultByCell[cell.id] === true
+        const cellUiState = cellUiStateByCell[cell.id] || 'idle'
+        const saving = cellUiState === 'saving'
+        const queued = cellUiState === 'queued'
+        const saveError = saveErrorByCell[cell.id]
         const sqlKeys = cell.type === 'sql' ? extractTemplateKeys(draft) : []
         const missingSqlKeys = sqlKeys.filter((key) => !inputKeys.has(key))
         const selectedInsertParam = selectedInsertParamByCell[cell.id] || notebookInputs[0]?.key || ''
@@ -92,6 +100,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
               </span>
               <span className="history-meta">#{cell.position + 1}</span>
               {cell.last_run_at ? <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span> : null}
+              <span className="history-meta">{formatCellUiState(cellUiState)}</span>
               <div className={styles.cellActions}>
                 <button
                   className="btn small icon-btn"
@@ -214,18 +223,23 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                       <span className={`status-pill ${cell.last_run_status === 'error' ? 'error' : 'ok'}`}>
                         {cell.last_run_status || 'idle'}
                       </span>
+                      {queued ? <span className="history-meta">Queued...</span> : null}
                       <span className="history-meta">
                         {cell.last_duration_ms !== null ? `${cell.last_duration_ms}ms` : ''}
                         {cell.last_row_count !== null ? ` · ${cell.last_row_count} rows` : ''}
                       </span>
                     </div>
+                    {saveError ? <div className="empty-state">Save failed: {saveError}</div> : null}
                     {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
+                    {staleResult ? <div className="empty-state">Current SQL differs from the last executed query.</div> : null}
                     {lastResult ? <CellResult result={lastResult} /> : null}
                   </>
                 ) : (
                   <>
                     <div className={styles.sqlPreview}>{toCompactSqlPreview(draft)}</div>
+                    {saveError ? <div className="empty-state">Save failed: {saveError}</div> : null}
                     {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
+                    {staleResult ? <div className="empty-state">Result is stale until this cell is run again.</div> : null}
                     {lastResult ? (
                       <div className={styles.resultPreview}>
                         <CellResult result={lastResult} />
@@ -352,6 +366,15 @@ function toCompactSqlPreview(sql: string) {
   const flattened = sql.replace(/\s+/g, ' ').trim()
   if (!flattened) return '-- Empty SQL cell --'
   return flattened.length > 180 ? `${flattened.slice(0, 180)}...` : flattened
+}
+
+function formatCellUiState(state: 'idle' | 'saving' | 'save_failed' | 'queued' | 'running' | 'stale_result') {
+  if (state === 'saving') return 'Saving...'
+  if (state === 'save_failed') return 'Save failed'
+  if (state === 'queued') return 'Queued'
+  if (state === 'running') return 'Running...'
+  if (state === 'stale_result') return 'Result is stale'
+  return 'Idle'
 }
 
 function MarkdownPreview({ source }: { source: string }) {
