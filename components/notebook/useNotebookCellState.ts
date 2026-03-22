@@ -6,7 +6,6 @@ import type {
   NotebookCell,
   NotebookCellType,
   NotebookDetail,
-  NotebookInputValues,
   NotebookWidgetMetadata,
 } from './types'
 import {
@@ -40,11 +39,14 @@ export function useNotebookCellState(params: {
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>>({})
   const reactiveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const reactiveRunGenerationRef = useRef(0)
+  const executionQueueRef = useRef<Promise<void>>(Promise.resolve())
   const sqlEditorRefs = useRef<Record<string, MonacoEditorNs.IStandaloneCodeEditor>>({})
   const cellSectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const draftByCellRef = useRef<Record<string, string>>({})
   const widgetDraftByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
   const lastSyncedContentByCellRef = useRef<Record<string, string>>({})
+  const lastSyncedWidgetByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
+  const lastSyncedResultByCellRef = useRef<Record<string, QueryResult | null>>({})
   const sortedCellsRef = useRef<NotebookCell[]>([])
   const activeNotebookIdRef = useRef('')
   const runningCellIdRef = useRef('')
@@ -99,31 +101,27 @@ export function useNotebookCellState(params: {
   }, [cells])
 
   useEffect(() => {
-    if (!cells.length) return
     setWidgetDraftByCell((prev) => {
-      const next = { ...prev }
-      for (const cell of cells) {
-        if (cell.type !== 'widget') continue
-        if (next[cell.id] !== undefined) continue
-        if (cell.metadata_json && typeof cell.metadata_json === 'object' && 'widgetType' in cell.metadata_json) {
-          next[cell.id] = normalizeWidgetMetadata(cell.metadata_json as NotebookWidgetMetadata) as NotebookWidgetMetadata
-        } else {
-          next[cell.id] = createDefaultWidgetMetadata('callout') as NotebookWidgetMetadata
-        }
-      }
-      return next
+      const synced = syncWidgetDraftState({
+        cells,
+        previousDrafts: prev,
+        previousServerMetadata: lastSyncedWidgetByCellRef.current,
+        pendingSavePayloads: pendingSavePayloadRef.current,
+      })
+      lastSyncedWidgetByCellRef.current = synced.serverMetadataByCell
+      return synced.drafts
     })
   }, [cells])
 
   useEffect(() => {
-    if (!cells.length) return
     setResultsByCell((prev) => {
-      const next = { ...prev }
-      for (const cell of cells) {
-        if (cell.type !== 'sql' || !cell.last_result_json || next[cell.id]) continue
-        next[cell.id] = cell.last_result_json
-      }
-      return next
+      const synced = syncCellResultState({
+        cells,
+        previousResults: prev,
+        previousServerResults: lastSyncedResultByCellRef.current,
+      })
+      lastSyncedResultByCellRef.current = synced.serverResultsByCell
+      return synced.results
     })
   }, [cells])
 
@@ -249,24 +247,6 @@ export function useNotebookCellState(params: {
     onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
   })
 
-  const runCellMutation = useMutation({
-    mutationFn: ({ cellId, query, inputValues }: { cellId: string; query: string; inputValues: NotebookInputValues }) =>
-      runCell(activeNotebookId, cellId, query, inputValues),
-    onMutate: ({ cellId }) => {
-      setRunningCellId(cellId)
-      setStatus('Running cell...')
-    },
-    onSuccess: (result, vars) => {
-      setResultsByCell((prev) => ({ ...prev, [vars.cellId]: result }))
-      setStatus('Cell executed')
-      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-    },
-    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
-    onSettled: () => {
-      setRunningCellId('')
-    },
-  })
-
   function focusNextSqlEditor(cellId: string) {
     const fromIndex = sortedCells.findIndex((cell) => cell.id === cellId)
     if (fromIndex === -1) return
@@ -345,6 +325,89 @@ export function useNotebookCellState(params: {
     }, 350)
   }
 
+  function enqueueExecution<T>(label: string, execute: () => Promise<T>) {
+    if (runningAllRef.current || Boolean(runningCellIdRef.current)) {
+      setStatus(`${label} queued`)
+    }
+    const queued = executionQueueRef.current.catch(() => undefined).then(execute)
+    executionQueueRef.current = queued.then(() => undefined, () => undefined)
+    return queued
+  }
+
+  async function executeQueuedSqlRun(input: {
+    label: string
+    cells: NotebookCell[]
+    flushReason: string
+    mode: 'single' | 'sequence'
+    reactiveGeneration?: number
+  }) {
+    if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+      return 0
+    }
+    if (!(await flushPendingSaves(input.flushReason))) {
+      return 0
+    }
+    if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+      return 0
+    }
+
+    const total = input.cells.length
+    let successCount = 0
+
+    if (input.mode === 'sequence') {
+      setRunningAll(true)
+    }
+
+    try {
+      for (const cell of input.cells) {
+        if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+          return successCount
+        }
+
+        const notebookId = activeNotebookIdRef.current
+        if (!notebookId) return successCount
+
+        const query = (draftByCellRef.current[cell.id] ?? cell.content).trim()
+        if (!query) continue
+
+        setRunningCellId(cell.id)
+        setStatus(total === 1 ? `Running cell #${cell.position + 1}...` : `Running ${input.label} cell #${cell.position + 1}...`)
+
+        const result = await runCell(
+          notebookId,
+          cell.id,
+          query,
+          buildInputValues(sortedCellsRef.current, widgetDraftByCellRef.current)
+        )
+
+        if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+          return successCount
+        }
+
+        setResultsByCell((prev) => ({ ...prev, [cell.id]: result }))
+        successCount += 1
+      }
+
+      setStatus(
+        input.mode === 'single'
+          ? successCount ? 'Cell executed' : 'No runnable SQL cell'
+          : `${input.label} completed (${successCount}/${total})`
+      )
+      return successCount
+    } catch (error) {
+      setStatus(`${input.label} stopped: ${error instanceof Error ? error.message : String(error)}`)
+      return successCount
+    } finally {
+      setRunningCellId('')
+      if (input.mode === 'sequence') {
+        setRunningAll(false)
+      }
+      if (activeNotebookIdRef.current) {
+        void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookIdRef.current] })
+      }
+    }
+  }
+
   async function rerunDependentSqlCells(inputCellId: string, inputKeys: string | string[]) {
     const keys = [...new Set((Array.isArray(inputKeys) ? inputKeys : [inputKeys]).filter(Boolean))]
     if (!keys.length) return
@@ -366,28 +429,18 @@ export function useNotebookCellState(params: {
     const statusLabel = keys.length === 1 ? `'${keys[0]}'` : `${keys.length} widget input(s)`
 
     try {
-      setStatus(`Input ${statusLabel} changed. Re-running ${targets.length} SQL cell(s)...`)
-      for (const target of targets) {
-        const state = getState()
-        const notebookId = state.activeNotebookId
-        if (!notebookId || state.runningAll || reactiveRunGenerationRef.current !== generation) continue
-
-        const query = (state.draftByCell[target.id] ?? target.content).trim()
-        if (!query) continue
-
-        setRunningCellId(target.id)
-        const result = await runCell(notebookId, target.id, query, buildInputValues(state.sortedCells, state.widgetDraftByCell))
-        if (reactiveRunGenerationRef.current !== generation) return
-        setResultsByCell((prev) => ({ ...prev, [target.id]: result }))
-      }
-      setStatus(`Auto-run completed for ${statusLabel}`)
+      setStatus(`Input ${statusLabel} changed. Queuing ${targets.length} SQL cell(s)...`)
+      await enqueueExecution('Auto-run', () =>
+        executeQueuedSqlRun({
+          label: 'Auto-run',
+          cells: targets,
+          flushReason: 'auto-run',
+          mode: 'sequence',
+          reactiveGeneration: generation,
+        })
+      )
     } catch (error) {
       setStatus(`Auto-run stopped: ${error instanceof Error ? error.message : String(error)}`)
-    } finally {
-      setRunningCellId('')
-      if (activeNotebookIdRef.current) {
-        void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookIdRef.current] })
-      }
     }
   }
 
@@ -447,79 +500,54 @@ export function useNotebookCellState(params: {
 
   async function runSqlCellWithShortcuts(cell: NotebookCell, runAndFocusNext = false) {
     const query = (draftByCell[cell.id] ?? cell.content).trim()
-    if (!query || runningAll || Boolean(runningCellId)) return
+    if (!query) return
     try {
-      await runCellMutation.mutateAsync({ cellId: cell.id, query, inputValues })
-      if (runAndFocusNext) focusNextSqlEditor(cell.id)
+      const executedCount = await enqueueExecution('Cell run', () =>
+        executeQueuedSqlRun({
+          label: 'Cell run',
+          cells: [cell],
+          flushReason: 'running a cell',
+          mode: 'single',
+        })
+      )
+      if (runAndFocusNext && executedCount > 0) focusNextSqlEditor(cell.id)
     } catch {
       // Status and errors are already surfaced by mutation callbacks.
     }
   }
 
   async function runAllSqlCells() {
-    if (!activeNotebookId || runningAll) return
+    if (!activeNotebookId) return
     const sqlCells = sortedCells.filter((cell) => cell.type === 'sql')
     if (!sqlCells.length) {
       setStatus('No SQL cells to run')
       return
     }
-
-    setRunningAll(true)
-    let successCount = 0
-
-    try {
-      for (const cell of sqlCells) {
-        const query = (draftByCell[cell.id] ?? cell.content).trim()
-        if (!query) continue
-        setRunningCellId(cell.id)
-        setStatus(`Running cell #${cell.position + 1}...`)
-        const result = await runCell(
-          activeNotebookId,
-          cell.id,
-          query,
-          buildInputValues(sortedCells, widgetDraftByCellRef.current)
-        )
-        setResultsByCell((prev) => ({ ...prev, [cell.id]: result }))
-        successCount += 1
-      }
-      setStatus(`Run all completed (${successCount}/${sqlCells.length})`)
-    } catch (error) {
-      setStatus(`Run all stopped: ${error instanceof Error ? error.message : String(error)}`)
-    } finally {
-      setRunningCellId('')
-      setRunningAll(false)
-      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-    }
+    await enqueueExecution('Run all', () =>
+      executeQueuedSqlRun({
+        label: 'Run all',
+        cells: sqlCells,
+        flushReason: 'running all SQL cells',
+        mode: 'sequence',
+      })
+    )
   }
 
   async function runTargetSqlCells(cellIds: string[]) {
-    if (!activeNotebookId || runningAll) return
+    if (!activeNotebookId) return
     const targets = sortedCells.filter((cell) => cell.type === 'sql' && cellIds.includes(cell.id))
     if (!targets.length) {
       setStatus('No target SQL cells found')
       return
     }
-
-    setRunningAll(true)
-    let successCount = 0
-    try {
-      for (const cell of targets) {
-        const query = (draftByCell[cell.id] ?? cell.content).trim()
-        if (!query) continue
-        setRunningCellId(cell.id)
-        setStatus(`Running target cell #${cell.position + 1}...`)
-        const result = await runCell(activeNotebookId, cell.id, query, buildInputValues(sortedCells, widgetDraftByCellRef.current))
-        setResultsByCell((prev) => ({ ...prev, [cell.id]: result }))
-        successCount += 1
-      }
-      setStatus(`Target run completed (${successCount}/${targets.length})`)
-    } catch (error) {
-      setStatus(`Target run stopped: ${error instanceof Error ? error.message : String(error)}`)
-    } finally {
-      setRunningCellId('')
-      setRunningAll(false)
-      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-    }
+    await enqueueExecution('Target run', () =>
+      executeQueuedSqlRun({
+        label: 'Target run',
+        cells: targets,
+        flushReason: 'running target SQL cells',
+        mode: 'sequence',
+      })
+    )
   }
 
   function deleteCellById(cellId: string) {
@@ -646,6 +674,84 @@ export function syncCellDraftState(input: {
   return { drafts, serverContentByCell }
 }
 
+export function syncWidgetDraftState(input: {
+  cells: NotebookCell[]
+  previousDrafts: Record<string, NotebookWidgetMetadata>
+  previousServerMetadata: Record<string, NotebookWidgetMetadata>
+  pendingSavePayloads: Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>
+}) {
+  const drafts: Record<string, NotebookWidgetMetadata> = {}
+  const serverMetadataByCell: Record<string, NotebookWidgetMetadata> = {}
+
+  for (const cell of input.cells) {
+    if (cell.type !== 'widget') continue
+
+    const serverMetadata = getNormalizedWidgetMetadata(cell)
+    const previousDraft = input.previousDrafts[cell.id]
+    const previousServerMetadata = input.previousServerMetadata[cell.id]
+    const hasPendingMetadataSave = input.pendingSavePayloads[cell.id]?.metadata !== undefined
+
+    serverMetadataByCell[cell.id] = serverMetadata
+
+    if (!previousDraft) {
+      drafts[cell.id] = serverMetadata
+      continue
+    }
+
+    const draftStillMatchesPreviousServer =
+      previousServerMetadata !== undefined && isSameValue(previousDraft, previousServerMetadata)
+
+    if (!hasPendingMetadataSave && draftStillMatchesPreviousServer) {
+      drafts[cell.id] = serverMetadata
+      continue
+    }
+
+    drafts[cell.id] = previousDraft
+  }
+
+  return { drafts, serverMetadataByCell }
+}
+
+export function syncCellResultState(input: {
+  cells: NotebookCell[]
+  previousResults: Record<string, QueryResult>
+  previousServerResults: Record<string, QueryResult | null>
+}) {
+  const results: Record<string, QueryResult> = {}
+  const serverResultsByCell: Record<string, QueryResult | null> = {}
+
+  for (const cell of input.cells) {
+    if (cell.type !== 'sql') continue
+
+    const serverResult = cell.last_result_json ?? null
+    const previousResult = input.previousResults[cell.id]
+    const previousServerResult = input.previousServerResults[cell.id]
+
+    serverResultsByCell[cell.id] = serverResult
+
+    if (previousResult === undefined) {
+      if (serverResult) {
+        results[cell.id] = serverResult
+      }
+      continue
+    }
+
+    const resultStillMatchesPreviousServer =
+      previousServerResult !== undefined && isSameValue(previousResult, previousServerResult)
+
+    if (resultStillMatchesPreviousServer) {
+      if (serverResult) {
+        results[cell.id] = serverResult
+      }
+      continue
+    }
+
+    results[cell.id] = previousResult
+  }
+
+  return { results, serverResultsByCell }
+}
+
 export function clearPendingSaveCell(pendingSaveByCell: Record<string, boolean>, cellId: string) {
   if (!pendingSaveByCell[cellId]) return pendingSaveByCell
   const next = { ...pendingSaveByCell }
@@ -663,7 +769,15 @@ export function getPendingSaveEntries(
   return Object.entries(pendingSavePayloads).map(([cellId, payload]) => ({ cellId, payload }))
 }
 
+function getNormalizedWidgetMetadata(cell: NotebookCell) {
+  if (cell.metadata_json && typeof cell.metadata_json === 'object' && 'widgetType' in cell.metadata_json) {
+    return normalizeWidgetMetadata(cell.metadata_json as NotebookWidgetMetadata) as NotebookWidgetMetadata
+  }
+  return createDefaultWidgetMetadata('callout') as NotebookWidgetMetadata
+}
+
 function isSameValue(a: unknown, b: unknown) {
   if (Array.isArray(a) && Array.isArray(b)) return JSON.stringify(a) === JSON.stringify(b)
+  if (a && b && typeof a === 'object' && typeof b === 'object') return JSON.stringify(a) === JSON.stringify(b)
   return a === b
 }

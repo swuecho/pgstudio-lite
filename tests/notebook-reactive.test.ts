@@ -5,7 +5,9 @@ import {
   getPendingSaveEntries,
   getChangedWidgetParamKeys,
   getPendingSaveCount,
+  syncCellResultState,
   syncCellDraftState,
+  syncWidgetDraftState,
 } from '../components/notebook/useNotebookCellState'
 import {
   buildInputValues,
@@ -284,5 +286,78 @@ describe('notebook reactive runner', () => {
       { cellId: 'a', payload: { content: 'select 1;' } },
       { cellId: 'b', payload: { metadata: makeWidgetMetadata({ widgetType: 'text', key: 'q', value: 'abc' }) } },
     ])
+  })
+
+  it('refreshes widget drafts when server metadata changes and there is no local edit', () => {
+    const synced = syncWidgetDraftState({
+      cells: [
+        makeCell({
+          id: 'w-1',
+          type: 'widget',
+          metadata_json: makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' }),
+        }),
+      ],
+      previousDrafts: {
+        'w-1': makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'us' }),
+      },
+      previousServerMetadata: {
+        'w-1': makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'us' }),
+      },
+      pendingSavePayloads: {},
+    })
+
+    expect(synced.drafts['w-1']).toMatchObject({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' })
+  })
+
+  it('preserves widget drafts when a local metadata edit is still pending save', () => {
+    const localDraft = makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'apac' })
+
+    const synced = syncWidgetDraftState({
+      cells: [
+        makeCell({
+          id: 'w-1',
+          type: 'widget',
+          metadata_json: makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' }),
+        }),
+      ],
+      previousDrafts: { 'w-1': localDraft },
+      previousServerMetadata: {
+        'w-1': makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'us' }),
+      },
+      pendingSavePayloads: { 'w-1': { metadata: localDraft } },
+    })
+
+    expect(synced.drafts['w-1']).toEqual(localDraft)
+  })
+
+  it('refreshes cached SQL results when server results change and local cache matches the previous server state', () => {
+    const previousResult = {
+      statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 1 }] }],
+      totalRows: 1,
+      durationMs: 5,
+    }
+    const nextResult = {
+      statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+      totalRows: 1,
+      durationMs: 6,
+    }
+
+    const synced = syncCellResultState({
+      cells: [
+        makeCell({
+          id: 'sql-1',
+          type: 'sql',
+          last_result_json: nextResult,
+        }),
+      ],
+      previousResults: {
+        'sql-1': previousResult,
+      },
+      previousServerResults: {
+        'sql-1': previousResult,
+      },
+    })
+
+    expect(synced.results['sql-1']).toEqual(nextResult)
   })
 })
