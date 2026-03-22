@@ -87,6 +87,9 @@ export default function NotebookPage() {
             <span className="history-meta">
               {controller.sortedCells.length} {controller.sortedCells.length === 1 ? 'cell' : 'cells'}
             </span>
+            {controller.pendingSaveCount ? (
+              <span className="history-meta"> · {controller.pendingSaveCount} unsaved</span>
+            ) : null}
           </div>
           <div className={styles.toolbarActions}>
             <button

@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { NotebookCell, NotebookWidgetMetadata } from '../components/notebook/types'
-import { getChangedWidgetParamKeys } from '../components/notebook/useNotebookCellState'
+import {
+  clearPendingSaveCell,
+  clearSaveError,
+  getCellUiStateByCell,
+  getStaleResultByCell,
+  getPendingSaveEntries,
+  getChangedWidgetParamKeys,
+  getPendingSaveCount,
+  syncExecutedQueryState,
+  syncCellResultState,
+  syncCellDraftState,
+  syncWidgetDraftState,
+} from '../components/notebook/useNotebookCellState'
 import {
   buildInputValues,
   getDependentSqlTargets,
@@ -236,5 +248,189 @@ describe('notebook reactive runner', () => {
       start_date: '2026-02-01',
       end_date: '2026-02-29',
     })
+  })
+
+  it('refreshes cell drafts when server content changes and there is no local edit', () => {
+    const synced = syncCellDraftState({
+      cells: [makeCell({ id: 'sql-1', type: 'sql', content: 'select 2;' })],
+      previousDrafts: { 'sql-1': 'select 1;' },
+      previousServerContent: { 'sql-1': 'select 1;' },
+      pendingSavePayloads: {},
+    })
+
+    expect(synced.drafts['sql-1']).toBe('select 2;')
+  })
+
+  it('preserves cell drafts when a local edit is still pending save', () => {
+    const synced = syncCellDraftState({
+      cells: [makeCell({ id: 'sql-1', type: 'sql', content: 'select 2;' })],
+      previousDrafts: { 'sql-1': 'select 1 where local = true;' },
+      previousServerContent: { 'sql-1': 'select 1;' },
+      pendingSavePayloads: { 'sql-1': { content: 'select 1 where local = true;' } },
+    })
+
+    expect(synced.drafts['sql-1']).toBe('select 1 where local = true;')
+  })
+
+  it('counts only active pending saves', () => {
+    expect(getPendingSaveCount({ a: true, b: false, c: true })).toBe(2)
+  })
+
+  it('clears one pending save without mutating unrelated entries', () => {
+    expect(clearPendingSaveCell({ a: true, b: true }, 'a')).toEqual({ b: true })
+  })
+
+  it('captures pending save payload entries for flush execution', () => {
+    expect(
+      getPendingSaveEntries({
+        a: { content: 'select 1;' },
+        b: { metadata: makeWidgetMetadata({ widgetType: 'text', key: 'q', value: 'abc' }) },
+      })
+    ).toEqual([
+      { cellId: 'a', payload: { content: 'select 1;' } },
+      { cellId: 'b', payload: { metadata: makeWidgetMetadata({ widgetType: 'text', key: 'q', value: 'abc' }) } },
+    ])
+  })
+
+  it('refreshes widget drafts when server metadata changes and there is no local edit', () => {
+    const synced = syncWidgetDraftState({
+      cells: [
+        makeCell({
+          id: 'w-1',
+          type: 'widget',
+          metadata_json: makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' }),
+        }),
+      ],
+      previousDrafts: {
+        'w-1': makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'us' }),
+      },
+      previousServerMetadata: {
+        'w-1': makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'us' }),
+      },
+      pendingSavePayloads: {},
+    })
+
+    expect(synced.drafts['w-1']).toMatchObject({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' })
+  })
+
+  it('preserves widget drafts when a local metadata edit is still pending save', () => {
+    const localDraft = makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'apac' })
+
+    const synced = syncWidgetDraftState({
+      cells: [
+        makeCell({
+          id: 'w-1',
+          type: 'widget',
+          metadata_json: makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' }),
+        }),
+      ],
+      previousDrafts: { 'w-1': localDraft },
+      previousServerMetadata: {
+        'w-1': makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'us' }),
+      },
+      pendingSavePayloads: { 'w-1': { metadata: localDraft } },
+    })
+
+    expect(synced.drafts['w-1']).toEqual(localDraft)
+  })
+
+  it('refreshes cached SQL results when server results change and local cache matches the previous server state', () => {
+    const previousResult = {
+      statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 1 }] }],
+      totalRows: 1,
+      durationMs: 5,
+    }
+    const nextResult = {
+      statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+      totalRows: 1,
+      durationMs: 6,
+    }
+
+    const synced = syncCellResultState({
+      cells: [
+        makeCell({
+          id: 'sql-1',
+          type: 'sql',
+          last_result_json: nextResult,
+        }),
+      ],
+      previousResults: {
+        'sql-1': previousResult,
+      },
+      previousServerResults: {
+        'sql-1': previousResult,
+      },
+    })
+
+    expect(synced.results['sql-1']).toEqual(nextResult)
+  })
+
+  it('refreshes executed query baselines from server-backed SQL results', () => {
+    const synced = syncExecutedQueryState({
+      cells: [
+        makeCell({
+          id: 'sql-1',
+          type: 'sql',
+          content: 'select 2;',
+          last_result_json: {
+            statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+            totalRows: 1,
+            durationMs: 5,
+          },
+        }),
+      ],
+      previousExecutedQueryByCell: { 'sql-1': 'select 1;' },
+      previousServerExecutedQueryByCell: { 'sql-1': 'select 1;' },
+    })
+
+    expect(synced.executedQueryByCell['sql-1']).toBe('select 2;')
+  })
+
+  it('marks results stale when the current SQL draft differs from the last executed query', () => {
+    const stale = getStaleResultByCell({
+      sortedCells: [makeCell({ id: 'sql-1', type: 'sql', content: 'select 2;' })],
+      draftByCell: { 'sql-1': 'select 3;' },
+      resultsByCell: {
+        'sql-1': {
+          statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+          totalRows: 1,
+          durationMs: 5,
+        },
+      },
+      lastExecutedQueryByCell: { 'sql-1': 'select 2;' },
+    })
+
+    expect(stale['sql-1']).toBe(true)
+  })
+
+  it('derives per-cell ui state with the correct priority order', () => {
+    const cells = [
+      makeCell({ id: 'sql-running', type: 'sql' }),
+      makeCell({ id: 'sql-saving', type: 'sql' }),
+      makeCell({ id: 'sql-queued', type: 'sql' }),
+      makeCell({ id: 'sql-stale', type: 'sql' }),
+      makeCell({ id: 'sql-idle', type: 'sql' }),
+    ]
+
+    const states = getCellUiStateByCell({
+      sortedCells: cells,
+      pendingSaveByCell: { 'sql-saving': true, 'sql-running': true },
+      saveErrorByCell: { 'sql-stale': 'disk full', 'sql-idle': 'retry later' },
+      queuedRunByCell: { 'sql-queued': true, 'sql-saving': true },
+      runningCellId: 'sql-running',
+      staleResultByCell: { 'sql-stale': true, 'sql-queued': true },
+    })
+
+    expect(states).toEqual({
+      'sql-running': 'running',
+      'sql-saving': 'saving',
+      'sql-queued': 'queued',
+      'sql-stale': 'save_failed',
+      'sql-idle': 'save_failed',
+    })
+  })
+
+  it('clears a save error without affecting other cells', () => {
+    expect(clearSaveError({ a: 'boom', b: 'retry' }, 'a')).toEqual({ b: 'retry' })
   })
 })

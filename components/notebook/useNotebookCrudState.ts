@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useConnections } from '../shared/hooks/useConnections'
-import { useNotebookImport } from './useNotebookImport'
 import type { Notebook } from './types'
 import { createNotebook, deleteNotebook, getNotebook, getNotebooks, updateNotebook } from '../../features/notebook/notebook.service'
 
@@ -32,12 +31,6 @@ export function useNotebookCrudState(params: { setStatus: (value: string) => voi
   })
 
   const activeNotebook = detailQuery.data?.notebook
-  const notebookImport = useNotebookImport({
-    activeNotebookId,
-    setActiveNotebookId,
-    setStatus,
-  })
-
   const createNotebookMutation = useMutation({
     mutationFn: async () => {
       const connectionName = connectionsQuery.defaultConnectionName || connections[0]?.name
@@ -100,7 +93,6 @@ export function useNotebookCrudState(params: { setStatus: (value: string) => voi
     connections,
     createNotebookMutation,
     detailQuery,
-    notebookImport,
     notebookSearch,
     notebooks,
     removeNotebook,
