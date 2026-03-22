@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NotebookCell, NotebookWidgetMetadata } from '../components/notebook/types'
 import {
   clearPendingSaveCell,
+  clearSaveError,
   getCellUiStateByCell,
   getStaleResultByCell,
   getPendingSaveEntries,
@@ -414,6 +415,7 @@ describe('notebook reactive runner', () => {
     const states = getCellUiStateByCell({
       sortedCells: cells,
       pendingSaveByCell: { 'sql-saving': true, 'sql-running': true },
+      saveErrorByCell: { 'sql-stale': 'disk full', 'sql-idle': 'retry later' },
       queuedRunByCell: { 'sql-queued': true, 'sql-saving': true },
       runningCellId: 'sql-running',
       staleResultByCell: { 'sql-stale': true, 'sql-queued': true },
@@ -423,8 +425,12 @@ describe('notebook reactive runner', () => {
       'sql-running': 'running',
       'sql-saving': 'saving',
       'sql-queued': 'queued',
-      'sql-stale': 'stale_result',
-      'sql-idle': 'idle',
+      'sql-stale': 'save_failed',
+      'sql-idle': 'save_failed',
     })
+  })
+
+  it('clears a save error without affecting other cells', () => {
+    expect(clearSaveError({ a: 'boom', b: 'retry' }, 'a')).toEqual({ b: 'retry' })
   })
 })
