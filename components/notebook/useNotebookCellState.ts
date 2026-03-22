@@ -28,12 +28,14 @@ export function useNotebookCellState(params: {
   const [runningCellId, setRunningCellId] = useState<string>('')
   const [runningAll, setRunningAll] = useState(false)
   const [resultsByCell, setResultsByCell] = useState<Record<string, QueryResult>>({})
+  const [lastExecutedQueryByCell, setLastExecutedQueryByCell] = useState<Record<string, string>>({})
   const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
   const [widgetDraftByCell, setWidgetDraftByCell] = useState<Record<string, NotebookWidgetMetadata>>({})
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
   const [pendingSaveByCell, setPendingSaveByCell] = useState<Record<string, boolean>>({})
+  const [queuedRunByCell, setQueuedRunByCell] = useState<Record<string, boolean>>({})
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>>({})
@@ -47,6 +49,7 @@ export function useNotebookCellState(params: {
   const lastSyncedContentByCellRef = useRef<Record<string, string>>({})
   const lastSyncedWidgetByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
   const lastSyncedResultByCellRef = useRef<Record<string, QueryResult | null>>({})
+  const lastSyncedExecutedQueryByCellRef = useRef<Record<string, string>>({})
   const sortedCellsRef = useRef<NotebookCell[]>([])
   const activeNotebookIdRef = useRef('')
   const runningCellIdRef = useRef('')
@@ -64,6 +67,10 @@ export function useNotebookCellState(params: {
   }, [widgetDraftByCell])
 
   useEffect(() => {
+    lastSyncedExecutedQueryByCellRef.current = lastExecutedQueryByCell
+  }, [lastExecutedQueryByCell])
+
+  useEffect(() => {
     sortedCellsRef.current = sortedCells
   }, [sortedCells])
 
@@ -77,6 +84,7 @@ export function useNotebookCellState(params: {
 
   useEffect(() => {
     setPendingSaveByCell({})
+    setQueuedRunByCell({})
   }, [activeNotebookId])
 
   useEffect(() => {
@@ -122,6 +130,18 @@ export function useNotebookCellState(params: {
       })
       lastSyncedResultByCellRef.current = synced.serverResultsByCell
       return synced.results
+    })
+  }, [cells])
+
+  useEffect(() => {
+    setLastExecutedQueryByCell((prev) => {
+      const synced = syncExecutedQueryState({
+        cells,
+        previousExecutedQueryByCell: prev,
+        previousServerExecutedQueryByCell: lastSyncedExecutedQueryByCellRef.current,
+      })
+      lastSyncedExecutedQueryByCellRef.current = synced.serverExecutedQueryByCell
+      return synced.executedQueryByCell
     })
   }, [cells])
 
@@ -344,6 +364,7 @@ export function useNotebookCellState(params: {
     if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
       return 0
     }
+    setQueuedRunByCell((prev) => clearQueuedCells(prev, input.cells.map((cell) => cell.id)))
     if (!(await flushPendingSaves(input.flushReason))) {
       return 0
     }
@@ -385,6 +406,7 @@ export function useNotebookCellState(params: {
         }
 
         setResultsByCell((prev) => ({ ...prev, [cell.id]: result }))
+        setLastExecutedQueryByCell((prev) => ({ ...prev, [cell.id]: query }))
         successCount += 1
       }
 
@@ -429,6 +451,7 @@ export function useNotebookCellState(params: {
     const statusLabel = keys.length === 1 ? `'${keys[0]}'` : `${keys.length} widget input(s)`
 
     try {
+      setQueuedRunByCell((prev) => markQueuedCells(prev, targets.map((cell) => cell.id)))
       setStatus(`Input ${statusLabel} changed. Queuing ${targets.length} SQL cell(s)...`)
       await enqueueExecution('Auto-run', () =>
         executeQueuedSqlRun({
@@ -502,6 +525,7 @@ export function useNotebookCellState(params: {
     const query = (draftByCell[cell.id] ?? cell.content).trim()
     if (!query) return
     try {
+      setQueuedRunByCell((prev) => markQueuedCells(prev, [cell.id]))
       const executedCount = await enqueueExecution('Cell run', () =>
         executeQueuedSqlRun({
           label: 'Cell run',
@@ -523,6 +547,7 @@ export function useNotebookCellState(params: {
       setStatus('No SQL cells to run')
       return
     }
+    setQueuedRunByCell((prev) => markQueuedCells(prev, sqlCells.map((cell) => cell.id)))
     await enqueueExecution('Run all', () =>
       executeQueuedSqlRun({
         label: 'Run all',
@@ -540,6 +565,7 @@ export function useNotebookCellState(params: {
       setStatus('No target SQL cells found')
       return
     }
+    setQueuedRunByCell((prev) => markQueuedCells(prev, targets.map((cell) => cell.id)))
     await enqueueExecution('Target run', () =>
       executeQueuedSqlRun({
         label: 'Target run',
@@ -596,6 +622,21 @@ export function useNotebookCellState(params: {
   }
 
   const pendingSaveCount = useMemo(() => getPendingSaveCount(pendingSaveByCell), [pendingSaveByCell])
+  const staleResultByCell = useMemo(
+    () => getStaleResultByCell({ sortedCells, draftByCell, resultsByCell, lastExecutedQueryByCell }),
+    [sortedCells, draftByCell, resultsByCell, lastExecutedQueryByCell]
+  )
+  const cellUiStateByCell = useMemo(
+    () =>
+      getCellUiStateByCell({
+        sortedCells,
+        pendingSaveByCell,
+        queuedRunByCell,
+        runningCellId,
+        staleResultByCell,
+      }),
+    [sortedCells, pendingSaveByCell, queuedRunByCell, runningCellId, staleResultByCell]
+  )
 
   return {
     addCellMutation,
@@ -607,10 +648,13 @@ export function useNotebookCellState(params: {
     moveCell,
     notebookInputs,
     onChangeCell,
+    cellUiStateByCell,
     pendingSaveByCell,
     pendingSaveCount,
     previewMarkdown,
     resultsByCell,
+    queuedRunByCell,
+    staleResultByCell,
     runTargetSqlCells,
     runAllSqlCells,
     runningAll,
@@ -752,6 +796,39 @@ export function syncCellResultState(input: {
   return { results, serverResultsByCell }
 }
 
+export function syncExecutedQueryState(input: {
+  cells: NotebookCell[]
+  previousExecutedQueryByCell: Record<string, string>
+  previousServerExecutedQueryByCell: Record<string, string>
+}) {
+  const executedQueryByCell: Record<string, string> = {}
+  const serverExecutedQueryByCell: Record<string, string> = {}
+
+  for (const cell of input.cells) {
+    if (cell.type !== 'sql' || !cell.last_result_json) continue
+
+    const serverExecutedQuery = cell.content
+    const previousExecutedQuery = input.previousExecutedQueryByCell[cell.id]
+    const previousServerExecutedQuery = input.previousServerExecutedQueryByCell[cell.id]
+
+    serverExecutedQueryByCell[cell.id] = serverExecutedQuery
+
+    if (previousExecutedQuery === undefined) {
+      executedQueryByCell[cell.id] = serverExecutedQuery
+      continue
+    }
+
+    if (previousExecutedQuery === previousServerExecutedQuery) {
+      executedQueryByCell[cell.id] = serverExecutedQuery
+      continue
+    }
+
+    executedQueryByCell[cell.id] = previousExecutedQuery
+  }
+
+  return { executedQueryByCell, serverExecutedQueryByCell }
+}
+
 export function clearPendingSaveCell(pendingSaveByCell: Record<string, boolean>, cellId: string) {
   if (!pendingSaveByCell[cellId]) return pendingSaveByCell
   const next = { ...pendingSaveByCell }
@@ -767,6 +844,73 @@ export function getPendingSaveEntries(
   pendingSavePayloads: Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>
 ) {
   return Object.entries(pendingSavePayloads).map(([cellId, payload]) => ({ cellId, payload }))
+}
+
+export function getStaleResultByCell(input: {
+  sortedCells: NotebookCell[]
+  draftByCell: Record<string, string>
+  resultsByCell: Record<string, QueryResult>
+  lastExecutedQueryByCell: Record<string, string>
+}) {
+  const staleByCell: Record<string, boolean> = {}
+
+  for (const cell of input.sortedCells) {
+    if (cell.type !== 'sql') continue
+    if (!input.resultsByCell[cell.id]) continue
+
+    const currentQuery = (input.draftByCell[cell.id] ?? cell.content).trim()
+    const lastExecutedQuery = (input.lastExecutedQueryByCell[cell.id] ?? '').trim()
+
+    staleByCell[cell.id] = Boolean(lastExecutedQuery) && currentQuery !== lastExecutedQuery
+  }
+
+  return staleByCell
+}
+
+export function markQueuedCells(queuedRunByCell: Record<string, boolean>, cellIds: string[]) {
+  if (!cellIds.length) return queuedRunByCell
+  const next = { ...queuedRunByCell }
+  for (const cellId of cellIds) next[cellId] = true
+  return next
+}
+
+export function clearQueuedCells(queuedRunByCell: Record<string, boolean>, cellIds: string[]) {
+  if (!cellIds.length) return queuedRunByCell
+  const next = { ...queuedRunByCell }
+  for (const cellId of cellIds) delete next[cellId]
+  return next
+}
+
+export function getCellUiStateByCell(input: {
+  sortedCells: NotebookCell[]
+  pendingSaveByCell: Record<string, boolean>
+  queuedRunByCell: Record<string, boolean>
+  runningCellId: string
+  staleResultByCell: Record<string, boolean>
+}) {
+  const stateByCell: Record<string, 'idle' | 'saving' | 'queued' | 'running' | 'stale_result'> = {}
+
+  for (const cell of input.sortedCells) {
+    if (input.runningCellId === cell.id) {
+      stateByCell[cell.id] = 'running'
+      continue
+    }
+    if (input.pendingSaveByCell[cell.id]) {
+      stateByCell[cell.id] = 'saving'
+      continue
+    }
+    if (input.queuedRunByCell[cell.id]) {
+      stateByCell[cell.id] = 'queued'
+      continue
+    }
+    if (input.staleResultByCell[cell.id]) {
+      stateByCell[cell.id] = 'stale_result'
+      continue
+    }
+    stateByCell[cell.id] = 'idle'
+  }
+
+  return stateByCell
 }
 
 function getNormalizedWidgetMetadata(cell: NotebookCell) {

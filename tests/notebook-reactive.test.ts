@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import type { NotebookCell, NotebookWidgetMetadata } from '../components/notebook/types'
 import {
   clearPendingSaveCell,
+  getCellUiStateByCell,
+  getStaleResultByCell,
   getPendingSaveEntries,
   getChangedWidgetParamKeys,
   getPendingSaveCount,
+  syncExecutedQueryState,
   syncCellResultState,
   syncCellDraftState,
   syncWidgetDraftState,
@@ -359,5 +362,69 @@ describe('notebook reactive runner', () => {
     })
 
     expect(synced.results['sql-1']).toEqual(nextResult)
+  })
+
+  it('refreshes executed query baselines from server-backed SQL results', () => {
+    const synced = syncExecutedQueryState({
+      cells: [
+        makeCell({
+          id: 'sql-1',
+          type: 'sql',
+          content: 'select 2;',
+          last_result_json: {
+            statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+            totalRows: 1,
+            durationMs: 5,
+          },
+        }),
+      ],
+      previousExecutedQueryByCell: { 'sql-1': 'select 1;' },
+      previousServerExecutedQueryByCell: { 'sql-1': 'select 1;' },
+    })
+
+    expect(synced.executedQueryByCell['sql-1']).toBe('select 2;')
+  })
+
+  it('marks results stale when the current SQL draft differs from the last executed query', () => {
+    const stale = getStaleResultByCell({
+      sortedCells: [makeCell({ id: 'sql-1', type: 'sql', content: 'select 2;' })],
+      draftByCell: { 'sql-1': 'select 3;' },
+      resultsByCell: {
+        'sql-1': {
+          statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+          totalRows: 1,
+          durationMs: 5,
+        },
+      },
+      lastExecutedQueryByCell: { 'sql-1': 'select 2;' },
+    })
+
+    expect(stale['sql-1']).toBe(true)
+  })
+
+  it('derives per-cell ui state with the correct priority order', () => {
+    const cells = [
+      makeCell({ id: 'sql-running', type: 'sql' }),
+      makeCell({ id: 'sql-saving', type: 'sql' }),
+      makeCell({ id: 'sql-queued', type: 'sql' }),
+      makeCell({ id: 'sql-stale', type: 'sql' }),
+      makeCell({ id: 'sql-idle', type: 'sql' }),
+    ]
+
+    const states = getCellUiStateByCell({
+      sortedCells: cells,
+      pendingSaveByCell: { 'sql-saving': true, 'sql-running': true },
+      queuedRunByCell: { 'sql-queued': true, 'sql-saving': true },
+      runningCellId: 'sql-running',
+      staleResultByCell: { 'sql-stale': true, 'sql-queued': true },
+    })
+
+    expect(states).toEqual({
+      'sql-running': 'running',
+      'sql-saving': 'saving',
+      'sql-queued': 'queued',
+      'sql-stale': 'stale_result',
+      'sql-idle': 'idle',
+    })
   })
 })
