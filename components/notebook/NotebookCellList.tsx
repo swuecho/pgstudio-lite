@@ -31,6 +31,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     runningAll,
     runningCellId,
     runSqlCellWithShortcuts,
+    saveErrorByCell,
     selectedCellId,
     selectedInsertParamByCell,
     setPreviewMarkdown,
@@ -66,6 +67,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
         const cellUiState = cellUiStateByCell[cell.id] || 'idle'
         const saving = cellUiState === 'saving'
         const queued = cellUiState === 'queued'
+        const saveError = saveErrorByCell[cell.id]
         const sqlKeys = cell.type === 'sql' ? extractTemplateKeys(draft) : []
         const missingSqlKeys = sqlKeys.filter((key) => !inputKeys.has(key))
         const selectedInsertParam = selectedInsertParamByCell[cell.id] || notebookInputs[0]?.key || ''
@@ -227,6 +229,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                         {cell.last_row_count !== null ? ` · ${cell.last_row_count} rows` : ''}
                       </span>
                     </div>
+                    {saveError ? <div className="empty-state">Save failed: {saveError}</div> : null}
                     {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
                     {staleResult ? <div className="empty-state">Current SQL differs from the last executed query.</div> : null}
                     {lastResult ? <CellResult result={lastResult} /> : null}
@@ -234,6 +237,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                 ) : (
                   <>
                     <div className={styles.sqlPreview}>{toCompactSqlPreview(draft)}</div>
+                    {saveError ? <div className="empty-state">Save failed: {saveError}</div> : null}
                     {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
                     {staleResult ? <div className="empty-state">Result is stale until this cell is run again.</div> : null}
                     {lastResult ? (
@@ -364,8 +368,9 @@ function toCompactSqlPreview(sql: string) {
   return flattened.length > 180 ? `${flattened.slice(0, 180)}...` : flattened
 }
 
-function formatCellUiState(state: 'idle' | 'saving' | 'queued' | 'running' | 'stale_result') {
+function formatCellUiState(state: 'idle' | 'saving' | 'save_failed' | 'queued' | 'running' | 'stale_result') {
   if (state === 'saving') return 'Saving...'
+  if (state === 'save_failed') return 'Save failed'
   if (state === 'queued') return 'Queued'
   if (state === 'running') return 'Running...'
   if (state === 'stale_result') return 'Result is stale'

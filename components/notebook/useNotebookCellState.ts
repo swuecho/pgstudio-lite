@@ -35,6 +35,7 @@ export function useNotebookCellState(params: {
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
   const [pendingSaveByCell, setPendingSaveByCell] = useState<Record<string, boolean>>({})
+  const [saveErrorByCell, setSaveErrorByCell] = useState<Record<string, string>>({})
   const [queuedRunByCell, setQueuedRunByCell] = useState<Record<string, boolean>>({})
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -84,6 +85,7 @@ export function useNotebookCellState(params: {
 
   useEffect(() => {
     setPendingSaveByCell({})
+    setSaveErrorByCell({})
     setQueuedRunByCell({})
   }, [activeNotebookId])
 
@@ -291,6 +293,7 @@ export function useNotebookCellState(params: {
       ...patch,
     }
     setPendingSaveByCell((prev) => ({ ...prev, [cell.id]: true }))
+    setSaveErrorByCell((prev) => clearSaveError(prev, cell.id))
 
     saveTimersRef.current[cell.id] = setTimeout(() => {
       const payload = pendingSavePayloadRef.current[cell.id]
@@ -300,6 +303,7 @@ export function useNotebookCellState(params: {
       void updateCell(scheduledNotebookId, { cellId: cell.id, ...payload })
         .then(() => {
           setPendingSaveByCell((prev) => clearPendingSaveCell(prev, cell.id))
+          setSaveErrorByCell((prev) => clearSaveError(prev, cell.id))
           if (activeNotebookIdRef.current === scheduledNotebookId) {
             setStatus('Autosaved')
           }
@@ -307,6 +311,10 @@ export function useNotebookCellState(params: {
         })
         .catch((error) => {
           setPendingSaveByCell((prev) => clearPendingSaveCell(prev, cell.id))
+          setSaveErrorByCell((prev) => ({
+            ...prev,
+            [cell.id]: error instanceof Error ? error.message : String(error),
+          }))
           if (activeNotebookIdRef.current === scheduledNotebookId) {
             setStatus(error instanceof Error ? error.message : String(error))
           }
@@ -611,11 +619,17 @@ export function useNotebookCellState(params: {
     if (failedEntries.length) {
       pendingSavePayloadRef.current = Object.fromEntries(failedEntries.map((entry) => [entry.cellId, entry.payload]))
       setPendingSaveByCell(Object.fromEntries(failedEntries.map((entry) => [entry.cellId, true])))
+      setSaveErrorByCell(
+        Object.fromEntries(
+          failedEntries.map((entry) => [entry.cellId, entry.error instanceof Error ? entry.error.message : String(entry.error)])
+        )
+      )
       const firstError = failedEntries[0]?.error
       setStatus(firstError instanceof Error ? firstError.message : String(firstError))
       return false
     }
 
+    setSaveErrorByCell({})
     void queryClient.invalidateQueries({ queryKey: ['notebook', notebookId] })
     setStatus('All changes saved')
     return true
@@ -631,11 +645,12 @@ export function useNotebookCellState(params: {
       getCellUiStateByCell({
         sortedCells,
         pendingSaveByCell,
+        saveErrorByCell,
         queuedRunByCell,
         runningCellId,
         staleResultByCell,
       }),
-    [sortedCells, pendingSaveByCell, queuedRunByCell, runningCellId, staleResultByCell]
+    [sortedCells, pendingSaveByCell, saveErrorByCell, queuedRunByCell, runningCellId, staleResultByCell]
   )
 
   return {
@@ -654,6 +669,7 @@ export function useNotebookCellState(params: {
     previewMarkdown,
     resultsByCell,
     queuedRunByCell,
+    saveErrorByCell,
     staleResultByCell,
     runTargetSqlCells,
     runAllSqlCells,
@@ -836,6 +852,13 @@ export function clearPendingSaveCell(pendingSaveByCell: Record<string, boolean>,
   return next
 }
 
+export function clearSaveError(saveErrorByCell: Record<string, string>, cellId: string) {
+  if (!saveErrorByCell[cellId]) return saveErrorByCell
+  const next = { ...saveErrorByCell }
+  delete next[cellId]
+  return next
+}
+
 export function getPendingSaveCount(pendingSaveByCell: Record<string, boolean>) {
   return Object.values(pendingSaveByCell).filter(Boolean).length
 }
@@ -884,11 +907,12 @@ export function clearQueuedCells(queuedRunByCell: Record<string, boolean>, cellI
 export function getCellUiStateByCell(input: {
   sortedCells: NotebookCell[]
   pendingSaveByCell: Record<string, boolean>
+  saveErrorByCell: Record<string, string>
   queuedRunByCell: Record<string, boolean>
   runningCellId: string
   staleResultByCell: Record<string, boolean>
 }) {
-  const stateByCell: Record<string, 'idle' | 'saving' | 'queued' | 'running' | 'stale_result'> = {}
+  const stateByCell: Record<string, 'idle' | 'saving' | 'save_failed' | 'queued' | 'running' | 'stale_result'> = {}
 
   for (const cell of input.sortedCells) {
     if (input.runningCellId === cell.id) {
@@ -897,6 +921,10 @@ export function getCellUiStateByCell(input: {
     }
     if (input.pendingSaveByCell[cell.id]) {
       stateByCell[cell.id] = 'saving'
+      continue
+    }
+    if (input.saveErrorByCell[cell.id]) {
+      stateByCell[cell.id] = 'save_failed'
       continue
     }
     if (input.queuedRunByCell[cell.id]) {

@@ -410,6 +410,97 @@ describe('notebook API e2e', () => {
     })
   })
 
+  it('import replace: overwrites the active notebook in place', async () => {
+    const createResponse = await invokeApi(notebooksHandler, {
+      method: 'POST',
+      body: { title: 'Replace Me' },
+    })
+    const notebookId = (createResponse.payload as { item: { id: string } }).item.id
+
+    const initialCellResponse = await invokeApi(notebookCellsHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: { type: 'markdown', content: '# Old' },
+    })
+    expect(initialCellResponse.statusCode).toBe(200)
+
+    const replaceResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'replace',
+        target_notebook_id: notebookId,
+        notebook: {
+          spec_version: '1.0',
+          title: 'Replaced Notebook',
+          description: 'new body',
+          cells: [
+            { id: 'sql-1', type: 'sql', content: 'select 42 as v;' },
+            { id: 'md-1', type: 'markdown', content: '## Fresh' },
+          ],
+        },
+      },
+    })
+
+    expect(replaceResponse.statusCode).toBe(200)
+    expect(replaceResponse.payload).toMatchObject({
+      ok: true,
+      notebook_id: notebookId,
+      notebook: {
+        id: notebookId,
+        title: 'Replaced Notebook',
+        description: 'new body',
+        cells: [{ id: 'sql-1' }, { id: 'md-1' }],
+      },
+    })
+
+    const exportResponse = await invokeApi(notebookExportHandler, {
+      method: 'GET',
+      query: { id: notebookId },
+    })
+
+    expect(exportResponse.statusCode).toBe(200)
+    expect(exportResponse.payload).toMatchObject({
+      id: notebookId,
+      title: 'Replaced Notebook',
+      cells: [
+        { id: 'sql-1', type: 'sql', content: 'select 42 as v;' },
+        { id: 'md-1', type: 'markdown', content: '## Fresh' },
+      ],
+    })
+  })
+
+  it('import upsert: updates an existing notebook when the spec id already exists', async () => {
+    const createResponse = await invokeApi(notebooksHandler, {
+      method: 'POST',
+      body: { title: 'Upsert Source' },
+    })
+    const notebookId = (createResponse.payload as { item: { id: string } }).item.id
+
+    const upsertResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'upsert',
+        notebook: {
+          spec_version: '1.0',
+          id: notebookId,
+          title: 'Upsert Target',
+          cells: [{ id: 'md-1', type: 'markdown', content: '# Upserted' }],
+        },
+      },
+    })
+
+    expect(upsertResponse.statusCode).toBe(200)
+    expect(upsertResponse.payload).toMatchObject({
+      ok: true,
+      notebook_id: notebookId,
+      notebook: {
+        id: notebookId,
+        title: 'Upsert Target',
+        cells: [{ id: 'md-1', content: '# Upserted' }],
+      },
+    })
+  })
+
   it('import validate_only: validates and normalizes without persistence', async () => {
     const beforeCounts = sqlite
       .prepare(
