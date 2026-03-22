@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSidebarResizer } from '../../hooks/useSidebarResizer'
 import { useNotebookCellState } from './useNotebookCellState'
 import { useNotebookCrudState } from './useNotebookCrudState'
+import { useNotebookImport } from './useNotebookImport'
 
 export type NotebookPageController = ReturnType<typeof useNotebookPageState>
 
@@ -15,6 +16,20 @@ export function useNotebookPageState() {
     detailQueryData: crud.detailQuery.data,
     setStatus,
   })
+  const notebookImport = useNotebookImport({
+    activeNotebookId: crud.activeNotebookId,
+    setActiveNotebookId: crud.setActiveNotebookId,
+    flushPendingSaves: cells.flushPendingSaves,
+    setStatus,
+  })
+
+  async function setActiveNotebookId(nextNotebookId: string) {
+    if (nextNotebookId === crud.activeNotebookId) return
+    if (!(await cells.flushPendingSaves('switching notebooks'))) {
+      return
+    }
+    crud.setActiveNotebookId(nextNotebookId)
+  }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -23,12 +38,12 @@ export function useNotebookPageState() {
       const typing = Boolean(target?.isContentEditable) || tag === 'input' || tag === 'textarea' || tag === 'select'
 
       if (event.key === 'Escape') {
-        if (crud.notebookImport.showImportModal) {
+        if (notebookImport.showImportModal) {
           event.preventDefault()
-          crud.notebookImport.setShowImportModal(false)
-        } else if (crud.notebookImport.showHelp) {
+          notebookImport.setShowImportModal(false)
+        } else if (notebookImport.showHelp) {
           event.preventDefault()
-          crud.notebookImport.setShowHelp(false)
+          notebookImport.setShowHelp(false)
         }
         return
       }
@@ -38,23 +53,25 @@ export function useNotebookPageState() {
       const key = event.key.toLowerCase()
       if (key === 'i') {
         event.preventDefault()
-        crud.notebookImport.setShowImportModal(true)
+        notebookImport.setShowImportModal(true)
         return
       }
       if (key === 'e') {
         event.preventDefault()
-        crud.notebookImport.exportNotebookJson()
+        notebookImport.exportNotebookJson()
       }
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [crud.notebookImport])
+  }, [notebookImport])
 
   return {
     ...crud,
     ...cells,
     handleWidthResizerMouseDown,
+    notebookImport,
+    setActiveNotebookId,
     sidebarWidth,
     status,
   }

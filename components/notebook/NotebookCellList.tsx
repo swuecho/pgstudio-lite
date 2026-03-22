@@ -24,6 +24,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     notebookInputs,
     onChangeCell,
     onWidgetMetadataChange,
+    pendingSaveByCell,
     previewMarkdown,
     resultsByCell,
     runTargetSqlCells,
@@ -60,6 +61,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
         const draft = draftByCell[cell.id] ?? cell.content
         const lastResult = resultsByCell[cell.id]
         const running = runningCellId === cell.id
+        const saving = pendingSaveByCell[cell.id] === true
         const sqlKeys = cell.type === 'sql' ? extractTemplateKeys(draft) : []
         const missingSqlKeys = sqlKeys.filter((key) => !inputKeys.has(key))
         const selectedInsertParam = selectedInsertParamByCell[cell.id] || notebookInputs[0]?.key || ''
@@ -92,6 +94,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
               </span>
               <span className="history-meta">#{cell.position + 1}</span>
               {cell.last_run_at ? <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span> : null}
+              {saving ? <span className="history-meta">Unsaved changes...</span> : null}
               <div className={styles.cellActions}>
                 <button
                   className="btn small icon-btn"
@@ -214,6 +217,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                       <span className={`status-pill ${cell.last_run_status === 'error' ? 'error' : 'ok'}`}>
                         {cell.last_run_status || 'idle'}
                       </span>
+                      {saving ? <span className="history-meta">Saving...</span> : null}
                       <span className="history-meta">
                         {cell.last_duration_ms !== null ? `${cell.last_duration_ms}ms` : ''}
                         {cell.last_row_count !== null ? ` · ${cell.last_row_count} rows` : ''}
