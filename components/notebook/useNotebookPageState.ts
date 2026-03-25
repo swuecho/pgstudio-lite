@@ -3,11 +3,13 @@ import { useSidebarResizer } from '../../hooks/useSidebarResizer'
 import { useNotebookCellState } from './useNotebookCellState'
 import { useNotebookCrudState } from './useNotebookCrudState'
 import { useNotebookImport } from './useNotebookImport'
+import type { NotebookWidgetPresetId } from '../../lib/notebook-widgets'
 
 export type NotebookPageController = ReturnType<typeof useNotebookPageState>
 
 export function useNotebookPageState() {
   const [status, setStatus] = useState('Notebook ready')
+  const [selectedWidgetPreset, setSelectedWidgetPreset] = useState<NotebookWidgetPresetId>('text-search')
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
 
   const crud = useNotebookCrudState({ setStatus })
@@ -72,6 +74,8 @@ export function useNotebookPageState() {
     handleWidthResizerMouseDown,
     notebookImport,
     setActiveNotebookId,
+    selectedWidgetPreset,
+    setSelectedWidgetPreset,
     sidebarWidth,
     status,
   }
