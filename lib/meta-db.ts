@@ -53,9 +53,12 @@ export function ensureMetaDbReady() {
     }
   }
 
-  if (process.env.SKIP_RUNTIME_MIGRATE !== '1') {
+  const shouldRunMigrations = process.env.VITEST || process.env.NODE_ENV === 'test' || process.env.SKIP_RUNTIME_MIGRATE !== '1'
+  if (shouldRunMigrations) {
     migrate(metaDb, { migrationsFolder: join(process.cwd(), 'drizzle/migrations') })
   }
+
+  ensureBaseTables()
 
   if (hasTable('notebook_cells') && !hasColumn('notebook_cells', 'last_result_json')) {
     sqlite.exec(`ALTER TABLE notebook_cells ADD COLUMN last_result_json text;`)
@@ -86,3 +89,74 @@ export function ensureMetaDbReady() {
 }
 
 ensureMetaDbReady()
+
+function ensureBaseTables() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS db_connections (
+      id text PRIMARY KEY NOT NULL,
+      name text NOT NULL,
+      connection_string text NOT NULL,
+      is_default integer DEFAULT false NOT NULL,
+      read_only integer DEFAULT false NOT NULL,
+      created_at text NOT NULL,
+      updated_at text NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_db_connections_name ON db_connections (name);
+    CREATE INDEX IF NOT EXISTS idx_db_connections_default ON db_connections (is_default);
+
+    CREATE TABLE IF NOT EXISTS query_history (
+      id text PRIMARY KEY NOT NULL,
+      connection_name text NOT NULL,
+      query_text text NOT NULL,
+      status text NOT NULL,
+      duration_ms integer NOT NULL,
+      row_count integer,
+      error_text text,
+      executed_at text NOT NULL,
+      started_at text NOT NULL,
+      metadata_json text
+    );
+    CREATE INDEX IF NOT EXISTS idx_query_history_executed_at ON query_history (executed_at);
+
+    CREATE TABLE IF NOT EXISTS query_snippets (
+      id text PRIMARY KEY NOT NULL,
+      title text NOT NULL,
+      query_text text NOT NULL,
+      connection_name text NOT NULL DEFAULT 'default',
+      created_at text NOT NULL,
+      updated_at text NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_query_snippets_connection_updated_at ON query_snippets (connection_name, updated_at);
+    CREATE INDEX IF NOT EXISTS idx_query_snippets_updated_at ON query_snippets (updated_at);
+
+    CREATE TABLE IF NOT EXISTS notebooks (
+      id text PRIMARY KEY NOT NULL,
+      title text NOT NULL,
+      description text NOT NULL DEFAULT '',
+      metadata_json text NOT NULL DEFAULT '{}',
+      connection_name text NOT NULL,
+      created_at text NOT NULL,
+      updated_at text NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_notebooks_updated_at ON notebooks (updated_at);
+
+    CREATE TABLE IF NOT EXISTS notebook_cells (
+      id text PRIMARY KEY NOT NULL,
+      notebook_id text NOT NULL,
+      position integer NOT NULL,
+      type text NOT NULL,
+      content text NOT NULL,
+      collapsed integer DEFAULT false NOT NULL,
+      last_run_status text,
+      last_run_at text,
+      last_duration_ms integer,
+      last_row_count integer,
+      last_result_json text,
+      last_error text,
+      metadata_json text,
+      updated_at text NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_notebook_cells_notebook_position ON notebook_cells (notebook_id, position);
+    CREATE INDEX IF NOT EXISTS idx_notebook_cells_updated_at ON notebook_cells (updated_at);
+  `)
+}
