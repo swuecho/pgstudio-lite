@@ -2,10 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import notebooksHandler from '../pages/api/notebooks/index'
 import notebookCellsHandler from '../pages/api/notebooks/[id]/cells'
 import runCellHandler from '../pages/api/notebooks/[id]/run-cell'
+import optionQueryHandler from '../pages/api/notebooks/[id]/option-query'
 import notebookExportHandler from '../pages/api/notebooks/[id]/export'
 import notebookPatchHandler from '../pages/api/notebooks/[id]/patch'
 import notebookImportHandler from '../pages/api/notebooks/import'
-import { sqlite } from '../lib/meta-db'
+import { ensureMetaDbReady, sqlite } from '../lib/meta-db'
 import { executeQuery } from '../lib/db'
 
 vi.mock('../lib/db', () => {
@@ -69,6 +70,7 @@ function invokeApi(
 }
 
 function resetNotebookFixtures() {
+  ensureMetaDbReady()
   sqlite.exec(`
     DELETE FROM notebook_cells;
     DELETE FROM notebooks;
@@ -208,6 +210,26 @@ describe('notebook API e2e', () => {
       error: 'query is required',
       code: 'INVALID_REQUEST',
     })
+  })
+
+  it('option query flow: executes notebook-scoped option query without cell id', async () => {
+    const notebookId = await createNotebookFixture('Notebook Options')
+
+    const response = await invokeApi(optionQueryHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: {
+        query: 'select {{status}} as value;',
+        inputValues: { status: 'open' },
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.payload).toMatchObject({
+      totalRows: 1,
+      durationMs: 5,
+    })
+    expect(vi.mocked(executeQuery)).toHaveBeenCalledTimes(1)
   })
 
   it('import + export flow: imports canonical notebook and exports it', async () => {
