@@ -88,6 +88,31 @@ describe('notebook service', () => {
     )
   })
 
+  it('runOptionQuery posts option query payload', async () => {
+    const calls = installFetchMock([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['value'], rows: [{ value: 'a' }] }],
+          totalRows: 1,
+          durationMs: 3,
+        },
+      },
+    ])
+
+    await notebookService.runOptionQuery('nb-1', 'select id as value from tags where kind = {{kind}}', { kind: 'status' })
+
+    expect(calls[0].path).toBe('/api/notebooks/nb-1/option-query')
+    expect(calls[0].options?.method).toBe('POST')
+    expect(calls[0].options?.body).toBe(
+      JSON.stringify({
+        query: 'select id as value from tags where kind = {{kind}}',
+        inputValues: { kind: 'status' },
+      })
+    )
+  })
+
   it('createCell sends type and content', async () => {
     const calls = installFetchMock([
       {

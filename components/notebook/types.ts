@@ -7,6 +7,8 @@ export type NotebookInputOption = {
   value: string
 }
 
+export type NotebookOptionSource = 'manual' | 'sql'
+
 export type NotebookWidgetType =
   | 'text'
   | 'number'
@@ -51,6 +53,8 @@ export type NotebookWidgetMetadata = {
   config?: {
     startKey?: string
     endKey?: string
+    optionSource?: NotebookOptionSource
+    optionsQuery?: string
     action?: 'run-all' | 'run-targets'
     targetCellIds?: string[]
     tone?: 'info' | 'success' | 'warning' | 'danger'
@@ -67,6 +71,8 @@ export type NotebookInputCellMetadata = {
   required?: boolean
   placeholder?: string
   options?: NotebookInputOption[]
+  optionsSource?: NotebookOptionSource
+  optionsQuery?: string
   min?: number
   max?: number
   step?: number
