@@ -1,29 +1,14 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { tmpdir } from 'node:os'
-import { isMainThread, threadId } from 'node:worker_threads'
 import BetterSqlite3 from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from '../drizzle/schema'
-
-function getMetaDbPath() {
-  const explicitPath = process.env.PGSTUDIO_META_DB_PATH?.trim()
-  if (explicitPath) {
-    return resolve(process.cwd(), explicitPath)
-  }
-
-  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
-    const workerId = process.env.VITEST_POOL_ID?.trim() || process.env.VITEST_WORKER_ID?.trim() || (isMainThread ? 'main' : `thread-${threadId}`)
-    return join(tmpdir(), 'pgstudio-lite-vitest', `history-${process.pid}-${workerId}.db`)
-  }
-
-  return join(process.cwd(), 'data', 'history.db')
-}
+import { getMetaDbDir, getMetaDbPath } from './meta-db-path'
 
 const DB_PATH = getMetaDbPath()
-const DATA_DIR = dirname(DB_PATH)
+const DATA_DIR = getMetaDbDir()
 
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
 
