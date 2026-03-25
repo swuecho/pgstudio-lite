@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
+import { isMainThread, threadId } from 'node:worker_threads'
 import BetterSqlite3 from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
@@ -14,7 +15,8 @@ function getMetaDbPath() {
   }
 
   if (process.env.VITEST || process.env.NODE_ENV === 'test') {
-    return join(tmpdir(), 'pgstudio-lite-vitest', `history-${process.pid}.db`)
+    const workerId = process.env.VITEST_POOL_ID?.trim() || process.env.VITEST_WORKER_ID?.trim() || (isMainThread ? 'main' : `thread-${threadId}`)
+    return join(tmpdir(), 'pgstudio-lite-vitest', `history-${process.pid}-${workerId}.db`)
   }
 
   return join(process.cwd(), 'data', 'history.db')
