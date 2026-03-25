@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createWidgetMetadataFromPreset,
   createDefaultWidgetMetadata,
   normalizeWidgetMetadata,
   notebookWidgetMetadataSchema,
@@ -120,6 +121,31 @@ describe('notebook widgets', () => {
     expect(metadata).toMatchObject({
       widgetType: 'actions',
       config: { action: 'run-all' },
+    })
+  })
+
+  it('creates the status select preset with manual options', () => {
+    const metadata = createWidgetMetadataFromPreset('status-select')
+
+    expect(metadata).toMatchObject({
+      widgetType: 'select',
+      key: 'status',
+      label: 'Status',
+      config: { optionSource: 'manual' },
+    })
+    expect(metadata.options?.map((item) => item.value)).toEqual(['all', 'open', 'closed'])
+  })
+
+  it('creates the sql select preset with a starter query', () => {
+    const metadata = createWidgetMetadataFromPreset('sql-select')
+
+    expect(metadata).toMatchObject({
+      widgetType: 'select',
+      key: 'entity_id',
+      config: {
+        optionSource: 'sql',
+        optionsQuery: 'select id as value, name as label from my_table order by 2;',
+      },
     })
   })
 

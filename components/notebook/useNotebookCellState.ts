@@ -6,6 +6,7 @@ import type {
   NotebookCell,
   NotebookCellType,
   NotebookDetail,
+  NotebookResolvedOptionsState,
   NotebookWidgetMetadata,
 } from './types'
 import {
@@ -14,9 +15,17 @@ import {
   getDependentSqlTargetsForInputKeys,
   type ReactiveNotebookState,
 } from '../../lib/notebook-reactive'
-import { createCell, deleteCell, runCell, updateCell } from '../../features/notebook/notebook.service'
+import { createCell, deleteCell, runCell, runOptionQuery, updateCell } from '../../features/notebook/notebook.service'
 import { extractTemplateKeys } from '../../lib/notebook-params'
-import { createDefaultWidgetMetadata, getWidgetParamValues, normalizeWidgetMetadata } from '../../lib/notebook-widgets'
+import { mapQueryResultToOptions } from '../../lib/notebook-option-source'
+import {
+  createDefaultWidgetMetadata,
+  createWidgetMetadataFromPreset,
+  getWidgetParamValues,
+  normalizeWidgetMetadata,
+  type NotebookWidgetPresetId,
+} from '../../lib/notebook-widgets'
+import { countWidgetValidationMessages, getWidgetValidationMessages, type WidgetValidationMessages } from '../../lib/notebook-widget-validation'
 
 export function useNotebookCellState(params: {
   activeNotebookId: string
@@ -37,10 +46,15 @@ export function useNotebookCellState(params: {
   const [pendingSaveByCell, setPendingSaveByCell] = useState<Record<string, boolean>>({})
   const [saveErrorByCell, setSaveErrorByCell] = useState<Record<string, string>>({})
   const [queuedRunByCell, setQueuedRunByCell] = useState<Record<string, boolean>>({})
+  const [resolvedOptionsByCell, setResolvedOptionsByCell] = useState<Record<string, NotebookResolvedOptionsState>>({})
+  const [optionsRefreshTickByCell, setOptionsRefreshTickByCell] = useState<Record<string, number>>({})
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>>({})
   const reactiveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const optionsTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const optionRequestSeqRef = useRef<Record<string, number>>({})
+  const optionRequestSignatureRef = useRef<Record<string, string>>({})
   const reactiveRunGenerationRef = useRef(0)
   const executionQueueRef = useRef<Promise<void>>(Promise.resolve())
   const sqlEditorRefs = useRef<Record<string, MonacoEditorNs.IStandaloneCodeEditor>>({})
@@ -157,6 +171,7 @@ export function useNotebookCellState(params: {
     return () => {
       for (const timer of Object.values(saveTimersRef.current)) clearTimeout(timer)
       for (const timer of Object.values(reactiveTimersRef.current)) clearTimeout(timer)
+      for (const timer of Object.values(optionsTimersRef.current)) clearTimeout(timer)
     }
   }, [])
 
@@ -239,6 +254,146 @@ export function useNotebookCellState(params: {
     }
     return out
   }, [sortedCells, widgetDraftByCell])
+  const validationMessagesByCell = useMemo(() => {
+    const out: Record<string, WidgetValidationMessages> = {}
+    const duplicateKeys = new Map<string, string[]>()
+
+    for (const cell of sortedCells) {
+      if (cell.type !== 'widget') continue
+      const metadata = widgetDraftByCell[cell.id]
+      if (!metadata) continue
+      for (const key of getWidgetParameterKeys(metadata)) {
+        const next = duplicateKeys.get(key) || []
+        next.push(cell.id)
+        duplicateKeys.set(key, next)
+      }
+    }
+
+    for (const cell of sortedCells) {
+      if (cell.type !== 'widget') continue
+      const metadata = widgetDraftByCell[cell.id]
+      if (!metadata) continue
+
+      const extraMessages: WidgetValidationMessages = {}
+      for (const key of getWidgetParameterKeys(metadata)) {
+        const owners = duplicateKeys.get(key) || []
+        if (owners.length < 2) continue
+        if (metadata.widgetType === 'date-range') {
+          if (metadata.config?.startKey === key) pushValidationMessage(extraMessages, 'startKey', `Parameter key '${key}' is already used by another widget`)
+          if (metadata.config?.endKey === key) pushValidationMessage(extraMessages, 'endKey', `Parameter key '${key}' is already used by another widget`)
+        } else {
+          pushValidationMessage(extraMessages, 'key', `Parameter key '${key}' is already used by another widget`)
+        }
+      }
+
+      out[cell.id] = getWidgetValidationMessages(metadata, extraMessages)
+    }
+
+    return out
+  }, [sortedCells, widgetDraftByCell])
+  const parameterWidgets = useMemo(() => {
+    return sortedCells.flatMap((cell) => {
+      if (cell.type !== 'widget') return []
+      const metadata = widgetDraftByCell[cell.id]
+      if (!metadata) return []
+      const parameterKeys = getWidgetParameterKeys(metadata)
+      if (!parameterKeys.length) return []
+
+      const usedByCellIds = sortedCells
+        .filter((item) => item.type === 'sql')
+        .filter((item) => {
+          const query = draftByCell[item.id] ?? item.content
+          const templateKeys = extractTemplateKeys(query)
+          return parameterKeys.some((key) => templateKeys.includes(key))
+        })
+        .map((item) => item.id)
+
+      return [{
+        cell,
+        metadata,
+        parameterKeys,
+        primaryKey: parameterKeys[0],
+        source: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
+        validationMessages: validationMessagesByCell[cell.id] || {},
+        validationCount: countWidgetValidationMessages(validationMessagesByCell[cell.id] || {}),
+        usedByCellIds,
+      }]
+    })
+  }, [draftByCell, sortedCells, validationMessagesByCell, widgetDraftByCell])
+
+  useEffect(() => {
+    const nextTrackedCellIds = new Set<string>()
+    const serializedInputValues = JSON.stringify(inputValues)
+
+    for (const cell of sortedCells) {
+      if (cell.type !== 'widget') continue
+      const metadata = widgetDraftByCell[cell.id]
+      if (!metadata) continue
+      if ((metadata.widgetType !== 'select' && metadata.widgetType !== 'multiselect') || metadata.config?.optionSource !== 'sql') continue
+
+      const query = metadata.config?.optionsQuery?.trim() || ''
+      if (!activeNotebookId || !query) continue
+
+      nextTrackedCellIds.add(cell.id)
+      const refreshTick = optionsRefreshTickByCell[cell.id] || 0
+      const signature = JSON.stringify({ notebookId: activeNotebookId, query, inputValues: serializedInputValues, refreshTick })
+      if (optionRequestSignatureRef.current[cell.id] === signature) continue
+      optionRequestSignatureRef.current[cell.id] = signature
+
+      const existingTimer = optionsTimersRef.current[cell.id]
+      if (existingTimer) clearTimeout(existingTimer)
+      setResolvedOptionsByCell((prev) => ({
+        ...prev,
+        [cell.id]: {
+          options: prev[cell.id]?.options || [],
+          loading: true,
+          error: '',
+          lastLoadedAt: prev[cell.id]?.lastLoadedAt,
+        },
+      }))
+
+      optionsTimersRef.current[cell.id] = setTimeout(() => {
+        const requestSeq = (optionRequestSeqRef.current[cell.id] || 0) + 1
+        optionRequestSeqRef.current[cell.id] = requestSeq
+        void runOptionQuery(activeNotebookId, query, inputValues)
+          .then((result) => {
+            if (optionRequestSeqRef.current[cell.id] !== requestSeq) return
+            setResolvedOptionsByCell((prev) => ({
+              ...prev,
+              [cell.id]: {
+                options: mapQueryResultToOptions(result),
+                loading: false,
+                error: '',
+                lastLoadedAt: new Date().toISOString(),
+              },
+            }))
+          })
+          .catch((error) => {
+            if (optionRequestSeqRef.current[cell.id] !== requestSeq) return
+            setResolvedOptionsByCell((prev) => ({
+              ...prev,
+              [cell.id]: {
+                options: prev[cell.id]?.options || [],
+                loading: false,
+                error: error instanceof Error ? error.message : String(error),
+                lastLoadedAt: prev[cell.id]?.lastLoadedAt,
+              },
+            }))
+          })
+      }, 250)
+    }
+
+    for (const cellId of Object.keys(optionsTimersRef.current)) {
+      if (nextTrackedCellIds.has(cellId)) continue
+      clearTimeout(optionsTimersRef.current[cellId])
+      delete optionsTimersRef.current[cellId]
+      delete optionRequestSignatureRef.current[cellId]
+    }
+
+    setResolvedOptionsByCell((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([cellId]) => nextTrackedCellIds.has(cellId)))
+    )
+  }, [activeNotebookId, inputValues, optionsRefreshTickByCell, sortedCells, widgetDraftByCell])
 
   const addCellMutation = useMutation({
     mutationFn: (type: NotebookCellType) => {
@@ -254,6 +409,46 @@ export function useNotebookCellState(params: {
     },
     onSuccess: (data) => {
       setStatus('Cell added')
+      setSelectedCellId(data.item.id)
+      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
+    },
+    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
+  })
+
+  const addWidgetPresetMutation = useMutation({
+    mutationFn: (presetId: NotebookWidgetPresetId) => {
+      const selectedIndex = sortedCells.findIndex((cell) => cell.id === selectedCellId)
+      const position = selectedIndex === -1 ? undefined : selectedIndex + 1
+      return createCell(activeNotebookId, {
+        type: 'widget',
+        metadata: createWidgetMetadataFromPreset(presetId) as NotebookWidgetMetadata,
+        position,
+      })
+    },
+    onSuccess: (data) => {
+      setStatus('Widget preset added')
+      setSelectedCellId(data.item.id)
+      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
+    },
+    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
+  })
+
+  const duplicateWidgetMutation = useMutation({
+    mutationFn: (cellId: string) => {
+      const sourceCell = sortedCells.find((cell) => cell.id === cellId)
+      if (!sourceCell || sourceCell.type !== 'widget') {
+        throw new Error('widget cell not found')
+      }
+      const position = sourceCell.position + 1
+      const metadata = widgetDraftByCellRef.current[cellId] || getNormalizedWidgetMetadata(sourceCell)
+      return createCell(activeNotebookId, {
+        type: 'widget',
+        metadata,
+        position,
+      })
+    },
+    onSuccess: (data) => {
+      setStatus('Widget duplicated')
       setSelectedCellId(data.item.id)
       if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
     },
@@ -340,6 +535,26 @@ export function useNotebookCellState(params: {
     scheduleCellSave(cell, { metadata: normalized })
 
     scheduleWidgetReactiveRuns(cell.id, previous as NotebookWidgetMetadata, normalized)
+  }
+
+  function updateParameterWidget(cellId: string, next: NotebookWidgetMetadata) {
+    const cell = sortedCellsRef.current.find((item) => item.id === cellId)
+    if (!cell || cell.type !== 'widget') return
+    onWidgetMetadataChange(cell, next)
+  }
+
+  function resetParameterWidget(cellId: string) {
+    const cell = sortedCellsRef.current.find((item) => item.id === cellId)
+    if (!cell || cell.type !== 'widget') return
+    const metadata = widgetDraftByCellRef.current[cell.id]
+    if (!metadata) return
+    const resetValue = getResetWidgetValue(metadata)
+    if (resetValue === undefined) return
+    onWidgetMetadataChange(cell, { ...metadata, value: resetValue })
+  }
+
+  function refreshSqlOptions(cellId: string) {
+    setOptionsRefreshTickByCell((prev) => ({ ...prev, [cellId]: (prev[cellId] || 0) + 1 }))
   }
 
   function scheduleWidgetReactiveRuns(cellId: string, previous: NotebookWidgetMetadata, next: NotebookWidgetMetadata) {
@@ -588,6 +803,10 @@ export function useNotebookCellState(params: {
     deleteCellMutation.mutate(cellId)
   }
 
+  function duplicateWidgetCellById(cellId: string) {
+    duplicateWidgetMutation.mutate(cellId)
+  }
+
   async function flushPendingSaves(reason?: string) {
     const notebookId = activeNotebookIdRef.current
     const entries = getPendingSaveEntries(pendingSavePayloadRef.current)
@@ -655,6 +874,9 @@ export function useNotebookCellState(params: {
 
   return {
     addCellMutation,
+    duplicateWidgetCellById,
+    duplicateWidgetMutation,
+    addWidgetPresetMutation,
     cellSectionRefs,
     deleteCellById,
     draftByCell,
@@ -663,12 +885,15 @@ export function useNotebookCellState(params: {
     jumpToInputCell,
     moveCell,
     notebookInputs,
+    parameterWidgets,
     onChangeCell,
     cellUiStateByCell,
     pendingSaveByCell,
     pendingSaveCount,
     previewMarkdown,
+    refreshSqlOptions,
     resultsByCell,
+    resolvedOptionsByCell,
     queuedRunByCell,
     saveErrorByCell,
     staleResultByCell,
@@ -685,6 +910,9 @@ export function useNotebookCellState(params: {
     sortedCells,
     sqlEditorRefs,
     toggleCellCollapsed,
+    updateParameterWidget,
+    resetParameterWidget,
+    validationMessagesByCell,
     flushPendingSaves,
     insertParamIntoSqlCell,
     widgetDraftByCell,
@@ -698,6 +926,55 @@ export function getChangedWidgetParamKeys(previous: NotebookWidgetMetadata, next
   const keys = new Set([...Object.keys(previousParams), ...Object.keys(nextParams)])
 
   return [...keys].filter((key) => !isSameValue(previousParams[key], nextParams[key]))
+}
+
+function getWidgetParameterKeys(metadata: NotebookWidgetMetadata) {
+  if (
+    metadata.widgetType === 'text' ||
+    metadata.widgetType === 'number' ||
+    metadata.widgetType === 'date' ||
+    metadata.widgetType === 'datetime-local' ||
+    metadata.widgetType === 'checkbox' ||
+    metadata.widgetType === 'select' ||
+    metadata.widgetType === 'range' ||
+    metadata.widgetType === 'multiselect' ||
+    metadata.widgetType === 'radio-group'
+  ) {
+    return metadata.key ? [metadata.key] : []
+  }
+
+  if (metadata.widgetType === 'date-range') {
+    return [metadata.config?.startKey?.trim(), metadata.config?.endKey?.trim()].filter((item): item is string => Boolean(item))
+  }
+
+  return []
+}
+
+function getResetWidgetValue(metadata: NotebookWidgetMetadata) {
+  if (
+    metadata.widgetType === 'text' ||
+    metadata.widgetType === 'number' ||
+    metadata.widgetType === 'date' ||
+    metadata.widgetType === 'datetime-local' ||
+    metadata.widgetType === 'checkbox' ||
+    metadata.widgetType === 'select' ||
+    metadata.widgetType === 'range' ||
+    metadata.widgetType === 'multiselect' ||
+    metadata.widgetType === 'radio-group'
+  ) {
+    return metadata.defaultValue ?? metadata.value
+  }
+
+  if (metadata.widgetType === 'date-range') {
+    return metadata.defaultValue ?? metadata.value
+  }
+
+  return undefined
+}
+
+function pushValidationMessage(target: WidgetValidationMessages, field: keyof WidgetValidationMessages, message: string) {
+  if (!target[field]) target[field] = []
+  target[field]!.push(message)
 }
 
 export function syncCellDraftState(input: {
