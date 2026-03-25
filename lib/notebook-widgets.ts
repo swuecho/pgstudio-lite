@@ -23,6 +23,8 @@ export const notebookWidgetOptionSchema = z.object({
   description: z.string().trim().min(1).optional(),
 })
 
+const notebookOptionSourceSchema = z.enum(['manual', 'sql'])
+
 const widgetBaseSchema = z.object({
   key: z.string().trim().regex(notebookParamKeyPattern).optional(),
   label: z.string().trim().min(1).optional(),
@@ -57,8 +59,16 @@ const inputLikeWidgetSchema = widgetBaseSchema.extend({
   if (!value.label) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['label'], message: 'label is required' })
   }
-  if ((value.widgetType === 'select' || value.widgetType === 'multiselect') && !value.options?.length) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['options'], message: 'at least one option is required' })
+  if (value.widgetType === 'select' || value.widgetType === 'multiselect') {
+    const optionSource = notebookOptionSourceSchema.catch('manual').parse(value.config?.optionSource)
+    if (optionSource === 'sql') {
+      const optionsQuery = typeof value.config?.optionsQuery === 'string' ? value.config.optionsQuery.trim() : ''
+      if (!optionsQuery) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['config', 'optionsQuery'], message: 'optionsQuery is required' })
+      }
+    } else if (!value.options?.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['options'], message: 'at least one option is required' })
+    }
   }
   if (value.widgetType === 'checkbox') {
     const parsedValue = value.value === undefined ? { success: true } : z.boolean().safeParse(value.value)
@@ -176,6 +186,20 @@ export const notebookWidgetMetadataSchema = z.discriminatedUnion('widgetType', [
 export type NotebookWidgetType = z.infer<typeof notebookWidgetTypeSchema>
 export type NotebookWidgetOption = z.infer<typeof notebookWidgetOptionSchema>
 export type NotebookWidgetMetadata = z.infer<typeof notebookWidgetMetadataSchema>
+export type NotebookWidgetPresetId =
+  | 'text-search'
+  | 'status-select'
+  | 'sql-select'
+  | 'date-range-last-7'
+  | 'numeric-range'
+
+export const NOTEBOOK_WIDGET_PRESETS: Array<{ id: NotebookWidgetPresetId; label: string; description: string }> = [
+  { id: 'text-search', label: 'Search Text', description: 'Free-text search parameter' },
+  { id: 'status-select', label: 'Status Select', description: 'Common status dropdown with fixed options' },
+  { id: 'sql-select', label: 'SQL Select', description: 'Query-backed select widget template' },
+  { id: 'date-range-last-7', label: 'Last 7 Days', description: 'Date range preset with last-7-days default' },
+  { id: 'numeric-range', label: 'Numeric Slider', description: 'Range slider with min/max/step defaults' },
+]
 
 export function isWidgetMetadata(value: unknown): value is NotebookWidgetMetadata {
   return notebookWidgetMetadataSchema.safeParse(value).success
@@ -196,14 +220,17 @@ export function createDefaultWidgetMetadata(widgetType: NotebookWidgetType): Not
     widgetType === 'range' ||
     widgetType === 'multiselect'
   ) {
+    const defaultValue =
+      widgetType === 'checkbox' ? false : widgetType === 'number' || widgetType === 'range' ? null : widgetType === 'multiselect' ? [] : ''
     return {
       widgetType,
       key: `param_${Math.random().toString(36).slice(2, 8)}`,
       label: 'Input',
       autoRun: true,
-      value:
-        widgetType === 'checkbox' ? false : widgetType === 'number' || widgetType === 'range' ? null : widgetType === 'multiselect' ? [] : '',
+      value: defaultValue,
+      defaultValue,
       options: widgetType === 'select' || widgetType === 'multiselect' ? [{ label: 'Option 1', value: 'option_1' }] : undefined,
+      config: widgetType === 'select' || widgetType === 'multiselect' ? { optionSource: 'manual' } : undefined,
     }
   }
   if (widgetType === 'radio-group') {
@@ -241,6 +268,77 @@ export function createDefaultWidgetMetadata(widgetType: NotebookWidgetType): Not
   }
 }
 
+export function createWidgetMetadataFromPreset(presetId: NotebookWidgetPresetId): NotebookWidgetMetadata {
+  if (presetId === 'text-search') {
+    return normalizeWidgetMetadata({
+      widgetType: 'text',
+      key: 'search_term',
+      label: 'Search',
+      placeholder: 'Type to filter results',
+      value: '',
+      defaultValue: '',
+      autoRun: true,
+    })
+  }
+
+  if (presetId === 'status-select') {
+    return normalizeWidgetMetadata({
+      widgetType: 'select',
+      key: 'status',
+      label: 'Status',
+      value: '',
+      defaultValue: '',
+      autoRun: true,
+      options: [
+        { label: 'All', value: 'all' },
+        { label: 'Open', value: 'open' },
+        { label: 'Closed', value: 'closed' },
+      ],
+      config: { optionSource: 'manual' },
+    })
+  }
+
+  if (presetId === 'sql-select') {
+    return normalizeWidgetMetadata({
+      widgetType: 'select',
+      key: 'entity_id',
+      label: 'Entity',
+      value: '',
+      defaultValue: '',
+      autoRun: true,
+      config: {
+        optionSource: 'sql',
+        optionsQuery: 'select id as value, name as label from my_table order by 2;',
+      },
+    })
+  }
+
+  if (presetId === 'date-range-last-7') {
+    const end = formatDateOffset(0)
+    const start = formatDateOffset(-6)
+    return normalizeWidgetMetadata({
+      widgetType: 'date-range',
+      label: 'Date Range',
+      autoRun: true,
+      value: { start, end },
+      defaultValue: { start, end },
+      config: { startKey: 'start_date', endKey: 'end_date' },
+    })
+  }
+
+  return normalizeWidgetMetadata({
+    widgetType: 'range',
+    key: 'limit',
+    label: 'Limit',
+    min: 1,
+    max: 100,
+    step: 1,
+    value: 25,
+    defaultValue: 25,
+    autoRun: true,
+  })
+}
+
 export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): NotebookWidgetMetadata {
   const parsed = notebookWidgetMetadataSchema.parse(input)
 
@@ -255,6 +353,7 @@ export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): Notebook
     parsed.widgetType === 'multiselect'
   ) {
     let value = parsed.value
+    let defaultValue = parsed.defaultValue
     if (parsed.widgetType === 'checkbox') value = Boolean(parsed.value)
     else if (parsed.widgetType === 'number' || parsed.widgetType === 'range') {
       value = parsed.value === '' || parsed.value === undefined ? null : parsed.value === null ? null : Number(parsed.value)
@@ -262,6 +361,20 @@ export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): Notebook
       value = Array.isArray(parsed.value) ? parsed.value.map((item) => String(item)) : []
     } else {
       value = parsed.value === undefined || parsed.value === null ? '' : String(parsed.value)
+    }
+
+    if (parsed.widgetType === 'checkbox') defaultValue = parsed.defaultValue === undefined ? false : Boolean(parsed.defaultValue)
+    else if (parsed.widgetType === 'number' || parsed.widgetType === 'range') {
+      defaultValue =
+        parsed.defaultValue === '' || parsed.defaultValue === undefined
+          ? null
+          : parsed.defaultValue === null
+            ? null
+            : Number(parsed.defaultValue)
+    } else if (parsed.widgetType === 'multiselect') {
+      defaultValue = Array.isArray(parsed.defaultValue) ? parsed.defaultValue.map((item) => String(item)) : []
+    } else {
+      defaultValue = parsed.defaultValue === undefined || parsed.defaultValue === null ? '' : String(parsed.defaultValue)
     }
 
     return {
@@ -275,7 +388,7 @@ export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): Notebook
       required: parsed.required === true || undefined,
       placeholder: parsed.placeholder?.trim() || undefined,
       value,
-      defaultValue: value,
+      defaultValue,
       options:
         parsed.widgetType === 'select' || parsed.widgetType === 'multiselect'
           ? (parsed.options || []).map((option) => ({
@@ -283,6 +396,13 @@ export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): Notebook
               value: option.value.trim(),
               description: option.description?.trim() || undefined,
             }))
+          : undefined,
+      config:
+        parsed.widgetType === 'select' || parsed.widgetType === 'multiselect'
+          ? {
+              optionSource: notebookOptionSourceSchema.catch('manual').parse(parsed.config?.optionSource),
+              optionsQuery: typeof parsed.config?.optionsQuery === 'string' ? parsed.config.optionsQuery.trim() || undefined : undefined,
+            }
           : undefined,
       min: parsed.min,
       max: parsed.max,
@@ -308,7 +428,7 @@ export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): Notebook
       required: parsed.required === true || undefined,
       placeholder: parsed.placeholder?.trim() || undefined,
       value: nextValue,
-      defaultValue: typeof parsed.defaultValue === 'string' ? parsed.defaultValue : nextValue,
+      defaultValue: typeof parsed.defaultValue === 'string' ? parsed.defaultValue : options[0]?.value || nextValue,
       options,
       min: parsed.min,
       max: parsed.max,
@@ -422,4 +542,10 @@ export function getWidgetParamValues(metadata: NotebookWidgetMetadata): Record<s
   }
 
   return {}
+}
+
+function formatDateOffset(offsetDays: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return date.toISOString().slice(0, 10)
 }

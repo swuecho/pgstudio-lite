@@ -678,3 +678,41 @@ export async function runNotebookSqlCell(input: {
     throw error
   }
 }
+
+export async function runNotebookOptionQuery(input: {
+  notebookId: string
+  query: string
+  inputValues?: Record<string, unknown>
+}) {
+  const notebook = metaDb.select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
+  if (!notebook) {
+    const error = new Error('notebook not found') as Error & { statusCode?: number }
+    error.statusCode = 404
+    throw error
+  }
+
+  const templateKeys = extractTemplateKeys(input.query)
+  let compiledQueryText = input.query
+  let compiledValues: unknown[] | undefined
+
+  if (templateKeys.length > 0) {
+    const resolvedValues: Record<string, unknown> = {}
+    for (const key of templateKeys) {
+      if (!(key in (input.inputValues || {}))) {
+        const error = new Error(`Unknown input key '{{${key}}}'`) as Error & { statusCode?: number }
+        error.statusCode = 400
+        throw error
+      }
+      resolvedValues[key] = input.inputValues?.[key]
+    }
+    const compiled = compileSqlTemplate(input.query, resolvedValues)
+    compiledQueryText = compiled.text
+    compiledValues = compiled.values
+  }
+
+  return executeQuery({
+    query: compiledQueryText,
+    connectionName: notebook.connectionName,
+    values: compiledValues,
+  })
+}

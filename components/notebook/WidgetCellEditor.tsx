@@ -1,5 +1,13 @@
 import { InputCellEditor } from './InputCellEditor'
-import type { NotebookInputCellMetadata, NotebookInputType, NotebookWidgetMetadata, NotebookWidgetType } from './types'
+import type {
+  NotebookInputCellMetadata,
+  NotebookInputType,
+  NotebookInputValues,
+  NotebookResolvedOptionsState,
+  NotebookWidgetMetadata,
+  NotebookWidgetType,
+} from './types'
+import type { WidgetValidationMessages } from '../../lib/notebook-widget-validation'
 import styles from './NotebookPage.module.css'
 
 type WidgetCellEditorProps = {
@@ -7,6 +15,11 @@ type WidgetCellEditorProps = {
   disabled?: boolean
   collapsed?: boolean
   valueOnly?: boolean
+  notebookId?: string
+  inputValues?: NotebookInputValues
+  sqlOptionsState?: NotebookResolvedOptionsState
+  onRefreshSqlOptions?: () => void
+  validationMessages?: WidgetValidationMessages
   availableSqlTargets?: Array<{ id: string; label: string }>
   onChange: (metadata: NotebookWidgetMetadata) => void
   onTriggerAction?: (metadata: NotebookWidgetMetadata) => void
@@ -32,6 +45,11 @@ export function WidgetCellEditor({
   disabled,
   collapsed,
   valueOnly,
+  notebookId,
+  inputValues,
+  sqlOptionsState,
+  onRefreshSqlOptions,
+  validationMessages,
   availableSqlTargets = [],
   onChange,
   onTriggerAction,
@@ -42,14 +60,22 @@ export function WidgetCellEditor({
         {isInputLikeWidget(metadata.widgetType) ? (
           <div className={styles.widgetInlineRow}>
             <span className={styles.widgetInlineLabel}>{metadata.key || metadata.label || 'param'}</span>
-            <InputLikeWidgetEditor metadata={metadata} disabled={disabled} onChange={onChange} valueOnly />
+            <InputLikeWidgetEditor
+              metadata={metadata}
+              disabled={disabled}
+              onChange={onChange}
+              valueOnly
+              sqlOptionsState={sqlOptionsState}
+              onRefreshSqlOptions={onRefreshSqlOptions}
+              validationMessages={validationMessages}
+            />
           </div>
         ) : null}
         {metadata.widgetType === 'radio-group' ? (
-          <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} compact />
+          <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} compact validationMessages={validationMessages} />
         ) : null}
         {metadata.widgetType === 'date-range' ? (
-          <DateRangeEditor metadata={metadata} disabled={disabled} onChange={onChange} compact />
+          <DateRangeEditor metadata={metadata} disabled={disabled} onChange={onChange} compact validationMessages={validationMessages} />
         ) : null}
         {metadata.widgetType === 'actions' ? (
           <ActionsEditor
@@ -116,15 +142,22 @@ export function WidgetCellEditor({
       </div>
 
       {isInputLikeWidget(metadata.widgetType) ? (
-        <InputLikeWidgetEditor metadata={metadata} disabled={disabled} onChange={onChange} />
+        <InputLikeWidgetEditor
+          metadata={metadata}
+          disabled={disabled}
+          onChange={onChange}
+          sqlOptionsState={sqlOptionsState}
+          onRefreshSqlOptions={onRefreshSqlOptions}
+          validationMessages={validationMessages}
+        />
       ) : null}
 
       {metadata.widgetType === 'radio-group' ? (
-        <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} />
+        <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} validationMessages={validationMessages} />
       ) : null}
 
       {metadata.widgetType === 'date-range' ? (
-        <DateRangeEditor metadata={metadata} disabled={disabled} onChange={onChange} />
+        <DateRangeEditor metadata={metadata} disabled={disabled} onChange={onChange} validationMessages={validationMessages} />
       ) : null}
 
       {metadata.widgetType === 'actions' ? (
@@ -149,11 +182,17 @@ function InputLikeWidgetEditor({
   disabled,
   onChange,
   valueOnly,
+  sqlOptionsState,
+  onRefreshSqlOptions,
+  validationMessages,
 }: {
   metadata: NotebookWidgetMetadata
   disabled?: boolean
   onChange: (metadata: NotebookWidgetMetadata) => void
   valueOnly?: boolean
+  sqlOptionsState?: NotebookResolvedOptionsState
+  onRefreshSqlOptions?: () => void
+  validationMessages?: WidgetValidationMessages
 }) {
   const inputMetadata = toLegacyInputMetadata(metadata)
   return (
@@ -162,7 +201,10 @@ function InputLikeWidgetEditor({
       disabled={disabled}
       valueOnly={valueOnly}
       showValueLabel={!valueOnly}
-      onChange={(next) => onChange(fromLegacyInputMetadata(metadata.widgetType as NotebookInputType, next))}
+      validationMessages={validationMessages}
+      sqlOptionsState={sqlOptionsState}
+      onRefreshSqlOptions={onRefreshSqlOptions}
+      onChange={(next) => onChange(fromLegacyInputMetadata(metadata, next))}
     />
   )
 }
@@ -172,11 +214,13 @@ function RadioGroupEditor({
   disabled,
   onChange,
   compact,
+  validationMessages,
 }: {
   metadata: NotebookWidgetMetadata
   disabled?: boolean
   onChange: (metadata: NotebookWidgetMetadata) => void
   compact?: boolean
+  validationMessages?: WidgetValidationMessages
 }) {
   const value = typeof metadata.value === 'string' ? metadata.value : ''
   const options = metadata.options || []
@@ -213,6 +257,7 @@ function RadioGroupEditor({
             onChange={(event) => onChange({ ...metadata, key: event.target.value.replace(/\s+/g, '_') })}
           />
         </label>
+        {validationMessages?.key?.length ? <ValidationList messages={validationMessages.key} /> : null}
         <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Options (`value|label` per line)
           <textarea
@@ -237,7 +282,10 @@ function RadioGroupEditor({
             }
           />
         </label>
+        {validationMessages?.options?.length ? <ValidationList messages={validationMessages.options} /> : null}
       </div>
+      {validationMessages?.label?.length ? <ValidationList messages={validationMessages.label} /> : null}
+      {validationMessages?.general?.length ? <ValidationList messages={validationMessages.general} /> : null}
       <div className={styles.widgetOptionRow}>
         {options.map((option) => (
           <label key={option.value} className={styles.widgetOptionChip}>
@@ -261,11 +309,13 @@ function DateRangeEditor({
   disabled,
   onChange,
   compact,
+  validationMessages,
 }: {
   metadata: NotebookWidgetMetadata
   disabled?: boolean
   onChange: (metadata: NotebookWidgetMetadata) => void
   compact?: boolean
+  validationMessages?: WidgetValidationMessages
 }) {
   const value =
     metadata.value && typeof metadata.value === 'object' && 'start' in metadata.value && 'end' in metadata.value
@@ -315,6 +365,7 @@ function DateRangeEditor({
             }
           />
         </label>
+        {validationMessages?.startKey?.length ? <ValidationList messages={validationMessages.startKey} /> : null}
         <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           End Key
           <input
@@ -329,7 +380,10 @@ function DateRangeEditor({
             }
           />
         </label>
+        {validationMessages?.endKey?.length ? <ValidationList messages={validationMessages.endKey} /> : null}
       </div>
+      {validationMessages?.label?.length ? <ValidationList messages={validationMessages.label} /> : null}
+      {validationMessages?.general?.length ? <ValidationList messages={validationMessages.general} /> : null}
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Start Date
@@ -559,6 +613,7 @@ function defaultMetadataForType(widgetType: NotebookWidgetType): NotebookWidgetM
       value:
         widgetType === 'checkbox' ? false : widgetType === 'number' || widgetType === 'range' ? null : widgetType === 'multiselect' ? [] : '',
       options: widgetType === 'select' || widgetType === 'multiselect' ? [{ label: 'Option 1', value: 'option_1' }] : undefined,
+      config: widgetType === 'select' || widgetType === 'multiselect' ? { optionSource: 'manual' } : undefined,
     }
   }
   if (widgetType === 'radio-group') {
@@ -627,9 +682,15 @@ function toLegacyInputMetadata(metadata: NotebookWidgetMetadata): NotebookInputC
               ? []
               : ''
         : (metadata.value as NotebookInputCellMetadata['value']),
+    defaultValue:
+      metadata.defaultValue === undefined
+        ? undefined
+        : (metadata.defaultValue as NotebookInputCellMetadata['defaultValue']),
     required: metadata.required,
     placeholder: metadata.placeholder,
     options: metadata.options,
+    optionsSource: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
+    optionsQuery: typeof metadata.config?.optionsQuery === 'string' ? metadata.config.optionsQuery : undefined,
     min: metadata.min,
     max: metadata.max,
     step: metadata.step,
@@ -637,18 +698,39 @@ function toLegacyInputMetadata(metadata: NotebookWidgetMetadata): NotebookInputC
   }
 }
 
-function fromLegacyInputMetadata(widgetType: NotebookInputType, metadata: NotebookInputCellMetadata): NotebookWidgetMetadata {
+function fromLegacyInputMetadata(current: NotebookWidgetMetadata, metadata: NotebookInputCellMetadata): NotebookWidgetMetadata {
+  const widgetType = current.widgetType as NotebookInputType
   return {
     widgetType,
     key: metadata.key,
     label: metadata.label,
     value: metadata.value,
+    defaultValue: current.defaultValue,
     required: metadata.required,
     placeholder: metadata.placeholder,
     options: metadata.options,
+    config:
+      widgetType === 'select' || widgetType === 'multiselect'
+        ? {
+            optionSource: metadata.optionsSource === 'sql' ? 'sql' : 'manual',
+            optionsQuery: metadata.optionsQuery?.trim() || undefined,
+          }
+        : undefined,
     min: metadata.min,
     max: metadata.max,
     step: metadata.step,
     autoRun: metadata.autoRun,
   }
+}
+
+function ValidationList({ messages }: { messages: string[] }) {
+  return (
+    <div className="grid gap-1">
+      {messages.map((message, index) => (
+        <div key={`${message}-${index}`} className="text-xs text-rose-300">
+          {message}
+        </div>
+      ))}
+    </div>
+  )
 }

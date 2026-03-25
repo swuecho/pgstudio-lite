@@ -109,6 +109,14 @@ export async function runCell(notebookId: string, cellId: string, query: string,
   })
 }
 
+export async function runOptionQuery(notebookId: string, query: string, inputValues?: NotebookInputValues) {
+  const payload = inputValues ? { query, inputValues } : { query }
+  return fetchJson<RunCellResponse>(`/api/notebooks/${encodeURIComponent(notebookId)}/option-query`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export async function importNotebook(payload: {
   mode?: 'create' | 'replace' | 'upsert'
   target_notebook_id?: string
