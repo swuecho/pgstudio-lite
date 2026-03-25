@@ -19,6 +19,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     cellUiStateByCell,
     detailQuery,
     draftByCell,
+    inputValues,
     inputKeys,
     jumpToInputCell,
     moveCell,
@@ -256,6 +257,8 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                   <WidgetCellEditor
                     metadata={widgetDraftByCell[cell.id] || (cell.metadata_json as any)}
                     disabled={runningAll}
+                    notebookId={activeNotebookId}
+                    inputValues={inputValues}
                     availableSqlTargets={availableSqlTargets}
                     onChange={(next) => onWidgetMetadataChange(cell, next)}
                     onTriggerAction={(metadata) => {
@@ -273,6 +276,8 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                       metadata={widgetDraftByCell[cell.id] || (cell.metadata_json as any)}
                       collapsed
                       disabled={runningAll}
+                      notebookId={activeNotebookId}
+                      inputValues={inputValues}
                       availableSqlTargets={availableSqlTargets}
                       onChange={(next) => onWidgetMetadataChange(cell, next)}
                     />

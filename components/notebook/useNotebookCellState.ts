@@ -658,6 +658,7 @@ export function useNotebookCellState(params: {
     cellSectionRefs,
     deleteCellById,
     draftByCell,
+    inputValues,
     inputKeys,
     jumpToInputCell,
     moveCell,
