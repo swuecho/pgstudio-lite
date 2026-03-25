@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { runOptionQuery } from '../../features/notebook/notebook.service'
-import { mapQueryResultToOptions } from '../../lib/notebook-option-source'
-import type { NotebookInputCellMetadata, NotebookInputOption, NotebookInputType, NotebookInputValues, NotebookOptionSource } from './types'
+import type { WidgetValidationMessages } from '../../lib/notebook-widget-validation'
+import type { NotebookInputCellMetadata, NotebookInputOption, NotebookInputType, NotebookOptionSource, NotebookResolvedOptionsState } from './types'
 
 type InputCellEditorProps = {
   metadata: NotebookInputCellMetadata
@@ -9,8 +8,9 @@ type InputCellEditorProps = {
   onChange: (metadata: NotebookInputCellMetadata) => void
   valueOnly?: boolean
   showValueLabel?: boolean
-  notebookId?: string
-  inputValues?: NotebookInputValues
+  validationMessages?: WidgetValidationMessages
+  sqlOptionsState?: NotebookResolvedOptionsState
+  onRefreshSqlOptions?: () => void
 }
 
 const INPUT_TYPE_OPTIONS: Array<{ value: NotebookInputType; label: string }> = [
@@ -37,8 +37,9 @@ export function InputCellEditor({
   onChange,
   valueOnly,
   showValueLabel = true,
-  notebookId,
-  inputValues,
+  validationMessages,
+  sqlOptionsState,
+  onRefreshSqlOptions,
 }: InputCellEditorProps) {
   const [optionsDraft, setOptionsDraft] = useState(() => optionsToText(metadata.options))
   const [optionsEditing, setOptionsEditing] = useState(false)
@@ -48,7 +49,7 @@ export function InputCellEditor({
   const serializedQuery = metadata.optionsQuery || ''
   const optionsSource = getOptionsSource(metadata)
   const isOptionWidget = metadata.inputType === 'select' || metadata.inputType === 'multiselect'
-  const sqlOptionState = useSqlOptions({ notebookId, inputValues, metadata, enabled: isOptionWidget && optionsSource === 'sql' })
+  const sqlOptionState = sqlOptionsState || DEFAULT_RESOLVED_OPTIONS_STATE
 
   useEffect(() => {
     if (optionsEditing) return
@@ -130,6 +131,7 @@ export function InputCellEditor({
             placeholder="start_date"
           />
         </label>
+        {validationMessages?.key?.length ? <ValidationList messages={validationMessages.key} /> : null}
         <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Label
           <input
@@ -140,6 +142,7 @@ export function InputCellEditor({
             placeholder="Start date"
           />
         </label>
+        {validationMessages?.label?.length ? <ValidationList messages={validationMessages.label} /> : null}
         <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           Type
           <select
@@ -237,21 +240,24 @@ export function InputCellEditor({
       </div>
 
       {isOptionWidget && optionsSource === 'manual' && (
-        <label className="grid gap-1.5 text-xs text-[var(--muted)]">
-          Options (`value|label` per line)
-          <textarea
-            className="min-h-[84px] w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 font-mono text-xs text-[var(--text)]"
-            value={optionsDraft}
-            disabled={disabled}
-            onFocus={() => setOptionsEditing(true)}
-            onBlur={() => setOptionsEditing(false)}
-            onChange={(event) => {
-              const nextDraft = event.target.value
-              setOptionsDraft(nextDraft)
-              setOptionsFromText(nextDraft)
-            }}
-          />
-        </label>
+        <>
+          <label className="grid gap-1.5 text-xs text-[var(--muted)]">
+            Options (`value|label` per line)
+            <textarea
+              className="min-h-[84px] w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 font-mono text-xs text-[var(--text)]"
+              value={optionsDraft}
+              disabled={disabled}
+              onFocus={() => setOptionsEditing(true)}
+              onBlur={() => setOptionsEditing(false)}
+              onChange={(event) => {
+                const nextDraft = event.target.value
+                setOptionsDraft(nextDraft)
+                setOptionsFromText(nextDraft)
+              }}
+            />
+          </label>
+          {validationMessages?.options?.length ? <ValidationList messages={validationMessages.options} /> : null}
+        </>
       )}
 
       {isOptionWidget && optionsSource === 'sql' && (
@@ -272,8 +278,17 @@ export function InputCellEditor({
               }}
             />
           </label>
+          {validationMessages?.optionsQuery?.length ? <ValidationList messages={validationMessages.optionsQuery} /> : null}
           <div className="history-meta">Return `value` and `label` columns. If `label` is omitted, the second column or `value` is used.</div>
+          {onRefreshSqlOptions ? (
+            <button className="btn small" type="button" onClick={onRefreshSqlOptions} disabled={disabled || sqlOptionState.loading}>
+              {sqlOptionState.loading ? 'Refreshing...' : 'Refresh Options'}
+            </button>
+          ) : null}
           {sqlOptionState.loading ? <div className="history-meta">Loading options...</div> : null}
+          {sqlOptionState.lastLoadedAt ? (
+            <div className="history-meta">Last loaded: {new Date(sqlOptionState.lastLoadedAt).toLocaleString()}</div>
+          ) : null}
           {sqlOptionState.error ? <div className="empty-state">{sqlOptionState.error}</div> : null}
           {!sqlOptionState.loading && !sqlOptionState.error ? (
             effectiveOptions.length ? (
@@ -326,6 +341,7 @@ export function InputCellEditor({
           Auto-run dependent SQL
         </label>
       </div>
+      {validationMessages?.general?.length ? <ValidationList messages={validationMessages.general} /> : null}
     </div>
   )
 }
@@ -449,67 +465,6 @@ function InputValueControl({
   )
 }
 
-function useSqlOptions({
-  notebookId,
-  inputValues,
-  metadata,
-  enabled,
-}: {
-  notebookId?: string
-  inputValues?: NotebookInputValues
-  metadata: NotebookInputCellMetadata
-  enabled: boolean
-}) {
-  const [state, setState] = useState<{ options: NotebookInputOption[]; loading: boolean; error: string }>({
-    options: [],
-    loading: false,
-    error: '',
-  })
-  const serializedInputValues = JSON.stringify(inputValues || {})
-
-  useEffect(() => {
-    if (!enabled) {
-      setState({ options: [], loading: false, error: '' })
-      return
-    }
-
-    const query = metadata.optionsQuery?.trim() || ''
-    if (!notebookId || !query) {
-      setState({ options: [], loading: false, error: '' })
-      return
-    }
-
-    let active = true
-    setState((current) => ({ ...current, loading: true, error: '' }))
-    const timer = window.setTimeout(() => {
-      void runOptionQuery(notebookId, query, inputValues)
-        .then((result) => {
-          if (!active) return
-          setState({
-            options: mapQueryResultToOptions(result),
-            loading: false,
-            error: '',
-          })
-        })
-        .catch((error) => {
-          if (!active) return
-          setState({
-            options: [],
-            loading: false,
-            error: error instanceof Error ? error.message : String(error),
-          })
-        })
-    }, 250)
-
-    return () => {
-      active = false
-      window.clearTimeout(timer)
-    }
-  }, [enabled, inputValues, metadata.optionsQuery, notebookId, serializedInputValues])
-
-  return state
-}
-
 function getOptionsSource(metadata: NotebookInputCellMetadata): NotebookOptionSource {
   return metadata.optionsSource === 'sql' ? 'sql' : 'manual'
 }
@@ -557,4 +512,22 @@ function isSameInputValue(left: NotebookInputCellMetadata['value'], right: Noteb
     return left.every((item, index) => item === right[index])
   }
   return left === right
+}
+
+function ValidationList({ messages }: { messages: string[] }) {
+  return (
+    <div className="grid gap-1">
+      {messages.map((message, index) => (
+        <div key={`${message}-${index}`} className="text-xs text-rose-300">
+          {message}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const DEFAULT_RESOLVED_OPTIONS_STATE: NotebookResolvedOptionsState = {
+  options: [],
+  loading: false,
+  error: '',
 }
