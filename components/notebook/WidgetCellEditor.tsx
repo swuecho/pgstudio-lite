@@ -1,5 +1,5 @@
 import { InputCellEditor } from './InputCellEditor'
-import type { NotebookInputCellMetadata, NotebookInputType, NotebookWidgetMetadata, NotebookWidgetType } from './types'
+import type { NotebookInputCellMetadata, NotebookInputType, NotebookInputValues, NotebookWidgetMetadata, NotebookWidgetType } from './types'
 import styles from './NotebookPage.module.css'
 
 type WidgetCellEditorProps = {
@@ -7,6 +7,8 @@ type WidgetCellEditorProps = {
   disabled?: boolean
   collapsed?: boolean
   valueOnly?: boolean
+  notebookId?: string
+  inputValues?: NotebookInputValues
   availableSqlTargets?: Array<{ id: string; label: string }>
   onChange: (metadata: NotebookWidgetMetadata) => void
   onTriggerAction?: (metadata: NotebookWidgetMetadata) => void
@@ -32,6 +34,8 @@ export function WidgetCellEditor({
   disabled,
   collapsed,
   valueOnly,
+  notebookId,
+  inputValues,
   availableSqlTargets = [],
   onChange,
   onTriggerAction,
@@ -42,7 +46,14 @@ export function WidgetCellEditor({
         {isInputLikeWidget(metadata.widgetType) ? (
           <div className={styles.widgetInlineRow}>
             <span className={styles.widgetInlineLabel}>{metadata.key || metadata.label || 'param'}</span>
-            <InputLikeWidgetEditor metadata={metadata} disabled={disabled} onChange={onChange} valueOnly />
+            <InputLikeWidgetEditor
+              metadata={metadata}
+              disabled={disabled}
+              onChange={onChange}
+              valueOnly
+              notebookId={notebookId}
+              inputValues={inputValues}
+            />
           </div>
         ) : null}
         {metadata.widgetType === 'radio-group' ? (
@@ -116,7 +127,7 @@ export function WidgetCellEditor({
       </div>
 
       {isInputLikeWidget(metadata.widgetType) ? (
-        <InputLikeWidgetEditor metadata={metadata} disabled={disabled} onChange={onChange} />
+        <InputLikeWidgetEditor metadata={metadata} disabled={disabled} onChange={onChange} notebookId={notebookId} inputValues={inputValues} />
       ) : null}
 
       {metadata.widgetType === 'radio-group' ? (
@@ -149,11 +160,15 @@ function InputLikeWidgetEditor({
   disabled,
   onChange,
   valueOnly,
+  notebookId,
+  inputValues,
 }: {
   metadata: NotebookWidgetMetadata
   disabled?: boolean
   onChange: (metadata: NotebookWidgetMetadata) => void
   valueOnly?: boolean
+  notebookId?: string
+  inputValues?: NotebookInputValues
 }) {
   const inputMetadata = toLegacyInputMetadata(metadata)
   return (
@@ -162,6 +177,8 @@ function InputLikeWidgetEditor({
       disabled={disabled}
       valueOnly={valueOnly}
       showValueLabel={!valueOnly}
+      notebookId={notebookId}
+      inputValues={inputValues}
       onChange={(next) => onChange(fromLegacyInputMetadata(metadata.widgetType as NotebookInputType, next))}
     />
   )
@@ -559,6 +576,7 @@ function defaultMetadataForType(widgetType: NotebookWidgetType): NotebookWidgetM
       value:
         widgetType === 'checkbox' ? false : widgetType === 'number' || widgetType === 'range' ? null : widgetType === 'multiselect' ? [] : '',
       options: widgetType === 'select' || widgetType === 'multiselect' ? [{ label: 'Option 1', value: 'option_1' }] : undefined,
+      config: widgetType === 'select' || widgetType === 'multiselect' ? { optionSource: 'manual' } : undefined,
     }
   }
   if (widgetType === 'radio-group') {
@@ -630,6 +648,8 @@ function toLegacyInputMetadata(metadata: NotebookWidgetMetadata): NotebookInputC
     required: metadata.required,
     placeholder: metadata.placeholder,
     options: metadata.options,
+    optionsSource: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
+    optionsQuery: typeof metadata.config?.optionsQuery === 'string' ? metadata.config.optionsQuery : undefined,
     min: metadata.min,
     max: metadata.max,
     step: metadata.step,
@@ -646,6 +666,13 @@ function fromLegacyInputMetadata(widgetType: NotebookInputType, metadata: Notebo
     required: metadata.required,
     placeholder: metadata.placeholder,
     options: metadata.options,
+    config:
+      widgetType === 'select' || widgetType === 'multiselect'
+        ? {
+            optionSource: metadata.optionsSource === 'sql' ? 'sql' : 'manual',
+            optionsQuery: metadata.optionsQuery?.trim() || undefined,
+          }
+        : undefined,
     min: metadata.min,
     max: metadata.max,
     step: metadata.step,

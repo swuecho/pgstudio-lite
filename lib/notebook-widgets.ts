@@ -23,6 +23,8 @@ export const notebookWidgetOptionSchema = z.object({
   description: z.string().trim().min(1).optional(),
 })
 
+const notebookOptionSourceSchema = z.enum(['manual', 'sql'])
+
 const widgetBaseSchema = z.object({
   key: z.string().trim().regex(notebookParamKeyPattern).optional(),
   label: z.string().trim().min(1).optional(),
@@ -57,8 +59,16 @@ const inputLikeWidgetSchema = widgetBaseSchema.extend({
   if (!value.label) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['label'], message: 'label is required' })
   }
-  if ((value.widgetType === 'select' || value.widgetType === 'multiselect') && !value.options?.length) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['options'], message: 'at least one option is required' })
+  if (value.widgetType === 'select' || value.widgetType === 'multiselect') {
+    const optionSource = notebookOptionSourceSchema.catch('manual').parse(value.config?.optionSource)
+    if (optionSource === 'sql') {
+      const optionsQuery = typeof value.config?.optionsQuery === 'string' ? value.config.optionsQuery.trim() : ''
+      if (!optionsQuery) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['config', 'optionsQuery'], message: 'optionsQuery is required' })
+      }
+    } else if (!value.options?.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['options'], message: 'at least one option is required' })
+    }
   }
   if (value.widgetType === 'checkbox') {
     const parsedValue = value.value === undefined ? { success: true } : z.boolean().safeParse(value.value)
@@ -204,6 +214,7 @@ export function createDefaultWidgetMetadata(widgetType: NotebookWidgetType): Not
       value:
         widgetType === 'checkbox' ? false : widgetType === 'number' || widgetType === 'range' ? null : widgetType === 'multiselect' ? [] : '',
       options: widgetType === 'select' || widgetType === 'multiselect' ? [{ label: 'Option 1', value: 'option_1' }] : undefined,
+      config: widgetType === 'select' || widgetType === 'multiselect' ? { optionSource: 'manual' } : undefined,
     }
   }
   if (widgetType === 'radio-group') {
@@ -283,6 +294,13 @@ export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): Notebook
               value: option.value.trim(),
               description: option.description?.trim() || undefined,
             }))
+          : undefined,
+      config:
+        parsed.widgetType === 'select' || parsed.widgetType === 'multiselect'
+          ? {
+              optionSource: notebookOptionSourceSchema.catch('manual').parse(parsed.config?.optionSource),
+              optionsQuery: typeof parsed.config?.optionsQuery === 'string' ? parsed.config.optionsQuery.trim() || undefined : undefined,
+            }
           : undefined,
       min: parsed.min,
       max: parsed.max,
