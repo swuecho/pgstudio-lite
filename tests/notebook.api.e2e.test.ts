@@ -6,7 +6,7 @@ import optionQueryHandler from '../pages/api/notebooks/[id]/option-query'
 import notebookExportHandler from '../pages/api/notebooks/[id]/export'
 import notebookPatchHandler from '../pages/api/notebooks/[id]/patch'
 import notebookImportHandler from '../pages/api/notebooks/import'
-import { sqlite } from '../lib/meta-db'
+import { ensureMetaDbReady, sqlite } from '../lib/meta-db'
 import { executeQuery } from '../lib/db'
 
 vi.mock('../lib/db', () => {
@@ -70,6 +70,7 @@ function invokeApi(
 }
 
 function resetNotebookFixtures() {
+  ensureMetaDbReady()
   sqlite.exec(`
     DELETE FROM notebook_cells;
     DELETE FROM notebooks;
