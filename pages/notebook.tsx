@@ -3,8 +3,10 @@ import ThemeToggle from '../components/theme-toggle'
 import { NotebookCellList } from '../components/notebook/NotebookCellList'
 import { NotebookHelpPanel } from '../components/notebook/NotebookHelpPanel'
 import { NotebookImportModal } from '../components/notebook/NotebookImportModal'
+import { NotebookParameterPanel } from '../components/notebook/NotebookParameterPanel'
 import { NotebookSidebar } from '../components/notebook/NotebookSidebar'
 import { useNotebookPageState } from '../components/notebook/useNotebookPageState'
+import { NOTEBOOK_WIDGET_PRESETS } from '../lib/notebook-widgets'
 import styles from '../components/notebook/NotebookPage.module.css'
 
 export default function NotebookPage() {
@@ -106,6 +108,26 @@ export default function NotebookPage() {
             >
               Add Markdown
             </button>
+            <select
+              className={styles.presetSelect}
+              value={controller.selectedWidgetPreset}
+              disabled={!controller.activeNotebookId || controller.runningAll}
+              onChange={(event) => controller.setSelectedWidgetPreset(event.target.value as (typeof controller.selectedWidgetPreset))}
+              title="Widget preset"
+            >
+              {NOTEBOOK_WIDGET_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn small"
+              disabled={!controller.activeNotebookId || controller.runningAll}
+              onClick={() => controller.addWidgetPresetMutation.mutate(controller.selectedWidgetPreset)}
+            >
+              Add Preset
+            </button>
             <button
               className="btn small"
               disabled={!controller.activeNotebookId || controller.runningAll}
@@ -138,6 +160,8 @@ export default function NotebookPage() {
             copyHelpApiSnippet={controller.notebookImport.copyHelpApiSnippet}
           />
         ) : null}
+
+        <NotebookParameterPanel controller={controller} />
 
         <div className={styles.cells}>
           <NotebookCellList controller={controller} />

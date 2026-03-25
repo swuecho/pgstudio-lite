@@ -20,6 +20,17 @@
   white-space: nowrap;
 }
 
+.presetSelect {
+  height: var(--control-h);
+  min-width: 180px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -40,6 +51,78 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.parameterPanel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 10%, transparent), transparent 32%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 94%, var(--accent) 6%), var(--panel));
+}
+
+.parameterPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.parameterPanelTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.parameterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.parameterCard {
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+  padding: 12px;
+}
+
+.parameterCardHead {
+  display: grid;
+  gap: 6px;
+}
+
+.parameterCardTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.parameterCardTitle {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.parameterCardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.parameterCardBody {
+  min-width: 0;
+}
+
+.parameterActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .cells {

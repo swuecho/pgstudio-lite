@@ -7,6 +7,13 @@ export type NotebookInputOption = {
   value: string
 }
 
+export type NotebookResolvedOptionsState = {
+  options: NotebookInputOption[]
+  loading: boolean
+  error: string
+  lastLoadedAt?: string
+}
+
 export type NotebookOptionSource = 'manual' | 'sql'
 
 export type NotebookWidgetType =
@@ -68,6 +75,7 @@ export type NotebookInputCellMetadata = {
   label: string
   inputType: NotebookInputType
   value: string | number | boolean | string[] | null
+  defaultValue?: string | number | boolean | string[] | null
   required?: boolean
   placeholder?: string
   options?: NotebookInputOption[]

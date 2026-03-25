@@ -43,6 +43,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     sqlEditorRefs,
     toggleCellCollapsed,
     deleteCellById,
+    duplicateWidgetCellById,
     cellSectionRefs,
     insertParamIntoSqlCell,
     widgetDraftByCell,
@@ -134,6 +135,11 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                 </button>
                 {!cell.collapsed ? (
                   <>
+                    {cell.type === 'widget' ? (
+                      <button className="btn small" onClick={() => duplicateWidgetCellById(cell.id)}>
+                        Duplicate
+                      </button>
+                    ) : null}
                     <button className="btn small" onClick={() => moveCell(cell, 'up')}>
                       Up
                     </button>
@@ -259,6 +265,9 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                     disabled={runningAll}
                     notebookId={activeNotebookId}
                     inputValues={inputValues}
+                    sqlOptionsState={controller.resolvedOptionsByCell[cell.id]}
+                    onRefreshSqlOptions={() => controller.refreshSqlOptions(cell.id)}
+                    validationMessages={controller.validationMessagesByCell[cell.id]}
                     availableSqlTargets={availableSqlTargets}
                     onChange={(next) => onWidgetMetadataChange(cell, next)}
                     onTriggerAction={(metadata) => {
@@ -278,6 +287,9 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                       disabled={runningAll}
                       notebookId={activeNotebookId}
                       inputValues={inputValues}
+                      sqlOptionsState={controller.resolvedOptionsByCell[cell.id]}
+                      onRefreshSqlOptions={() => controller.refreshSqlOptions(cell.id)}
+                      validationMessages={controller.validationMessagesByCell[cell.id]}
                       availableSqlTargets={availableSqlTargets}
                       onChange={(next) => onWidgetMetadataChange(cell, next)}
                     />
