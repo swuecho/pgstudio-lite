@@ -1,9 +1,17 @@
 import { existsSync, rmSync } from 'node:fs'
 import { getMetaDbPath } from '../lib/meta-db-path'
 
-const dbPath = getMetaDbPath()
+declare global {
+  var __pgstudioVitestDbCleaned__: boolean | undefined
+}
 
-for (const suffix of ['', '-wal', '-shm']) {
-  const target = `${dbPath}${suffix}`
-  if (existsSync(target)) rmSync(target, { force: true })
+if (!globalThis.__pgstudioVitestDbCleaned__) {
+  const dbPath = getMetaDbPath()
+
+  for (const suffix of ['', '-wal', '-shm']) {
+    const target = `${dbPath}${suffix}`
+    if (existsSync(target)) rmSync(target, { force: true })
+  }
+
+  globalThis.__pgstudioVitestDbCleaned__ = true
 }
