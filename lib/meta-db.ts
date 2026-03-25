@@ -32,6 +32,7 @@ function hasColumn(table: string, column: string) {
 export const metaDb = drizzle(sqlite, { schema })
 
 export function ensureMetaDbReady() {
+  const isTestRuntime = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test')
   // Handle dev drift where metadata_json exists already but 0006 is not yet registered.
   const hasNotebookMetadataJsonColumn =
     hasTable('notebook_cells') && hasColumn('notebook_cells', 'metadata_json')
@@ -53,12 +54,14 @@ export function ensureMetaDbReady() {
     }
   }
 
-  const shouldRunMigrations = process.env.VITEST || process.env.NODE_ENV === 'test' || process.env.SKIP_RUNTIME_MIGRATE !== '1'
+  const shouldRunMigrations = isTestRuntime || process.env.SKIP_RUNTIME_MIGRATE !== '1'
   if (shouldRunMigrations) {
     migrate(metaDb, { migrationsFolder: join(process.cwd(), 'drizzle/migrations') })
   }
 
-  ensureBaseTables()
+  if (isTestRuntime) {
+    ensureBaseTables()
+  }
 
   if (hasTable('notebook_cells') && !hasColumn('notebook_cells', 'last_result_json')) {
     sqlite.exec(`ALTER TABLE notebook_cells ADD COLUMN last_result_json text;`)
