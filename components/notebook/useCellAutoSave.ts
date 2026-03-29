@@ -6,8 +6,6 @@ import {
   clearPendingSaveCell,
   clearSaveError,
   getPendingSaveEntries,
-  type syncCellDraftState,
-  type syncWidgetDraftState,
 } from './cellSyncHelpers'
 
 export function useCellAutoSave(params: {

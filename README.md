@@ -1,108 +1,169 @@
 # PG Studio Lite
 
-PostgreSQL web manager using the same framework style as Supabase Studio:
+PG Studio Lite is a local PostgreSQL web manager built with Next.js. It includes:
+
+- SQL Editor
+- Table Editor
+- Notebook editor with SQL, Markdown, and widget cells
+- SQLite-backed local metadata for history, snippets, notebooks, and saved connections
+
+## Stack
 
 - Next.js (pages router)
 - React + TypeScript
 - Monaco editor
-- API routes for SQL execution and table editing
-- SQLite + Drizzle ORM for query history/snippets/connections metadata
-- Zustand for SQL/Table UI state slices
-- Service layer modules for API interactions (`features/sql`, `features/table`)
-- React Query for server state (`connections`, `history`, `snippets`, `schema`, `table rows`)
+- PostgreSQL via `pg`
+- SQLite metadata via `better-sqlite3` + Drizzle ORM
+- React Query for server state
+- Zustand for UI/session state
 
-## Included editors
+## Quickstart
 
-- SQL Editor (Studio-like layout)
-- Table Editor (browse tables, edit cells, insert row, delete row)
-- Notebook (mixed SQL + Markdown cells with per-cell execution)
-  - Run single SQL cell or run all SQL cells in order
-  - Markdown edit/preview mode with formatted headings/lists/code blocks
-  - Collapsible cells with persisted collapsed state
-
-## SQL snippet features
-
-- Create, update, rename, duplicate, and delete snippets
-- Snippet-bound tabs (`Edit` opens/reuses a tab linked to the snippet)
-- Inline snippet rename in the sidebar
-- `Save` / `Update` / `Save As` flow for snippet-bound vs unbound tabs
-- Autosave for dirty snippet-bound tabs
-- Unsaved badge for snippet-bound tabs with local changes
-- Keyboard shortcut: `Ctrl/Cmd+S` to save/update current snippet
-
-## Reused from Supabase Studio
-
-- Framework style and page/API split (Next.js pages + API routes)
-- Monaco theme pattern from `apps/studio/components/interfaces/App/MonacoThemeProvider.tsx`
-- Monaco CSS behavior adapted from `apps/studio/styles/monaco.scss`
-- Monaco assets served from `apps/studio/public/monaco-editor`
-- SQL `suffixWithLimit` logic copied from `apps/studio/components/interfaces/SQLEditor/SQLEditor.utils.ts`
-
-## Run
+1. Install dependencies:
 
 ```bash
-cd /Users/hwu/dev/pgstudio/supabase/apps/pgstudio-lite
 npm install
-PG_CONNECTION_STRING='postgres://user:password@localhost:5432/postgres' npm run dev
 ```
 
-Open:
+2. Create local env config:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Set `PG_CONNECTION_STRING` in `.env.local` to a reachable PostgreSQL instance.
+
+Example:
+
+```bash
+PG_CONNECTION_STRING=postgres://postgres:postgres@localhost:5432/postgres
+PG_CONNECTION_NAME=local
+PG_CONNECTION_READ_ONLY=false
+```
+
+4. Start the app:
+
+```bash
+npm run dev
+```
+
+5. Open:
 
 - SQL Editor: [http://localhost:4180](http://localhost:4180)
 - Table Editor: [http://localhost:4180/table-editor](http://localhost:4180/table-editor)
 - Notebook: [http://localhost:4180/notebook](http://localhost:4180/notebook)
 
-Optional:
+## First Run Notes
 
-```bash
-PG_CONNECTION_NAME='local-dev'
-PG_CONNECTION_READ_ONLY='true' # optional, defaults to false
+- On first boot, connections are seeded from `PG_CONNECTIONS_JSON` if present.
+- If `PG_CONNECTIONS_JSON` is not set, the app falls back to `PG_CONNECTION_STRING`, `PG_CONNECTION_NAME`, and `PG_CONNECTION_READ_ONLY`.
+- Seeded connections are only used when the local metadata DB has no saved connections yet.
+- After first boot, connection changes are managed in the UI and persisted locally.
+
+## Environment Variables
+
+Required:
+
+- `PG_CONNECTION_STRING`
+  Example: `postgres://postgres:postgres@localhost:5432/postgres`
+
+Common optional:
+
+- `PG_CONNECTION_NAME`
+  Default: `default`
+- `PG_CONNECTION_READ_ONLY`
+  Values: `true` or `false`
+  Default: `false`
+- `PG_CONNECTIONS_JSON`
+  Seed multiple saved connections on first boot.
+
+Example:
+
+```json
+[
+  {
+    "name": "local",
+    "connectionString": "postgres://postgres:postgres@localhost:5432/postgres",
+    "isDefault": true,
+    "readOnly": false
+  },
+  {
+    "name": "staging",
+    "connectionString": "postgres://postgres:postgres@localhost:5432/postgres_staging",
+    "readOnly": true
+  }
+]
 ```
 
-Multiple connections:
+Advanced optional:
+
+- `PGSTUDIO_META_DB_PATH`
+  Override the local SQLite metadata DB path.
+  Default: `./data/history.db`
+- `SKIP_RUNTIME_MIGRATE`
+  Set to `1` only if migrations are handled outside app startup.
+
+## Local Persistence
+
+The app stores local metadata in a SQLite database:
+
+- Default path: `data/history.db`
+- Stores:
+  - saved connections
+  - query history
+  - snippets
+  - notebooks
+
+This file is local-only and already ignored by git.
+
+## Connection Management
+
+Use `Manage` in the SQL editor or Table editor to:
+
+- add a connection
+- rotate a connection string
+- rename a connection
+- set the default connection
+- delete a connection
+
+Connections can also be marked read-only. In read-only mode:
+
+- write SQL is rejected
+- table insert/update/delete actions are blocked
+- the UI labels the connection as read-only
+
+## Commands
+
+Development:
 
 ```bash
-PG_CONNECTIONS_JSON='[
-  {"name":"local","connectionString":"postgres://user:password@localhost:5432/postgres","isDefault":true,"readOnly":false},
-  {"name":"staging","connectionString":"postgres://user:password@localhost:5432/postgres_staging","readOnly":true}
-]'
+npm run dev
 ```
 
-Notes:
-- On first boot, connections are seeded from `PG_CONNECTIONS_JSON` (or `PG_CONNECTION_STRING` fallback).
-- Connections are persisted in `data/history.db` (`db_connections` table).
-- `GET|POST|PATCH|DELETE /api/connections` is available for runtime connection management.
-- Connections support `readOnly` mode.
-- Read-only connections allow SELECT/read flows but block write SQL and table row mutations (insert/update/delete).
+Production build:
 
-## Test
+```bash
+npm run build
+npm run start
+```
+
+Tests:
 
 ```bash
 npm run test
+npm run typecheck
 ```
 
-This runs Vitest unit tests for SQL and table service modules.
-
-## Database migrations
+Database migrations:
 
 ```bash
 npm run db:generate
 npm run db:migrate
 ```
 
-Drizzle config: `/Users/hwu/dev/pgstudio/pgstudio-lite/drizzle.config.ts`.
-Migrations also run automatically on server startup via `/Users/hwu/dev/pgstudio/pgstudio-lite/lib/meta-db.ts`.
+Migrations also run automatically on server startup unless `SKIP_RUNTIME_MIGRATE=1`.
 
-## State Architecture
-
-- Server state: React Query (`@tanstack/react-query`)
-  - SQL: connections, history, snippets, schema tables/columns
-  - Table editor: connections, tables, rows
-- UI/session state: Zustand
-  - SQL: active tab, tab contents, nav tab, rename draft, panel expansion
-  - Table editor: active table, filter/sort/pagination controls, insert draft, status text
-
-## API routes
+## API Routes
 
 - `GET /api/connections`
 - `POST|PATCH|DELETE /api/connections`
@@ -119,26 +180,39 @@ Migrations also run automatically on server startup via `/Users/hwu/dev/pgstudio
 - `POST /api/notebooks/[id]/run-cell`
 - `GET /api/tables`
 - `GET|POST|PATCH|DELETE /api/tables/[table]/rows`
-- `GET /api/monaco/*` and `GET /api/vs/*`
+- `GET /api/monaco/*`
+- `GET /api/vs/*`
 
-## Read-only connection mode
+## Troubleshooting
 
-- Connections can be marked `readOnly: true` in:
-  - `PG_CONNECTIONS_JSON` seed objects
-  - `POST /api/connections` payload
-  - `PATCH /api/connections` payload
-- The `GET /api/connections` response includes `readOnly` for each connection.
-- Enforcement:
-  - `POST /api/query` rejects write statements for read-only connections with `403`.
-  - `POST|PATCH|DELETE /api/tables/[table]/rows` reject writes for read-only connections with `403`.
-- UI behavior:
-  - Connection selectors show `(read-only)` labels.
-  - Table editor disables inline edit/delete/insert controls for read-only connections.
+No connections configured:
 
-## Connection management UI
+- Check `.env.local`
+- Make sure `PG_CONNECTION_STRING` is set
+- If you already started the app once, remember saved connections now come from the local SQLite metadata DB, not from env reseeding
 
-- Use `Manage` in SQL editor header or Table editor sidebar to:
-  - add a connection
-  - rename / rotate connection string
-  - set default connection
-  - delete connection
+PostgreSQL connection errors:
+
+- Confirm the host, port, database, user, and password in `PG_CONNECTION_STRING`
+- Confirm PostgreSQL accepts TCP connections from your machine
+- Try the same connection string with `psql` to isolate app issues from DB issues
+
+Want to reset local app state:
+
+- Stop the app
+- Delete `data/history.db`, `data/history.db-shm`, and `data/history.db-wal`
+- Start the app again to reseed from env vars
+
+Metadata DB path issues:
+
+- Set `PGSTUDIO_META_DB_PATH` to a writable path
+- The directory will be created automatically if needed
+
+Stale Next build lock:
+
+- If `next build` reports a lock error, stop any existing build/dev process using this repo and remove `.next/lock`
+
+## Notes
+
+- Monaco integration, page structure, and some SQL editor behavior were adapted from Supabase Studio.
+- The current UI is optimized for local development workflows rather than multi-user deployment.
