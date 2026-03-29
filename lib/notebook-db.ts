@@ -415,7 +415,10 @@ export function exportNotebookSpecV1ById(id: string): NotebookSpecV1 {
 export function deleteNotebook(id: string) {
   const existing = metaDb.select({ id: notebooks.id }).from(notebooks).where(eq(notebooks.id, id)).get()
   if (!existing) return false
-  metaDb.delete(notebooks).where(eq(notebooks.id, id)).run()
+  metaDb.transaction((tx) => {
+    tx.delete(notebookCells).where(eq(notebookCells.notebookId, id)).run()
+    tx.delete(notebooks).where(eq(notebooks.id, id)).run()
+  })
   return true
 }
 

@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -20,7 +20,9 @@ type NotebookCellListProps = {
 export function NotebookCellList({ controller }: NotebookCellListProps) {
   const {
     activeNotebookId,
+    clearPendingCellAction,
     detailQuery,
+    pendingCellAction,
     sortedCells,
   } = controller
 
@@ -39,6 +41,16 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
     },
     overscan: 5,
   })
+
+  useEffect(() => {
+    if (!pendingCellAction) return
+    const targetIndex = sortedCells.findIndex((cell) => cell.id === pendingCellAction.cellId)
+    if (targetIndex === -1) {
+      clearPendingCellAction()
+      return
+    }
+    virtualizer.scrollToIndex(targetIndex, { align: 'center' })
+  }, [clearPendingCellAction, pendingCellAction, sortedCells, virtualizer])
 
   if (!activeNotebookId) {
     return <div className="empty-state">Create a notebook to begin.</div>
@@ -124,6 +136,8 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
     deleteCellById,
     duplicateWidgetCellById,
     cellSectionRefs,
+    pendingCellAction,
+    clearPendingCellAction,
     insertParamIntoSqlCell,
     widgetDraftByCell,
   } = controller
@@ -153,7 +167,13 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
   const handleChange = useCallback((next: string) => onChangeCell(cell, next), [cell, onChangeCell])
   const handleRun = useCallback(() => { void runSqlCellWithShortcuts(cell, false) }, [cell, runSqlCellWithShortcuts])
   const handleRunAndFocusNext = useCallback(() => { void runSqlCellWithShortcuts(cell, true) }, [cell, runSqlCellWithShortcuts])
-  const handleMountEditor = useCallback((editor: any) => { sqlEditorRefs.current[cell.id] = editor }, [cell.id, sqlEditorRefs])
+  const handleMountEditorAndFocus = useCallback((editor: any) => {
+    sqlEditorRefs.current[cell.id] = editor
+    if (pendingCellAction?.cellId === cell.id && pendingCellAction.target === 'editor') {
+      editor.focus()
+      clearPendingCellAction(cell.id)
+    }
+  }, [cell.id, clearPendingCellAction, pendingCellAction, sqlEditorRefs])
   const handleUnmountEditor = useCallback(() => { delete sqlEditorRefs.current[cell.id] }, [cell.id, sqlEditorRefs])
   const handleToggleCollapsed = useCallback(() => toggleCellCollapsed(cell), [cell, toggleCellCollapsed])
   const handleDuplicate = useCallback(() => duplicateWidgetCellById(cell.id), [cell.id, duplicateWidgetCellById])
@@ -188,6 +208,24 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
   const handleMarkdownChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChangeCell(cell, event.target.value)
   }, [cell, onChangeCell])
+
+  useEffect(() => {
+    if (pendingCellAction?.cellId !== cell.id) return
+
+    if (pendingCellAction.target === 'control') {
+      const section = cellSectionRefs.current[cell.id]
+      if (!section) return
+      const control = section.querySelector('input, select, textarea') as HTMLElement | null
+      control?.focus()
+      clearPendingCellAction(cell.id)
+      return
+    }
+
+    const editor = sqlEditorRefs.current[cell.id]
+    if (!editor) return
+    editor.focus()
+    clearPendingCellAction(cell.id)
+  }, [cell.id, cellSectionRefs, clearPendingCellAction, pendingCellAction, sqlEditorRefs])
 
   return (
     <section
@@ -278,7 +316,7 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
           onChange={handleChange}
           onRun={handleRun}
           onRunAndFocusNext={handleRunAndFocusNext}
-          onMountEditor={handleMountEditor}
+          onMountEditor={handleMountEditorAndFocus}
           onUnmountEditor={handleUnmountEditor}
           onSelectInsertParam={handleSelectInsertParam}
           onInsertParam={handleInsertParam}
