@@ -923,6 +923,81 @@ pre {
   padding: 7px 10px;
 }
 
+.dialog-confirm-card {
+  width: min(520px, 100%);
+  max-height: min(72vh, 480px);
+}
+
+.dialog-prompt-card {
+  width: min(560px, 100%);
+  max-height: min(72vh, 480px);
+}
+
+.dialog-quick-actions-card {
+  width: min(620px, 100%);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-copy {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dialog-field {
+  display: grid;
+  gap: 8px;
+}
+
+.dialog-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dialog-field input {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--control-bg);
+  padding: 8px 10px;
+}
+
+.dialog-action-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dialog-action-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--surface-history-start), var(--surface-history-end));
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.dialog-action-item:hover {
+  background: var(--control-bg-hover);
+}
+
+.dialog-action-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dialog-action-description {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .modal-check {
   display: inline-flex;
   align-items: center;
@@ -941,6 +1016,10 @@ pre {
 }
 
 [data-theme='dark'] .modal-form-grid input {
+  background: #121925;
+}
+
+[data-theme='dark'] .dialog-field input {
   background: #121925;
 }
 

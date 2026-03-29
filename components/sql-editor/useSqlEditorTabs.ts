@@ -59,12 +59,10 @@ export function useSqlEditorTabs() {
     }
   }
 
-  function renameTab(tabId: string) {
-    const current = queryTabs.find((t) => t.id === tabId)
-    if (!current) return
-    const title = window.prompt('Tab name', current.title)?.trim()
-    if (!title) return
-    setQueryTabs((tabs) => tabs.map((tab) => (tab.id === tabId ? { ...tab, title } : tab)))
+  function renameTab(tabId: string, title: string) {
+    const nextTitle = title.trim()
+    if (!nextTitle) return
+    setQueryTabs((tabs) => tabs.map((tab) => (tab.id === tabId ? { ...tab, title: nextTitle } : tab)))
   }
 
   function openSnippetInTab(item: SnippetItem, connectionName: string) {

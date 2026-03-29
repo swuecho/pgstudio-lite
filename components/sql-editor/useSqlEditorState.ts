@@ -156,6 +156,8 @@ export function useSqlEditorState() {
     activeQueryTab: tabs.activeQueryTab,
     setActiveTabQuery: tabs.setActiveTabQuery,
     openSnippetInTab: (item: SnippetItem) => tabs.openSnippetInTab(item, connectionName),
+    getSuggestedSnippetTitle: snippets.getSuggestedSnippetTitle,
+    getDuplicateSnippetTitle: snippets.getDuplicateSnippetTitle,
     duplicateSnippet: snippets.duplicateSnippet,
     renameSnippet: snippets.renameSnippet,
     deleteSnippet: snippets.deleteSnippet,

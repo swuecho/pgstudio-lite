@@ -68,7 +68,13 @@ export function useSqlEditorSnippets({
     await snippetsQuery.refetch()
   }
 
-  async function saveCurrentAsSnippet(forceCreate = false) {
+  function getSuggestedSnippetTitle(queryText?: string) {
+    const content = (queryText || '').trim()
+    return content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
+  }
+
+  async function saveCurrentAsSnippet(options: { forceCreate?: boolean; title?: string } = {}) {
+    const forceCreate = options.forceCreate === true
     const content = (activeQueryTab?.query || '').trim()
     if (!content) {
       setStatus({ text: 'Query is empty', tone: 'warning' })
@@ -104,8 +110,7 @@ export function useSqlEditorSnippets({
         return
       }
 
-      const defaultTitle = content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
-      const title = window.prompt('Snippet name', defaultTitle)?.trim()
+      const title = options.title?.trim()
       if (!title) return
       const payload = await createSnippetMutation.mutateAsync({ title, queryText: content })
       setStatus({ text: `Saved snippet: ${payload.item.title}`, tone: 'ok' })
@@ -191,25 +196,26 @@ export function useSqlEditorSnippets({
     }
   }
 
-  async function duplicateSnippet(item: SnippetItem) {
-    const suggestedTitle = `${item.title} copy`
-    const title = window.prompt('Duplicate snippet as', suggestedTitle)?.trim()
-    if (!title) return
-    const payload = await createSnippetMutation.mutateAsync({ title, queryText: item.query_text })
+  async function duplicateSnippet(item: SnippetItem, title: string) {
+    const nextTitle = title.trim()
+    if (!nextTitle) return
+    const payload = await createSnippetMutation.mutateAsync({ title: nextTitle, queryText: item.query_text })
     patchSnippetInCache(payload.item)
     setStatus({ text: `Duplicated snippet: ${payload.item.title}`, tone: 'ok' })
     setActiveNavTab('snippets')
   }
 
   async function deleteSnippet(item: SnippetItem) {
-    const confirmed = window.confirm(`Delete snippet "${item.title}"? This cannot be undone.`)
-    if (!confirmed) return
     await deleteSnippetMutation.mutateAsync(item.id)
     removeSnippetFromCache(item.id)
     setQueryTabs((all) =>
       all.map((tab) => (tab.snippetId === item.id ? { ...tab, snippetId: undefined, dirty: true } : tab))
     )
     setStatus({ text: `Deleted snippet: ${item.title}`, tone: 'ok' })
+  }
+
+  function getDuplicateSnippetTitle(item: SnippetItem) {
+    return `${item.title} copy`
   }
 
   function beginRenameSnippet(item: SnippetItem) {
@@ -249,8 +255,10 @@ export function useSqlEditorSnippets({
     beginRenameSnippet,
     cancelRenameSnippet,
     loadSnippets,
+    getSuggestedSnippetTitle,
     saveCurrentAsSnippet,
     renameSnippet,
+    getDuplicateSnippetTitle,
     duplicateSnippet,
     deleteSnippet,
   }

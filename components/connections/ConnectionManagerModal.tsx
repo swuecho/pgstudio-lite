@@ -7,6 +7,7 @@ import {
   updateConnection,
 } from '../../features/connections/connections.service'
 import { CONNECTIONS_QUERY_KEY } from '../shared/hooks/useConnections'
+import { ConfirmDialog } from '../shared/Dialog'
 
 type ConnectionItem = {
   id?: string
@@ -41,6 +42,7 @@ export function ConnectionManagerModal({
   const [editConnectionString, setEditConnectionString] = useState('')
   const [editIsDefault, setEditIsDefault] = useState(false)
   const [editReadOnly, setEditReadOnly] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const sortedConnections = useMemo(
     () =>
@@ -114,6 +116,8 @@ export function ConnectionManagerModal({
 
   if (!open) return null
 
+  const pendingDeleteConnection = sortedConnections.find((connection) => connection.id === pendingDeleteId) || null
+
   const busy =
     createMutation.isPending ||
     updateMutation.isPending ||
@@ -171,8 +175,7 @@ export function ConnectionManagerModal({
                       disabled={!connection.id || busy || connections.length <= 1}
                       onClick={() => {
                         if (!connection.id) return
-                        if (!window.confirm(`Delete connection "${connection.name}"?`)) return
-                        deleteMutation.mutate(connection.id)
+                        setPendingDeleteId(connection.id)
                       }}
                     >
                       Delete
@@ -297,6 +300,23 @@ export function ConnectionManagerModal({
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingDeleteConnection)}
+        title="Delete connection"
+        message={
+          pendingDeleteConnection
+            ? `Delete connection "${pendingDeleteConnection.name}"? Existing saved snippets and notebooks will keep their connection name, so switch them manually if needed.`
+            : ''
+        }
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onClose={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          if (!pendingDeleteConnection?.id) return
+          deleteMutation.mutate(pendingDeleteConnection.id)
+          setPendingDeleteId(null)
+        }}
+      />
     </div>
   )
 }
