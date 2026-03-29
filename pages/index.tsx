@@ -1,5 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react'
 import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
+import { ConfirmDialog, PromptDialog, QuickActionsDialog } from '../components/shared/Dialog'
 import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
 import { SqlSidebar } from '../components/sql-editor/Sidebar'
@@ -19,9 +20,100 @@ export default function SqlEditorPage() {
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const [resultsHeight, setResultsHeight] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
+  const [showQuickActions, setShowQuickActions] = useState(false)
+  const [tabRenameState, setTabRenameState] = useState<{ tabId: string; title: string } | null>(null)
+  const [saveSnippetState, setSaveSnippetState] = useState<{ forceCreate: boolean; title: string } | null>(null)
+  const [duplicateSnippetState, setDuplicateSnippetState] = useState<{ id: string; title: string } | null>(null)
+  const [deleteSnippetId, setDeleteSnippetId] = useState<string | null>(null)
   const sidebarSearchRef = useRef<HTMLInputElement>(null)
   const editorPanelBodyRef = useRef<HTMLDivElement>(null)
   const editorFooterRef = useRef<HTMLDivElement>(null)
+
+  const duplicateSnippetItem = state.filteredSnippets.find((item) => item.id === duplicateSnippetState?.id) || null
+  const deleteSnippetItem = state.filteredSnippets.find((item) => item.id === deleteSnippetId) || null
+
+  const quickActionItems = [
+    {
+      id: 'new',
+      title: 'New query tab',
+      description: 'Create a fresh SQL tab.',
+      onSelect: () => state.createQueryTab(),
+    },
+    {
+      id: 'run',
+      title: 'Run current query',
+      description: 'Execute the active selection or tab.',
+      onSelect: () => {
+        void state.runCurrentQuery()
+      },
+    },
+    {
+      id: 'save',
+      title: 'Save snippet',
+      description: 'Save or update the current SQL as a snippet.',
+      onSelect: () => {
+        openSaveSnippetDialog(false)
+      },
+    },
+    {
+      id: 'search',
+      title: 'Focus sidebar search',
+      description: 'Jump to the current sidebar search box.',
+      onSelect: () => {
+        sidebarSearchRef.current?.focus()
+        sidebarSearchRef.current?.select()
+      },
+    },
+    {
+      id: 'explorer',
+      title: 'Open explorer',
+      description: 'Switch the sidebar to schema explorer.',
+      onSelect: () => state.setActiveNavTab('explorer'),
+    },
+    {
+      id: 'snippets',
+      title: 'Open snippets',
+      description: 'Switch the sidebar to snippets.',
+      onSelect: () => state.setActiveNavTab('snippets'),
+    },
+    {
+      id: 'history',
+      title: 'Open history',
+      description: 'Switch the sidebar to query history.',
+      onSelect: () => state.setActiveNavTab('history'),
+    },
+  ]
+
+  function openSaveSnippetDialog(forceCreate: boolean) {
+    if (!(state.activeQueryTab?.query || '').trim()) {
+      void state.saveCurrentAsSnippet({ forceCreate })
+      return
+    }
+
+    const canUpdateBoundSnippet =
+      state.activeQueryTab?.snippetId &&
+      state.activeQueryTab.snippetConnectionName === state.connectionName &&
+      !forceCreate
+
+    if (canUpdateBoundSnippet) {
+      void state.saveCurrentAsSnippet({ forceCreate: false })
+      return
+    }
+
+    setSaveSnippetState({
+      forceCreate,
+      title: state.getSuggestedSnippetTitle(state.activeQueryTab?.query),
+    })
+  }
+
+  function submitSaveSnippetDialog() {
+    if (!saveSnippetState) return
+    void state.saveCurrentAsSnippet({
+      forceCreate: saveSnippetState.forceCreate,
+      title: saveSnippetState.title,
+    })
+    setSaveSnippetState(null)
+  }
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {
@@ -31,42 +123,11 @@ export default function SqlEditorPage() {
       return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
     }
 
-    const openQuickActions = () => {
-      const choice = window
-        .prompt(
-          [
-            'Quick Action',
-            'new - New query tab',
-            'run - Run current query',
-            'save - Save snippet',
-            'search - Focus sidebar search',
-            'explorer - Open explorer tab',
-            'snippets - Open snippets tab',
-            'history - Open history tab',
-          ].join('\n')
-        )
-        ?.trim()
-        .toLowerCase()
-
-      if (!choice) return
-      if (choice === 'new') return state.createQueryTab()
-      if (choice === 'run') return void state.runCurrentQuery()
-      if (choice === 'save') return void state.saveCurrentAsSnippet()
-      if (choice === 'search') {
-        sidebarSearchRef.current?.focus()
-        sidebarSearchRef.current?.select()
-        return
-      }
-      if (choice === 'explorer' || choice === 'snippets' || choice === 'history') {
-        state.setActiveNavTab(choice)
-      }
-    }
-
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase()
       if ((event.metaKey || event.ctrlKey) && key === 'k') {
         event.preventDefault()
-        openQuickActions()
+        setShowQuickActions(true)
         return
       }
 
@@ -90,10 +151,6 @@ export default function SqlEditorPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
     state.historySearch,
-    state.createQueryTab,
-    state.runCurrentQuery,
-    state.saveCurrentAsSnippet,
-    state.setActiveNavTab,
     state.setHistorySearch,
   ])
 
@@ -152,7 +209,7 @@ export default function SqlEditorPage() {
           void state.loadSnippets()
         }}
         onSaveSnippet={(forceCreate) => {
-          void state.saveCurrentAsSnippet(forceCreate)
+          openSaveSnippetDialog(Boolean(forceCreate))
         }}
         onRefreshSchema={() => {
           void state.loadSchema()
@@ -176,13 +233,13 @@ export default function SqlEditorPage() {
         onLoadSnippetQuery={(queryText) => state.setActiveTabQuery(queryText, false, null)}
         onEditSnippet={state.openSnippetInTab}
         onDuplicateSnippet={(item) => {
-          void state.duplicateSnippet(item)
+          setDuplicateSnippetState({ id: item.id, title: state.getDuplicateSnippetTitle(item) })
         }}
         onRenameSnippet={(item, nextTitle) => {
           void state.renameSnippet(item, nextTitle)
         }}
         onDeleteSnippet={(item) => {
-          void state.deleteSnippet(item)
+          setDeleteSnippetId(item.id)
         }}
         renamingSnippetId={state.renamingSnippetId}
         renameDraft={state.renameDraft}
@@ -211,14 +268,14 @@ export default function SqlEditorPage() {
               New
             </button>
             <span className={`${styles.statusPill} ${styles[state.status.tone] || ''}`}>{state.status.text}</span>
-              <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
-                {state.connections.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.name}
-                    {c.readOnly ? ' (read-only)' : ''}
-                  </option>
-                ))}
-              </select>
+            <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
+              {state.connections.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name}
+                  {c.readOnly ? ' (read-only)' : ''}
+                </option>
+              ))}
+            </select>
             <button className="btn small" onClick={() => setManagingConnections(true)}>
               Manage
             </button>
@@ -229,7 +286,11 @@ export default function SqlEditorPage() {
           queryTabs={state.queryTabs}
           activeQueryTabId={state.activeQueryTabId}
           onSelectTab={state.setActiveQueryTabId}
-          onRenameTab={state.renameTab}
+          onRenameTab={(tabId) => {
+            const tab = state.queryTabs.find((item) => item.id === tabId)
+            if (!tab) return
+            setTabRenameState({ tabId, title: tab.title })
+          }}
           onCloseTab={state.closeTab}
         />
 
@@ -243,7 +304,7 @@ export default function SqlEditorPage() {
               void state.runCurrentQuery()
             }}
             onSaveSnippet={() => {
-              void state.saveCurrentAsSnippet()
+              openSaveSnippetDialog(false)
             }}
             schemaTablesRef={state.schemaTablesRef}
             tableColumnsByKeyRef={state.tableColumnsByKeyRef}
@@ -271,6 +332,70 @@ export default function SqlEditorPage() {
           </div>
         </div>
       </main>
+      <QuickActionsDialog open={showQuickActions} items={quickActionItems} onClose={() => setShowQuickActions(false)} />
+      <PromptDialog
+        open={Boolean(tabRenameState)}
+        title="Rename tab"
+        label="Tab name"
+        value={tabRenameState?.title || ''}
+        placeholder="Query name"
+        submitLabel="Rename"
+        onClose={() => setTabRenameState(null)}
+        onChange={(value) =>
+          setTabRenameState((current) => (current ? { ...current, title: value } : current))
+        }
+        onSubmit={() => {
+          if (!tabRenameState) return
+          state.renameTab(tabRenameState.tabId, tabRenameState.title)
+          setTabRenameState(null)
+        }}
+      />
+      <PromptDialog
+        open={Boolean(saveSnippetState)}
+        title={saveSnippetState?.forceCreate ? 'Save snippet as' : 'Save snippet'}
+        label="Snippet name"
+        value={saveSnippetState?.title || ''}
+        placeholder="Snippet name"
+        hint={state.connectionName ? `Saved under connection ${state.connectionName}.` : undefined}
+        submitLabel={saveSnippetState?.forceCreate ? 'Save as' : 'Save'}
+        onClose={() => setSaveSnippetState(null)}
+        onChange={(value) =>
+          setSaveSnippetState((current) => (current ? { ...current, title: value } : current))
+        }
+        onSubmit={submitSaveSnippetDialog}
+      />
+      <PromptDialog
+        open={Boolean(duplicateSnippetItem && duplicateSnippetState)}
+        title="Duplicate snippet"
+        label="New snippet name"
+        value={duplicateSnippetState?.title || ''}
+        placeholder="Snippet copy name"
+        submitLabel="Duplicate"
+        onClose={() => setDuplicateSnippetState(null)}
+        onChange={(value) =>
+          setDuplicateSnippetState((current) => (current ? { ...current, title: value } : current))
+        }
+        onSubmit={() => {
+          if (!duplicateSnippetItem || !duplicateSnippetState) return
+          void state.duplicateSnippet(duplicateSnippetItem, duplicateSnippetState.title)
+          setDuplicateSnippetState(null)
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(deleteSnippetItem)}
+        title="Delete snippet"
+        message={
+          deleteSnippetItem ? `Delete snippet "${deleteSnippetItem.title}"? This cannot be undone.` : ''
+        }
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onClose={() => setDeleteSnippetId(null)}
+        onConfirm={() => {
+          if (!deleteSnippetItem) return
+          void state.deleteSnippet(deleteSnippetItem)
+          setDeleteSnippetId(null)
+        }}
+      />
     </div>
   )
 }

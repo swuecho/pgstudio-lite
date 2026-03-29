@@ -1,5 +1,7 @@
 import Link from 'next/link'
+import { useState } from 'react'
 import ThemeToggle from '../components/theme-toggle'
+import { ConfirmDialog, PromptDialog } from '../components/shared/Dialog'
 import { NotebookCellList } from '../components/notebook/NotebookCellList'
 import { NotebookHelpPanel } from '../components/notebook/NotebookHelpPanel'
 import { NotebookImportModal } from '../components/notebook/NotebookImportModal'
@@ -11,6 +13,8 @@ import styles from '../components/notebook/NotebookPage.module.css'
 
 export default function NotebookPage() {
   const controller = useNotebookPageState()
+  const [renameNotebookState, setRenameNotebookState] = useState<{ id: string; title: string } | null>(null)
+  const [deleteNotebookState, setDeleteNotebookState] = useState<{ id: string; title: string } | null>(null)
 
   return (
     <div
@@ -38,13 +42,10 @@ export default function NotebookPage() {
         onChangeNotebookSearch={controller.setNotebookSearch}
         onCreateNotebook={() => controller.createNotebookMutation.mutate()}
         onDeleteNotebook={(item) => {
-          if (!window.confirm(`Delete notebook '${item.title}'?`)) return
-          controller.removeNotebook?.(item.id)
+          setDeleteNotebookState({ id: item.id, title: item.title })
         }}
         onRenameNotebook={(item) => {
-          const nextTitle = window.prompt('Rename notebook', item.title)
-          if (!nextTitle || !nextTitle.trim()) return
-          controller.renameNotebook?.(item, nextTitle.trim())
+          setRenameNotebookState({ id: item.id, title: item.title })
         }}
         onSelectNotebook={controller.setActiveNotebookId}
       />
@@ -189,6 +190,38 @@ export default function NotebookPage() {
           onImport={controller.notebookImport.submitImportFromModal}
         />
       ) : null}
+      <PromptDialog
+        open={Boolean(renameNotebookState)}
+        title="Rename notebook"
+        label="Notebook title"
+        value={renameNotebookState?.title || ''}
+        placeholder="Notebook title"
+        submitLabel="Rename"
+        onClose={() => setRenameNotebookState(null)}
+        onChange={(value) =>
+          setRenameNotebookState((current) => (current ? { ...current, title: value } : current))
+        }
+        onSubmit={() => {
+          if (!renameNotebookState) return
+          const item = controller.notebooks.find((notebook) => notebook.id === renameNotebookState.id)
+          if (!item) return
+          controller.renameNotebook?.(item, renameNotebookState.title.trim())
+          setRenameNotebookState(null)
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(deleteNotebookState)}
+        title="Delete notebook"
+        message={deleteNotebookState ? `Delete notebook "${deleteNotebookState.title}"?` : ''}
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onClose={() => setDeleteNotebookState(null)}
+        onConfirm={() => {
+          if (!deleteNotebookState) return
+          controller.removeNotebook?.(deleteNotebookState.id)
+          setDeleteNotebookState(null)
+        }}
+      />
     </div>
   )
 }
