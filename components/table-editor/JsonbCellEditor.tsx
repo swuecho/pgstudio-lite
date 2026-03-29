@@ -74,7 +74,7 @@ export function JsonbCellEditor({ value, onSave, onCancel }: JsonbCellEditorProp
           'editorLineNumber.activeForeground': '#d0d5dd',
         },
       })
-    } catch (e) {
+    } catch {
       // Theme already defined, ignore error
     }
 
@@ -114,7 +114,7 @@ export function JsonbCellEditor({ value, onSave, onCancel }: JsonbCellEditorProp
     editor.focus()
   }, [onSave, onCancel])
 
-  const handleChange = useCallback((value: string | undefined) => {
+  const handleChange = useCallback((_value: string | undefined) => {
     // Just update the editor value, validation happens on blur
   }, [])
 
