@@ -45,6 +45,7 @@ export function useNotebookCellState(params: {
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
+  const [pendingCellAction, setPendingCellAction] = useState<{ cellId: string; target: 'control' | 'editor' } | null>(null)
   const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
   const [widgetDraftByCell, setWidgetDraftByCell] = useState<Record<string, NotebookWidgetMetadata>>({})
 
@@ -104,6 +105,7 @@ export function useNotebookCellState(params: {
     autoSave.setPendingSaveByCell({})
     autoSave.setSaveErrorByCell({})
     execution.setQueuedRunByCell({})
+    setPendingCellAction(null)
   }, [activeNotebookId])
 
   // --- Draft sync effects ---
@@ -169,6 +171,12 @@ export function useNotebookCellState(params: {
     if (sortedCells.some((cell) => cell.id === selectedCellId)) return
     setSelectedCellId('')
   }, [sortedCells, selectedCellId])
+
+  useEffect(() => {
+    if (!pendingCellAction) return
+    if (sortedCells.some((cell) => cell.id === pendingCellAction.cellId)) return
+    setPendingCellAction(null)
+  }, [pendingCellAction, sortedCells])
 
   // --- Derived state ---
 
@@ -456,11 +464,8 @@ export function useNotebookCellState(params: {
       setStatus(`Input '${paramKey}' not found`)
       return
     }
-    const section = cellSectionRefs.current[cellId]
-    if (!section) return
-    section.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    const control = section.querySelector('input, select, textarea') as HTMLElement | null
-    control?.focus()
+    setSelectedCellId(cellId)
+    setPendingCellAction({ cellId, target: 'control' })
     setStatus(`Focused input '${paramKey}'`)
   }
 
@@ -490,6 +495,32 @@ export function useNotebookCellState(params: {
 
   function duplicateWidgetCellById(cellId: string) {
     duplicateWidgetMutation.mutate(cellId)
+  }
+
+  function clearPendingCellAction(cellId?: string) {
+    setPendingCellAction((current) => {
+      if (!current) return current
+      if (cellId && current.cellId !== cellId) return current
+      return null
+    })
+  }
+
+  async function runSqlCellWithShortcuts(cell: NotebookCell, runAndFocusNext = false) {
+    const executedCount = await execution.runSqlCellWithShortcuts(cell)
+    if (!runAndFocusNext || !executedCount) return executedCount
+
+    const currentIndex = sortedCells.findIndex((item) => item.id === cell.id)
+    if (currentIndex === -1) return executedCount
+
+    for (let i = currentIndex + 1; i < sortedCells.length; i += 1) {
+      const nextCell = sortedCells[i]
+      if (nextCell.type !== 'sql' || nextCell.collapsed) continue
+      setSelectedCellId(nextCell.id)
+      setPendingCellAction({ cellId: nextCell.id, target: 'editor' })
+      break
+    }
+
+    return executedCount
   }
 
   async function flushPendingSaves(reason?: string) {
@@ -540,6 +571,7 @@ export function useNotebookCellState(params: {
     pendingSaveByCell: autoSave.pendingSaveByCell,
     pendingSaveCount,
     previewMarkdown,
+    pendingCellAction,
     refreshSqlOptions: widgetOptions.refreshSqlOptions,
     resultsByCell: execution.resultsByCell,
     resolvedOptionsByCell: widgetOptions.resolvedOptionsByCell,
@@ -550,7 +582,7 @@ export function useNotebookCellState(params: {
     runAllSqlCells: () => execution.runAllSqlCells(sortedCells),
     runningAll: execution.runningAll,
     runningCellId: execution.runningCellId,
-    runSqlCellWithShortcuts: execution.runSqlCellWithShortcuts,
+    runSqlCellWithShortcuts,
     selectedCellId,
     selectedInsertParamByCell,
     setPreviewMarkdown,
@@ -561,6 +593,7 @@ export function useNotebookCellState(params: {
     toggleCellCollapsed,
     updateParameterWidget,
     resetParameterWidget,
+    clearPendingCellAction,
     validationMessagesByCell,
     flushPendingSaves,
     insertParamIntoSqlCell,

@@ -35,20 +35,6 @@ export function useCellExecution(params: {
   useEffect(() => { runningCellIdRef.current = runningCellId }, [runningCellId])
   useEffect(() => { runningAllRef.current = runningAll }, [runningAll])
 
-  function focusNextSqlEditor(sortedCells: NotebookCell[], cellId: string) {
-    const fromIndex = sortedCells.findIndex((cell) => cell.id === cellId)
-    if (fromIndex === -1) return
-    for (let i = fromIndex + 1; i < sortedCells.length; i += 1) {
-      const next = sortedCells[i]
-      if (next.type !== 'sql' || next.collapsed) continue
-      const nextEditor = sqlEditorRefs.current[next.id]
-      if (nextEditor) {
-        nextEditor.focus()
-        return
-      }
-    }
-  }
-
   function enqueueExecution<T>(label: string, execute: () => Promise<T>) {
     if (runningAllRef.current || Boolean(runningCellIdRef.current)) {
       setStatus(`${label} queued`)
@@ -136,12 +122,12 @@ export function useCellExecution(params: {
     }
   }
 
-  async function runSqlCellWithShortcuts(cell: NotebookCell, runAndFocusNext = false) {
+  async function runSqlCellWithShortcuts(cell: NotebookCell) {
     const query = (draftByCellRef.current[cell.id] ?? cell.content).trim()
     if (!query) return
     try {
       setQueuedRunByCell((prev) => markQueuedCells(prev, [cell.id]))
-      const executedCount = await enqueueExecution('Cell run', () =>
+      return await enqueueExecution('Cell run', () =>
         executeQueuedSqlRun({
           label: 'Cell run',
           cells: [cell],
@@ -149,9 +135,9 @@ export function useCellExecution(params: {
           mode: 'single',
         })
       )
-      if (runAndFocusNext && executedCount > 0) focusNextSqlEditor(sortedCellsRef.current, cell.id)
     } catch {
       // Status and errors are already surfaced by mutation callbacks.
+      return 0
     }
   }
 
@@ -209,7 +195,6 @@ export function useCellExecution(params: {
     widgetDraftByCellRef,
     sortedCellsRef,
     activeNotebookIdRef,
-    focusNextSqlEditor,
     enqueueExecution,
     executeQueuedSqlRun,
     runSqlCellWithShortcuts,
