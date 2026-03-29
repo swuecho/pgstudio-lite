@@ -45,8 +45,8 @@ export function WidgetCellEditor({
   disabled,
   collapsed,
   valueOnly,
-  notebookId,
-  inputValues,
+  notebookId: _notebookId,
+  inputValues: _inputValues,
   sqlOptionsState,
   onRefreshSqlOptions,
   validationMessages,
@@ -577,23 +577,6 @@ function CalloutEditor({
       </div>
     </>
   )
-}
-
-function summarizeWidget(metadata: NotebookWidgetMetadata) {
-  if (metadata.widgetType === 'radio-group') {
-    return `${metadata.label || metadata.key || 'Radio Group'}: ${typeof metadata.value === 'string' ? metadata.value : ''}`
-  }
-  if (metadata.widgetType === 'date-range') {
-    const value =
-      metadata.value && typeof metadata.value === 'object' && 'start' in metadata.value && 'end' in metadata.value
-        ? metadata.value
-        : { start: '', end: '' }
-    return `${metadata.label || 'Date Range'}: ${value.start || '-'} to ${value.end || '-'}`
-  }
-  if (metadata.widgetType === 'actions') {
-    return `${metadata.label || 'Actions'}: ${metadata.config?.action === 'run-targets' ? 'run targets' : 'run all'}`
-  }
-  return `${metadata.config?.title || 'Callout'}${metadata.config?.body ? ` - ${metadata.config.body}` : ''}`
 }
 
 function calloutToneClassName(tone: 'info' | 'success' | 'warning' | 'danger') {
