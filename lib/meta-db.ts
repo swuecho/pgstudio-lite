@@ -14,6 +14,7 @@ if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
 
 export const sqlite = new BetterSqlite3(DB_PATH)
 sqlite.pragma('journal_mode = WAL')
+sqlite.pragma('foreign_keys = ON')
 
 function hasTable(name: string) {
   return Boolean(
@@ -65,6 +66,10 @@ export function ensureMetaDbReady() {
 
   if (hasTable('notebook_cells') && !hasColumn('notebook_cells', 'last_result_json')) {
     sqlite.exec(`ALTER TABLE notebook_cells ADD COLUMN last_result_json text;`)
+  }
+
+  if (hasTable('notebooks')) {
+    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_notebooks_connection_name ON notebooks (connection_name);`)
   }
 
   if (hasTable('notebooks') && !hasColumn('notebooks', 'metadata_json')) {
@@ -142,10 +147,11 @@ function ensureBaseTables() {
       updated_at text NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_notebooks_updated_at ON notebooks (updated_at);
+    CREATE INDEX IF NOT EXISTS idx_notebooks_connection_name ON notebooks (connection_name);
 
     CREATE TABLE IF NOT EXISTS notebook_cells (
       id text PRIMARY KEY NOT NULL,
-      notebook_id text NOT NULL,
+      notebook_id text NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
       position integer NOT NULL,
       type text NOT NULL,
       content text NOT NULL,
