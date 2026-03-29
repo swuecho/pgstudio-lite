@@ -163,9 +163,7 @@ export default function NotebookPage() {
 
         <NotebookParameterPanel controller={controller} />
 
-        <div className={styles.cells}>
-          <NotebookCellList controller={controller} />
-        </div>
+        <NotebookCellList controller={controller} />
       </main>
 
       {controller.notebookImport.showImportModal ? (
