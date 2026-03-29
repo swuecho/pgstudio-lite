@@ -65,6 +65,7 @@ export const notebooks = sqliteTable(
   },
   (table) => ({
     updatedAtIdx: index('idx_notebooks_updated_at').on(table.updatedAt),
+    connectionNameIdx: index('idx_notebooks_connection_name').on(table.connectionName),
   })
 )
 
@@ -72,7 +73,7 @@ export const notebookCells = sqliteTable(
   'notebook_cells',
   {
     id: text('id').primaryKey(),
-    notebookId: text('notebook_id').notNull(),
+    notebookId: text('notebook_id').notNull().references(() => notebooks.id, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
     type: text('type').notNull(),
     content: text('content').notNull(),
