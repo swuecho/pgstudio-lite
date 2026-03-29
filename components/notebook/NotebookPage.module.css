@@ -37,6 +37,8 @@
   justify-content: space-between;
   gap: 12px;
   height: 46px;
+  min-height: 46px;
+  flex: 0 0 46px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
@@ -590,6 +592,8 @@
 
 .layoutNavHeader {
   height: var(--header-h);
+  min-height: var(--header-h);
+  flex: 0 0 var(--header-h);
   border-bottom: 1px solid var(--border);
   padding: 0 12px;
   display: flex;
@@ -609,6 +613,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   height: 46px;
+  min-height: 46px;
   align-items: center;
 }
 
@@ -697,6 +702,8 @@
 
 .editorPanelHeader {
   height: var(--header-h);
+  min-height: var(--header-h);
+  flex: 0 0 var(--header-h);
   border-bottom: 1px solid var(--border);
   padding: 0 12px;
   display: flex;
