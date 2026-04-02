@@ -628,11 +628,13 @@ export async function runNotebookSqlCell(input: {
           resolvedValues[key] = input.inputValues?.[key] ?? widgetValueByKey.get(key)
           continue
         }
-        {
-          const error = new Error(`Unknown input key '{{${key}}}'`) as Error & { statusCode?: number }
-          error.statusCode = 400
-          throw error
+        if (input.inputValues && key in input.inputValues) {
+          resolvedValues[key] = input.inputValues[key]
+          continue
         }
+        const error = new Error(`Unknown input key '{{${key}}}'`) as Error & { statusCode?: number }
+        error.statusCode = 400
+        throw error
       }
       const compiled = compileSqlTemplate(input.query, resolvedValues)
       compiledQueryText = compiled.text
