@@ -11,7 +11,7 @@ import {
   type NotebookWidgetMetadata,
 } from './notebook-widgets'
 
-import type { NotebookCellType, Notebook, NotebookSpecV1, NotebookSpecV1Cell } from './notebook-types'
+import type { NotebookCellType } from './notebook-types'
 export type { NotebookCellType, Notebook, NotebookSpecV1, NotebookSpecV1Cell } from './notebook-types'
 export type NotebookStoredWidgetMetadata = NotebookWidgetMetadata
 
