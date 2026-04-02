@@ -8,6 +8,7 @@ import {
 } from '../../../../lib/db'
 import { getRequestConnectionName } from '../../../../lib/api/connection'
 import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '../../../../lib/api/validation'
+import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
 
 const tableParamSchema = z.object({
   table: nonEmptyStringSchema,
@@ -72,11 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true })
     }
 
-    res.setHeader('Allow', 'GET, PATCH, DELETE')
-    return res.status(405).json({ error: 'Method not allowed' })
+    return methodNotAllowed(res, ['GET', 'PATCH', 'DELETE'])
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    const statusCode = (error as { statusCode?: number })?.statusCode || 400
-    return res.status(statusCode).json({ error: message })
+    return sendApiError(res, error)
   }
 }

@@ -1,4 +1,6 @@
 import type { QueryResult } from '../sql-editor/types'
+import type { NotebookCellType, Notebook } from '../../lib/notebook-types'
+export type { NotebookCellType, Notebook } from '../../lib/notebook-types'
 
 export type NotebookInputType = 'text' | 'number' | 'date' | 'datetime-local' | 'checkbox' | 'select' | 'range' | 'multiselect'
 
@@ -87,18 +89,7 @@ export type NotebookInputCellMetadata = {
   autoRun?: boolean
 }
 
-export type NotebookCellType = 'sql' | 'markdown' | 'widget'
 export type NotebookCellMetadata = NotebookWidgetMetadata | null
-
-export type Notebook = {
-  id: string
-  title: string
-  description: string
-  metadata_json: Record<string, unknown>
-  connection_name: string
-  created_at: string
-  updated_at: string
-}
 
 export type NotebookCell = {
   id: string

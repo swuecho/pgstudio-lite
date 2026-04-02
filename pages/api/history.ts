@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { clearHistory, getHistory } from '../../lib/db'
 import { getRequestConnectionName } from '../../lib/api/connection'
 import { parseWithSchema } from '../../lib/api/validation'
+import { methodNotAllowed, sendApiError } from '../../lib/api/errors'
 
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional().default(100),
@@ -22,11 +23,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(200).json({ ok: true })
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    const statusCode = (error as { statusCode?: number })?.statusCode || 400
-    return res.status(statusCode).json({ error: message })
+    return sendApiError(res, error)
   }
 
-  res.setHeader('Allow', 'GET, DELETE')
-  return res.status(405).json({ error: 'Method not allowed' })
+  return methodNotAllowed(res, ['GET', 'DELETE'])
 }

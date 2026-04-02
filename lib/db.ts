@@ -5,7 +5,9 @@ import { dbConnections, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 
 const { Pool } = pg
-const connectionPools = new Map<string, InstanceType<typeof Pool>>()
+type PgPool = InstanceType<typeof Pool>
+type PoolClient = Awaited<ReturnType<PgPool['connect']>>
+const connectionPools = new Map<string, PgPool>()
 const QUERY_STATEMENT_TIMEOUT_MS = 15_000
 const MAX_RESULT_ROWS = 500
 
@@ -163,9 +165,10 @@ function mapConnection(row: typeof dbConnections.$inferSelect): DbConnection {
 function getResolvedConnectionName(connectionName?: string) {
   const trimmed = connectionName?.trim() || ''
   if (trimmed) return trimmed
-  const defaultConnection = getConnections().find((connection) => connection.isDefault)
+  const all = getConnections()
+  const defaultConnection = all.find((connection) => connection.isDefault)
   if (defaultConnection) return defaultConnection.name
-  const first = getConnections()[0]?.name
+  const first = all[0]?.name
   if (!first) {
     const error = new Error('No database connection configured. Use Manage Connections to add one.') as Error & {
       statusCode?: number
@@ -193,7 +196,7 @@ function getConnectionByName(connectionName?: string): DbConnection {
   return connection
 }
 
-async function withClient<T>(connectionName: string | undefined, fn: (client: any) => Promise<T>) {
+async function withClient<T>(connectionName: string | undefined, fn: (client: PoolClient) => Promise<T>) {
   const connection = getConnectionByName(connectionName)
   const pool = getPool(connection.connectionString)
   try {
@@ -208,7 +211,7 @@ async function withClient<T>(connectionName: string | undefined, fn: (client: an
   }
 }
 
-async function getPrimaryKeyColumns(client: any, schema: string, table: string): Promise<string[]> {
+async function getPrimaryKeyColumns(client: PoolClient, schema: string, table: string): Promise<string[]> {
   const sql = `
     select a.attname as column_name
     from pg_index i
@@ -271,7 +274,8 @@ export function createConnection(input: {
   const connectionString = input.connectionString.trim()
   if (!name) throw new Error('name is required')
   if (!connectionString) throw new Error('connectionString is required')
-  if (getConnections().some((connection) => connection.name === name)) {
+  const existing = getConnections()
+  if (existing.some((connection) => connection.name === name)) {
     const error = new Error(`Connection '${name}' already exists`) as Error & { statusCode?: number }
     error.statusCode = 409
     throw error
@@ -279,7 +283,7 @@ export function createConnection(input: {
 
   const id = randomUUID()
   const now = new Date().toISOString()
-  const shouldBeDefault = input.isDefault === true || getConnections().length === 0
+  const shouldBeDefault = input.isDefault === true || existing.length === 0
   const readOnly = input.readOnly === true
 
   metaDb.transaction((tx) => {
