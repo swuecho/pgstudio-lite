@@ -1,4 +1,4 @@
-import type { NotebookSpecV1 } from '../features/notebook/notebook.service'
+import type { NotebookSpecV1 } from './notebook-types'
 
 const GENERATE_PROMPT_TEMPLATE = `You are generating a pgstudio-lite notebook document.
 
