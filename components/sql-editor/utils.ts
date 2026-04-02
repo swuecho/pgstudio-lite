@@ -49,10 +49,10 @@ function checkIfAppendLimitRequired(sql: string, limit = 0) {
 }
 
 export function suffixWithLimit(sql: string, limit = 0) {
-  const { cleanedSql, appendAutoLimit } = checkIfAppendLimitRequired(sql, limit)
-  return appendAutoLimit
-    ? cleanedSql.endsWith(';')
-      ? sql.replace(/[;]+$/, ` limit ${limit};`)
-      : `${sql} limit ${limit};`
-    : sql
+  const { appendAutoLimit } = checkIfAppendLimitRequired(sql, limit)
+  if (!appendAutoLimit) return sql
+  const trimmedSql = sql.trimEnd()
+  return trimmedSql.endsWith(';')
+    ? trimmedSql.replace(/[;]+$/, ` limit ${limit};`)
+    : `${trimmedSql} limit ${limit};`
 }
