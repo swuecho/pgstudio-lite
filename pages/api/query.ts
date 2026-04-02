@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { executeQuery } from '../../lib/db'
 import { getRequestConnectionName } from '../../lib/api/connection'
 import { parseWithSchema } from '../../lib/api/validation'
+import { methodNotAllowed, sendApiError } from '../../lib/api/errors'
 
 const queryBodySchema = z.object({
   query: z.string().trim().min(1, 'query is required'),
@@ -10,8 +11,7 @@ const queryBodySchema = z.object({
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST')
-    return res.status(405).json({ error: 'Method not allowed' })
+    return methodNotAllowed(res, ['POST'])
   }
 
   try {
@@ -20,8 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = await executeQuery({ query, connectionName })
     return res.status(200).json(result)
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    const statusCode = (error as { statusCode?: number })?.statusCode || 400
-    return res.status(statusCode).json({ error: message })
+    return sendApiError(res, error)
   }
 }

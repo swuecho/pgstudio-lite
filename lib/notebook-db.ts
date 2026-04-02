@@ -11,18 +11,9 @@ import {
   type NotebookWidgetMetadata,
 } from './notebook-widgets'
 
-export type NotebookCellType = 'sql' | 'markdown' | 'widget'
+import type { NotebookCellType, Notebook, NotebookSpecV1, NotebookSpecV1Cell } from './notebook-types'
+export type { NotebookCellType, Notebook, NotebookSpecV1, NotebookSpecV1Cell } from './notebook-types'
 export type NotebookStoredWidgetMetadata = NotebookWidgetMetadata
-
-export type Notebook = {
-  id: string
-  title: string
-  description: string
-  metadata_json: Record<string, unknown>
-  connection_name: string
-  created_at: string
-  updated_at: string
-}
 
 export type NotebookCell = {
   id: string
@@ -41,24 +32,6 @@ export type NotebookCell = {
   updated_at: string
 }
 
-export type NotebookSpecV1Cell = {
-  id: string
-  type: NotebookCellType
-  position?: number
-  collapsed?: boolean
-  content: string
-  metadata?: Record<string, unknown>
-}
-
-export type NotebookSpecV1 = {
-  spec_version: '1.0'
-  id?: string
-  title: string
-  description?: string
-  connection_name?: string
-  metadata?: Record<string, unknown>
-  cells: NotebookSpecV1Cell[]
-}
 
 function toNotebook(row: typeof notebooks.$inferSelect): Notebook {
   let parsedMetadata: Record<string, unknown> = {}
