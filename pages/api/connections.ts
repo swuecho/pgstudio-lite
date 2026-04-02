@@ -8,6 +8,7 @@ import {
   updateConnection,
 } from '../../lib/db'
 import { nonEmptyStringSchema, parseWithSchema } from '../../lib/api/validation'
+import { methodNotAllowed, sendApiError } from '../../lib/api/errors'
 
 const createConnectionSchema = z.object({
   name: nonEmptyStringSchema,
@@ -93,14 +94,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(200).json({ ok: true })
     }
 
-    res.setHeader('Allow', 'GET, POST, PATCH, DELETE')
-    return res.status(405).json({ error: 'Method not allowed' })
+    return methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'])
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    const statusCode = (error as { statusCode?: number })?.statusCode || 400
-    const fallbackStatus = message.includes('No database connections configured')
-      ? 400
-      : statusCode
-    return res.status(fallbackStatus).json({ error: message })
+    return sendApiError(res, error)
   }
 }

@@ -53,7 +53,7 @@ export function useTableEditorEffects({
   useEffect(() => {
     if (!state.activeTable) return
     state.setPage(0)
-  }, [state.activeTable, state.pageSize, state.sortBy, state.sortOrder, state.filterColumn, state.filterMode, state.filterValue])
+  }, [state.activeTable, state.pageSize, state.sortBy, state.sortOrder, state.filterColumn, state.filterMode, state.filterValue, state.setPage])
 
   useEffect(() => {
     if (columns.length === 0) return
