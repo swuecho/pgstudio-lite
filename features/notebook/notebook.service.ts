@@ -1,5 +1,6 @@
 import { fetchJson } from '../../lib/http'
 import type { Connection } from '../../components/sql-editor/types'
+import type { NotebookSpecV1 } from '../../lib/notebook-types'
 import type {
   Notebook,
   NotebookCell,
@@ -10,22 +11,7 @@ import type {
   RunCellResponse,
 } from '../../components/notebook/types'
 
-export type NotebookSpecV1 = {
-  spec_version: '1.0'
-  id?: string
-  title: string
-  description?: string
-  connection_name?: string
-  metadata?: Record<string, unknown>
-  cells: Array<{
-    id: string
-    type: 'sql' | 'markdown' | 'widget'
-    position?: number
-    collapsed?: boolean
-    content: string
-    metadata?: Record<string, unknown>
-  }>
-}
+export type { NotebookSpecV1 }
 
 export type ImportNotebookResponse = {
   ok: boolean
