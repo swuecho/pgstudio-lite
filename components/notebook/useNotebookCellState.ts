@@ -55,7 +55,7 @@ export function useNotebookCellState(params: {
   const lastSyncedResultByCellRef = useRef<Record<string, QueryResult | null>>({})
   const lastSyncedExecutedQueryByCellRef = useRef<Record<string, string>>({})
 
-  const cells = detailQueryData?.cells || []
+  const cells = useMemo(() => detailQueryData?.cells || [], [detailQueryData?.cells])
   const sortedCells = useMemo(() => [...cells].sort((a, b) => a.position - b.position), [cells])
 
   // --- Sub-hooks (all called unconditionally before any effects) ---

@@ -94,8 +94,9 @@ export function useWidgetOptions(params: {
   }, [activeNotebookId, activeConnectionName, inputValues, optionsRefreshTickByCell, sortedCells, widgetDraftByCell])
 
   useEffect(() => {
+    const timers = optionsTimersRef.current
     return () => {
-      for (const timer of Object.values(optionsTimersRef.current)) clearTimeout(timer)
+      for (const timer of Object.values(timers)) clearTimeout(timer)
     }
   }, [])
 
