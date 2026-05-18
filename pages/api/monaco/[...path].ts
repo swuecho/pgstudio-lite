@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { existsSync, readFileSync } from 'node:fs'
-import { extname, join } from 'node:path'
+import { extname, join, resolve, sep } from 'node:path'
 
-const MONACO_MIN_DIR = join(process.cwd(), 'node_modules', 'monaco-editor', 'min')
+const MONACO_MIN_DIR = resolve(join(process.cwd(), 'node_modules', 'monaco-editor', 'min'))
 
 function contentTypeFor(pathname: string) {
   const ext = extname(pathname).toLowerCase()
@@ -26,15 +26,26 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const pathSegments = Array.isArray(req.query.path) ? req.query.path : []
-  const safePath = pathSegments.join('/').replace(/\.\./g, '')
-  const normalizedPath = safePath.startsWith('min/') ? safePath.slice(4) : safePath
-  const candidatePaths = [normalizedPath]
-  if (normalizedPath && !normalizedPath.startsWith('vs/')) {
-    candidatePaths.push(`vs/${normalizedPath}`)
+  if (
+    pathSegments.some(
+      (segment) =>
+        typeof segment !== 'string' || segment.length === 0 || !/^[A-Za-z0-9._-]+$/.test(segment)
+    )
+  ) {
+    return res.status(400).send('Bad Request')
   }
-  const fullPath = candidatePaths
-    .map((item) => join(MONACO_MIN_DIR, item))
-    .find((item) => existsSync(item))
+  const requestedPath = pathSegments.join('/')
+  const normalizedPath = requestedPath.startsWith('min/') ? requestedPath.slice(4) : requestedPath
+  const candidates = [normalizedPath]
+  if (normalizedPath && !normalizedPath.startsWith('vs/')) {
+    candidates.push(`vs/${normalizedPath}`)
+  }
+  const fullPath = candidates
+    .map((item) => resolve(MONACO_MIN_DIR, item))
+    .find(
+      (item) =>
+        (item === MONACO_MIN_DIR || item.startsWith(MONACO_MIN_DIR + sep)) && existsSync(item)
+    )
 
   try {
     if (!fullPath) return res.status(404).send('Not Found')
