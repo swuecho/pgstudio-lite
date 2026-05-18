@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
+import { ErrorBoundary } from '../components/shared/ErrorBoundary'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
@@ -142,9 +143,11 @@ export default function TableEditorPage() {
         </div>
 
         <div className={tableStyles.tablePage}>
-          <TableGridPanel
-            {...gridProps}
-          />
+          <ErrorBoundary fallbackTitle="Failed to render table grid">
+            <TableGridPanel
+              {...gridProps}
+            />
+          </ErrorBoundary>
         </div>
       </main>
     </div>

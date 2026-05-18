@@ -1028,3 +1028,34 @@ pre {
   background: #2a171c;
   color: #ff9bab;
 }
+
+.error-boundary {
+  border: 1px solid #f2b8bf;
+  background: #fff3f5;
+  color: #9f1f36;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.error-boundary-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.error-boundary-message {
+  margin: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow: auto;
+}
+
+[data-theme='dark'] .error-boundary {
+  border-color: #5f2e36;
+  background: #2a171c;
+  color: #ff9bab;
+}
