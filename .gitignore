@@ -5,3 +5,5 @@ out/
 tsconfig.tsbuildinfo
 tmp/
 output
+.env.local
+next-env.d.ts
