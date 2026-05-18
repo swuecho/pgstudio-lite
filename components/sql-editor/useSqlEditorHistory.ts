@@ -13,7 +13,7 @@ export function useSqlEditorHistory(historySearch: string, connectionName: strin
     mutationFn: () => clearHistoryService(connectionName),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sql', 'history', connectionName] }),
   })
-  const historyItems = historyQuery.data?.items || []
+  const historyItems = useMemo(() => historyQuery.data?.items || [], [historyQuery.data?.items])
 
   const filteredHistory = useMemo(() => {
     const q = historySearch.trim().toLowerCase()

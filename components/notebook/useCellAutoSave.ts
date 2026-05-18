@@ -24,8 +24,9 @@ export function useCellAutoSave(params: {
   const lastSyncedWidgetByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
 
   useEffect(() => {
+    const timers = saveTimersRef.current
     return () => {
-      for (const timer of Object.values(saveTimersRef.current)) clearTimeout(timer)
+      for (const timer of Object.values(timers)) clearTimeout(timer)
     }
   }, [])
 

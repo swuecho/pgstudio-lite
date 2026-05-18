@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useConnections } from '../shared/hooks/useConnections'
 import type { Notebook } from './types'
@@ -15,7 +15,7 @@ export function useNotebookCrudState(params: { setStatus: (value: string) => voi
   const connectionsQuery = useConnections()
   const connections = connectionsQuery.connections
   const notebooksQuery = useQuery({ queryKey: NOTEBOOKS_QUERY_KEY, queryFn: () => getNotebooks() })
-  const notebooks = notebooksQuery.data?.items || []
+  const notebooks = useMemo(() => notebooksQuery.data?.items || [], [notebooksQuery.data?.items])
 
   useEffect(() => {
     if (!activeNotebookId && notebooks[0]?.id) setActiveNotebookId(notebooks[0].id)
