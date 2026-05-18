@@ -538,12 +538,10 @@ const WidgetCellBody = memo(function WidgetCellBody({
   }
 
   return (
-    <div className={styles.widgetCollapsedShell}>
-      <WidgetCellEditor
-        {...sharedProps}
-        collapsed
-      />
-    </div>
+    <WidgetCellEditor
+      {...sharedProps}
+      collapsed
+    />
   )
 })
 
