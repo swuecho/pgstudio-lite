@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
-import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
+import { SettingsPanel } from '../components/settings/SettingsPanel'
+import { SettingsButton } from '../components/settings/SettingsButton'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
@@ -12,7 +13,6 @@ import tableStyles from '../components/table-editor/TableEditorStyles.module.css
 export default function TableEditorPage() {
   const router = useRouter()
   const state = useTableEditorState()
-  const [managingConnections, setManagingConnections] = useState(false)
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const filterValueInputRef = useRef<HTMLInputElement>(null)
   const didInitUrlSyncRef = useRef(false)
@@ -115,13 +115,7 @@ export default function TableEditorPage() {
         onWidthResizerMouseDown={handleWidthResizerMouseDown}
       />
 
-      <ConnectionManagerModal
-        open={managingConnections}
-        onClose={() => setManagingConnections(false)}
-        connections={state.connections}
-        connectionName={state.connectionName}
-        onChangeConnection={state.setConnectionName}
-      />
+      <SettingsPanel />
 
       <main className={pageStyles.layoutMain}>
         <div className={`${pageStyles.editorPanelHeader} ${tableStyles.tableMainHeader}`}>
@@ -142,9 +136,8 @@ export default function TableEditorPage() {
                 </option>
               ))}
             </select>
-            <button className="btn small" onClick={() => setManagingConnections(true)}>
-              Manage
-            </button>
+            <SettingsButton section="connections" label="Settings" />
+
           </div>
         </div>
 
