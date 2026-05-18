@@ -4,7 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ErrorBoundary } from '../components/shared/ErrorBoundary'
 
-function Boom({ message }: { message: string }) {
+function Boom({ message }: { message: string }): never {
   throw new Error(message)
 }
 
