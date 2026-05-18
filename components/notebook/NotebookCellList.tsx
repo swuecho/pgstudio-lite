@@ -351,6 +351,37 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
   )
 })
 
+// --- Cell error panel ---
+
+type CellErrorPanelProps = {
+  message: string
+  busy: boolean
+  onRetry: () => void
+}
+
+function CellErrorPanel({ message, busy, onRetry }: CellErrorPanelProps) {
+  const handleCopy = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    void navigator.clipboard.writeText(message).catch(() => {})
+  }, [message])
+  return (
+    <div className="cell-error" role="alert">
+      <div className="cell-error-head">
+        <span className="cell-error-title">Cell error</span>
+        <div className="cell-error-actions">
+          <button type="button" className="btn small" disabled={busy} onClick={onRetry}>
+            Retry
+          </button>
+          <button type="button" className="btn small" onClick={handleCopy}>
+            Copy
+          </button>
+        </div>
+      </div>
+      <pre className="cell-error-message">{message}</pre>
+    </div>
+  )
+}
+
 // --- SQL cell body ---
 
 type SqlCellBodyProps = {
@@ -468,7 +499,9 @@ const SqlCellBody = memo(function SqlCellBody({
           </span>
         </div>
         {saveError ? <div className="empty-state">Save failed: {saveError}</div> : null}
-        {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
+        {cell.last_error ? (
+          <CellErrorPanel message={cell.last_error} busy={running || runningAll} onRetry={onRun} />
+        ) : null}
         {staleResult ? <div className="empty-state">Current SQL differs from the last executed query.</div> : null}
         {lastResult ? <CellResult result={lastResult} /> : null}
       </>
@@ -479,7 +512,9 @@ const SqlCellBody = memo(function SqlCellBody({
     <>
       <div className={styles.sqlPreview}>{toCompactSqlPreview(draft)}</div>
       {saveError ? <div className="empty-state">Save failed: {saveError}</div> : null}
-      {cell.last_error ? <div className="empty-state">{cell.last_error}</div> : null}
+      {cell.last_error ? (
+        <CellErrorPanel message={cell.last_error} busy={running || runningAll} onRetry={onRun} />
+      ) : null}
       {staleResult ? <div className="empty-state">Result is stale until this cell is run again.</div> : null}
       {lastResult ? (
         <div className={styles.resultPreview}>
