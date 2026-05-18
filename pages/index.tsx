@@ -1,5 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react'
-import { ConnectionManagerModal } from '../components/connections/ConnectionManagerModal'
+import { SettingsPanel } from '../components/settings/SettingsPanel'
+import { SettingsButton } from '../components/settings/SettingsButton'
 import { ConfirmDialog, PromptDialog, QuickActionsDialog } from '../components/shared/Dialog'
 import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
@@ -16,7 +17,6 @@ export default function SqlEditorPage() {
   const SPLITTER_HEIGHT = 12
 
   const state = useSqlEditorState()
-  const [managingConnections, setManagingConnections] = useState(false)
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const [resultsHeight, setResultsHeight] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
@@ -252,13 +252,7 @@ export default function SqlEditorPage() {
         onWidthResizerMouseDown={handleWidthResizerMouseDown}
       />
 
-      <ConnectionManagerModal
-        open={managingConnections}
-        onClose={() => setManagingConnections(false)}
-        connections={state.connections}
-        connectionName={state.connectionName}
-        onChangeConnection={state.setConnectionName}
-      />
+      <SettingsPanel />
 
       <main className={styles.layoutMain}>
         <div className={styles.editorPanelHeader}>
@@ -276,9 +270,8 @@ export default function SqlEditorPage() {
                 </option>
               ))}
             </select>
-            <button className="btn small" onClick={() => setManagingConnections(true)}>
-              Manage
-            </button>
+            <SettingsButton section="connections" label="Settings" />
+
           </div>
         </div>
 

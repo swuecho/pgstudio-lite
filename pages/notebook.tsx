@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import ThemeToggle from '../components/theme-toggle'
+import { SettingsPanel } from '../components/settings/SettingsPanel'
+import { SettingsButton } from '../components/settings/SettingsButton'
 import { ConfirmDialog, PromptDialog } from '../components/shared/Dialog'
 import { NotebookCellList } from '../components/notebook/NotebookCellList'
 import { NotebookHelpPanel } from '../components/notebook/NotebookHelpPanel'
@@ -69,6 +71,7 @@ export default function NotebookPage() {
                 </option>
               ))}
             </select>
+            <SettingsButton section="connections" label="Settings" />
             <button className={`btn small ${styles.actionButton}`} onClick={() => controller.notebookImport.setShowImportModal(true)}>
               Import
             </button>
@@ -166,6 +169,8 @@ export default function NotebookPage() {
 
         <NotebookCellList controller={controller} />
       </main>
+
+      <SettingsPanel />
 
       {controller.notebookImport.showImportModal ? (
         <NotebookImportModal
