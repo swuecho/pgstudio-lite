@@ -1059,3 +1059,45 @@ pre {
   background: #2a171c;
   color: #ff9bab;
 }
+
+.cell-error {
+  border: 1px solid #f2b8bf;
+  background: #fff3f5;
+  color: #9f1f36;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.cell-error-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cell-error-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cell-error-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.cell-error-message {
+  margin: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+
+[data-theme='dark'] .cell-error {
+  border-color: #5f2e36;
+  background: #2a171c;
+  color: #ff9bab;
+}
