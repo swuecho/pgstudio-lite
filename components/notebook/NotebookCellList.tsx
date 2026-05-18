@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { SqlCellEditor } from './SqlCellEditor'
 import { WidgetCellEditor } from './WidgetCellEditor'
+import { ErrorBoundary } from '../shared/ErrorBoundary'
 import type { NotebookPageController } from './useNotebookPageState'
 import { formatCell } from '../sql-editor/utils'
 import type { QueryResult } from '../sql-editor/types'
@@ -87,10 +88,12 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <MemoizedNotebookCellRow
-                cell={cell}
-                controller={controller}
-              />
+              <ErrorBoundary fallbackTitle={`Cell "${cell.id}" failed to render`}>
+                <MemoizedNotebookCellRow
+                  cell={cell}
+                  controller={controller}
+                />
+              </ErrorBoundary>
             </div>
           )
         })}

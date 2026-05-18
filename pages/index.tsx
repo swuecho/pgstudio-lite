@@ -2,6 +2,7 @@ import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
 import { ConfirmDialog, PromptDialog, QuickActionsDialog } from '../components/shared/Dialog'
+import { ErrorBoundary } from '../components/shared/ErrorBoundary'
 import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
 import { SqlSidebar } from '../components/sql-editor/Sidebar'
@@ -311,12 +312,14 @@ export default function SqlEditorPage() {
             onMouseDown={startResize}
           />
 
-          <SqlResultsPanel
-            result={state.result}
-            formatCell={formatCell}
-            connectionName={state.connectionName}
-            style={{ flexBasis: `${resultsHeight}px` }}
-          />
+          <ErrorBoundary fallbackTitle="Failed to render query results">
+            <SqlResultsPanel
+              result={state.result}
+              formatCell={formatCell}
+              connectionName={state.connectionName}
+              style={{ flexBasis: `${resultsHeight}px` }}
+            />
+          </ErrorBoundary>
 
           <div className={styles.editorFooter} ref={editorFooterRef}>
             <button className="btn primary" disabled={state.running} onClick={() => void state.runCurrentQuery()}>
