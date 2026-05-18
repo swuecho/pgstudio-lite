@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { existsSync, readFileSync } from 'node:fs'
-import { extname, join } from 'node:path'
+import { extname, join, resolve, sep } from 'node:path'
 
-const MONACO_VS_DIR = join(process.cwd(), 'node_modules', 'monaco-editor', 'min', 'vs')
+const MONACO_VS_DIR = resolve(join(process.cwd(), 'node_modules', 'monaco-editor', 'min', 'vs'))
 
 function contentTypeFor(pathname: string) {
   const ext = extname(pathname).toLowerCase()
@@ -26,8 +26,13 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const pathSegments = Array.isArray(req.query.path) ? req.query.path : []
-  const safePath = pathSegments.join('/').replace(/\.\./g, '')
-  const fullPath = join(MONACO_VS_DIR, safePath)
+  if (pathSegments.some((segment) => typeof segment !== 'string' || segment.length === 0 || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+    return res.status(400).send('Bad Request')
+  }
+  const fullPath = resolve(MONACO_VS_DIR, pathSegments.join('/'))
+  if (fullPath !== MONACO_VS_DIR && !fullPath.startsWith(MONACO_VS_DIR + sep)) {
+    return res.status(400).send('Bad Request')
+  }
 
   try {
     if (!existsSync(fullPath)) return res.status(404).send('Not Found')
