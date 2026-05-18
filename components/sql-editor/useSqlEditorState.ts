@@ -34,10 +34,15 @@ export function useSqlEditorState() {
   const connectionsQuery = useConnections()
   const connections = connectionsQuery.connections
 
+  const [isMac, setIsMac] = useState(false)
+  useEffect(() => {
+    setIsMac(detectOS() === 'macos')
+  }, [])
+
   const runLabel = useMemo(() => {
-    const shortcut = detectOS() === 'macos' ? '⌘↵' : 'Ctrl↵'
+    const shortcut = isMac ? '⌘↵' : 'Ctrl↵'
     return hasSelection ? `Run selected (${shortcut})` : `Run (${shortcut})`
-  }, [hasSelection])
+  }, [hasSelection, isMac])
 
   const filteredSnippets = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
