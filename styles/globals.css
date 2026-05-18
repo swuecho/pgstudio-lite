@@ -1101,3 +1101,32 @@ pre {
   background: #2a171c;
   color: #ff9bab;
 }
+
+.copyable-cell {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 3px;
+  margin: -1px -3px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.copyable-cell:hover {
+  background: var(--control-bg-hover, rgba(99, 102, 241, 0.12));
+}
+
+.copyable-cell:focus-visible {
+  outline: 2px solid var(--accent, #4f46e5);
+  outline-offset: 1px;
+}
+
+.copyable-cell-copied,
+.copyable-cell-copied:hover {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+[data-theme='dark'] .copyable-cell-copied,
+[data-theme='dark'] .copyable-cell-copied:hover {
+  background: #064e3b;
+  color: #a7f3d0;
+}

@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import { ColumnInfo, RowData, RowKey } from './types'
 import { ColumnsSelector } from './ColumnsSelector'
 import { JsonbCellEditor } from './JsonbCellEditor'
+import { CopyableCellValue } from '../shared/CopyableCellValue'
 import styles from './TableEditorStyles.module.css'
 
 type TableGridPanelProps = {
@@ -346,7 +347,7 @@ export function TableGridPanel({
                   return (
                     <td key={col.name}>
                       {readOnly ? (
-                        <code>{String(row[col.name] ?? '')}</code>
+                        <CopyableCellValue text={String(row[col.name] ?? '')} />
                       ) : isBooleanColumn(col.dataType) ? (
                         <div className={styles.tableCellEditor}>
                           <button
