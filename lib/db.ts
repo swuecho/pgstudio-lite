@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, desc, eq } from 'drizzle-orm'
 import pg from 'pg'
-import { dbConnections, queryHistory, querySnippets } from '../drizzle/schema'
+import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 
 const { Pool } = pg
@@ -330,6 +330,7 @@ export function updateConnection(
   }
 
   const now = new Date().toISOString()
+  const renamed = existing.name !== nextName
   metaDb.transaction((tx) => {
     if (nextDefault) tx.update(dbConnections).set({ isDefault: false }).run()
     tx.update(dbConnections)
@@ -342,6 +343,20 @@ export function updateConnection(
       })
       .where(eq(dbConnections.id, id))
       .run()
+    if (renamed) {
+      tx.update(notebooks)
+        .set({ connectionName: nextName, updatedAt: now })
+        .where(eq(notebooks.connectionName, existing.name))
+        .run()
+      tx.update(querySnippets)
+        .set({ connectionName: nextName, updatedAt: now })
+        .where(eq(querySnippets.connectionName, existing.name))
+        .run()
+      tx.update(queryHistory)
+        .set({ connectionName: nextName })
+        .where(eq(queryHistory.connectionName, existing.name))
+        .run()
+    }
     const hasDefault = tx.select({ id: dbConnections.id }).from(dbConnections).where(eq(dbConnections.isDefault, true)).get()
     if (!hasDefault) {
       tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, id)).run()
