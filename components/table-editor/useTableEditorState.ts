@@ -34,7 +34,6 @@ export function useTableEditorState() {
       page: state.page,
       totalRows: actions.totalRows,
       readOnlyTable: actions.rowMutationsReadOnly,
-      readOnlyReason: actions.rowMutationsDisabledReason,
       visibleColumns: state.visibleColumns,
       onChangeSortBy: state.setSortBy,
       onChangeSortOrder: state.setSortOrder,

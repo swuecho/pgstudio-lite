@@ -60,6 +60,24 @@ npm run dev
 - Seeded connections are only used when the local metadata DB has no saved connections yet.
 - After first boot, connection changes are managed in the UI and persisted locally.
 
+### Why edits to `.env.local` may appear to be ignored
+
+The `PG_CONNECTION_*` and `PG_CONNECTIONS_JSON` env vars are **first-boot seed values only**. The seeder (`seedConnectionsIfEmpty` in `lib/db.ts`) checks the metadata DB and skips seeding entirely if **any** saved connection already exists. After that, the SQLite `db_connections` table is the source of truth — changing values in `.env.local` and restarting will not update an already-seeded row (name, connection string, read-only flag, etc.).
+
+To apply changes after first boot, choose one:
+
+1. Edit the connection in the app UI (`Manage` panel) — the intended path.
+2. Update the row directly:
+   ```bash
+   sqlite3 data/history.db "UPDATE db_connections SET name='...', read_only=1 WHERE id='<id>';"
+   ```
+3. Re-seed from scratch (⚠️ wipes notebooks, query history, snippets, and all saved connections):
+   ```bash
+   mv data/history.db data/history.db.bak
+   rm -f data/history.db-shm data/history.db-wal
+   ```
+   The next start will re-read `.env.local` and seed fresh.
+
 ## Environment Variables
 
 Required:

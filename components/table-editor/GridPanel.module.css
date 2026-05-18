@@ -8,16 +8,17 @@
 }
 
 .tableToolbar {
-  display: grid;
-  grid-template-columns: 1fr auto auto 1fr minmax(120px, 1fr) auto auto auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
-  height: 46px;
-  align-items: center;
+  min-height: 46px;
   z-index: 10;
   position: relative;
+  overflow-x: auto;
 }
 
 .tableToolbar select {
@@ -27,11 +28,20 @@
   color: var(--text);
   padding: 4px 9px;
   height: var(--control-h);
+  flex-shrink: 0;
 }
 
 .tableToolbar .cellInput {
   height: var(--control-h);
   padding: 4px 9px;
+  flex: 1 1 160px;
+  min-width: 120px;
+}
+
+.toolbarFilterMode {
+  width: auto;
+  min-width: 0;
+  padding-right: 24px;
 }
 
 .tableScrollArea {
@@ -179,6 +189,6 @@
   }
 
   .tableToolbar {
-    grid-template-columns: 1fr 1fr;
+    flex-wrap: wrap;
   }
 }

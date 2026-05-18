@@ -5,7 +5,7 @@
 .columnsSelectorDropdown {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
   width: min(280px, 100vw);
   max-height: min(400px, 80vh);
   border: 1px solid var(--border);
