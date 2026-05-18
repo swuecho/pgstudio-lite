@@ -16,7 +16,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
     queryFn: () => getSchema(connectionName),
     enabled: Boolean(connectionName),
   })
-  const schemaTables = schemaQuery.data?.tables || []
+  const schemaTables = useMemo(() => schemaQuery.data?.tables || [], [schemaQuery.data?.tables])
 
   const schemaTablesRef = useRef<typeof schemaTables>([])
   const tableColumnsByKeyRef = useRef<Record<string, string[]>>({})
@@ -53,7 +53,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
       if (cached?.columns?.length) result[tableKey] = cached.columns.map((c) => c.name)
     }
     return result
-  }, [expandedTables, connectionName, loadingColumnsByKey, queryClient])
+  }, [expandedTables, connectionName, queryClient])
 
   async function loadColumnsForTable(schema: string, table: string) {
     const key = `${schema}.${table}`
@@ -107,7 +107,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
       }
       return next
     })
-  }, [schemaGroups])
+  }, [schemaGroups, setExpandedSchemas])
 
   return {
     schemaGroups,

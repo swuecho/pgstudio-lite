@@ -70,7 +70,7 @@ export function useTableEditorQueries(state: TableEditorState) {
       }),
     enabled: Boolean(state.connectionName && selectedTarget.table),
   })
-  const columns = rowsQuery.data?.columns || []
+  const columns = useMemo(() => rowsQuery.data?.columns || [], [rowsQuery.data?.columns])
   const rows = rowsQuery.data?.rows || []
   const totalRows = Number(rowsQuery.data?.total || 0)
   const hasPrimaryKey = columns.some((column) => column.isPrimaryKey)
