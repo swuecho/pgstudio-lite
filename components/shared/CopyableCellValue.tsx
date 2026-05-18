@@ -4,9 +4,17 @@ type CopyableCellValueProps = {
   text: string
   className?: string
   title?: string
+  maxDisplayLength?: number
 }
 
-export function CopyableCellValue({ text, className, title }: CopyableCellValueProps) {
+const DEFAULT_MAX_DISPLAY_LENGTH = 500
+
+export function CopyableCellValue({
+  text,
+  className,
+  title,
+  maxDisplayLength = DEFAULT_MAX_DISPLAY_LENGTH,
+}: CopyableCellValueProps) {
   const [copied, setCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -28,12 +36,22 @@ export function CopyableCellValue({ text, className, title }: CopyableCellValueP
       .catch(() => {})
   }, [text])
 
+  const truncated = text.length > maxDisplayLength
+  const displayText = truncated ? `${text.slice(0, maxDisplayLength)}…` : text
+  const computedTitle =
+    title ||
+    (copied
+      ? 'Copied!'
+      : truncated
+        ? `Click to copy (full value is ${text.length} chars)`
+        : 'Click to copy')
+
   return (
     <code
       className={`copyable-cell ${copied ? 'copyable-cell-copied' : ''} ${className || ''}`.trim()}
       role="button"
       tabIndex={0}
-      title={title || (copied ? 'Copied!' : 'Click to copy')}
+      title={computedTitle}
       onClick={handleClick}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -42,7 +60,7 @@ export function CopyableCellValue({ text, className, title }: CopyableCellValueP
         }
       }}
     >
-      {text}
+      {displayText}
     </code>
   )
 }
