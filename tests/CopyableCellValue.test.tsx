@@ -51,6 +51,20 @@ describe('CopyableCellValue', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('kbd'))
   })
 
+  it('truncates display text past maxDisplayLength but copies the full value', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    installClipboard(writeText)
+    const long = 'x'.repeat(50)
+    render(<CopyableCellValue text={long} maxDisplayLength={10} />)
+    const cell = screen.getByRole('button')
+    expect(cell).toHaveTextContent('xxxxxxxxxx…')
+    expect(cell.textContent?.length).toBe(11)
+    expect(cell).toHaveAttribute('title', expect.stringContaining('50 chars'))
+
+    fireEvent.click(cell)
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(long))
+  })
+
   it('does not throw when clipboard API is unavailable', () => {
     Object.defineProperty(globalThis.navigator, 'clipboard', {
       configurable: true,
