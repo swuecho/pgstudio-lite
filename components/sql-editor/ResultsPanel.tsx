@@ -2,6 +2,7 @@ import Link from 'next/link'
 import styles from './ResultsPanel.module.css'
 import type { CSSProperties } from 'react'
 import { QueryResult } from './types'
+import { CopyableCellValue } from '../shared/CopyableCellValue'
 
 type SqlResultsPanelProps = {
   result: QueryResult | null
@@ -69,7 +70,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                           <tr key={rowIndex}>
                             {statement.fields.map((field) => (
                               <td key={`${rowIndex}-${field}`}>
-                                <code>{formatCell(row[field])}</code>
+                                <CopyableCellValue text={formatCell(row[field])} />
                               </td>
                             ))}
                           </tr>
