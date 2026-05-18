@@ -86,6 +86,7 @@ export function useNotebookCellState(params: {
 
   const widgetOptions = useWidgetOptions({
     activeNotebookId,
+    activeConnectionName: detailQueryData?.notebook.connection_name || '',
     sortedCells,
     widgetDraftByCell,
     inputValues,

@@ -19,7 +19,6 @@ type TableGridPanelProps = {
   page: number
   totalRows: number
   readOnlyTable: boolean
-  readOnlyReason?: string
   visibleColumns: string[]
   onChangeSortBy: (value: string) => void
   onChangeSortOrder: (value: 'asc' | 'desc') => void
@@ -61,7 +60,6 @@ export function TableGridPanel({
   page,
   totalRows,
   readOnlyTable,
-  readOnlyReason,
   visibleColumns,
   onChangeSortBy,
   onChangeSortOrder,
@@ -276,6 +274,13 @@ export function TableGridPanel({
     <>
       <div className={styles.tableGridWrap}>
         <div className={styles.tableToolbar}>
+          <ColumnsSelector
+            columns={columns}
+            visibleColumns={visibleColumns}
+            onToggleColumn={onToggleVisibleColumn}
+            onShowAll={onShowAllColumns}
+            onHideAll={onHideAllColumns}
+          />
           <select value={sortBy} onChange={(e) => onChangeSortBy(e.target.value)}>
             <option value="">Default order</option>
             {columns.map((col) => (
@@ -296,7 +301,11 @@ export function TableGridPanel({
               </option>
             ))}
           </select>
-          <select value={filterMode} onChange={(e) => onChangeFilterMode(e.target.value as 'contains' | 'equals')}>
+          <select
+            className={styles.toolbarFilterMode}
+            value={filterMode}
+            onChange={(e) => onChangeFilterMode(e.target.value as 'contains' | 'equals')}
+          >
             <option value="contains">contains</option>
             <option value="equals">equals</option>
           </select>
@@ -315,14 +324,6 @@ export function TableGridPanel({
           <button className="btn small" onClick={onClearFilters} disabled={!hasFilters}>
             Clear filters
           </button>
-          {readOnlyReason ? <span className="history-meta">{readOnlyReason}</span> : null}
-          <ColumnsSelector
-            columns={columns}
-            visibleColumns={visibleColumns}
-            onToggleColumn={onToggleVisibleColumn}
-            onShowAll={onShowAllColumns}
-            onHideAll={onHideAllColumns}
-          />
         </div>
         <div className={styles.tableScrollArea}>
           <table className={styles.tableGridTable}>
@@ -331,7 +332,7 @@ export function TableGridPanel({
                 {displayColumns.map((col) => (
                   <th key={col.name}>{col.name}</th>
                 ))}
-                <th className={styles.tableActionsCol}>actions</th>
+                {!readOnlyTable ? <th className={styles.tableActionsCol}>actions</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -423,24 +424,25 @@ export function TableGridPanel({
                     </td>
                   )
                 })}
-                  <td className={styles.tableActionsCol}>
-                    <button
-                      className="btn small danger"
-                      disabled={readOnlyTable}
-                      onClick={() => {
-                        const rowPreview = truncate(previewValue(row), 500)
-                        setDialog({
-                          title: 'Preview row delete',
-                          lines: [`Row: ${formatRowKey(row._rowKey)}`, `Data: ${rowPreview}`],
-                          confirmLabel: 'Delete row',
-                          cancelLabel: 'Cancel',
-                          onConfirm: () => onDeleteRow(row._rowKey),
-                        })
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  {!readOnlyTable ? (
+                    <td className={styles.tableActionsCol}>
+                      <button
+                        className="btn small danger"
+                        onClick={() => {
+                          const rowPreview = truncate(previewValue(row), 500)
+                          setDialog({
+                            title: 'Preview row delete',
+                            lines: [`Row: ${formatRowKey(row._rowKey)}`, `Data: ${rowPreview}`],
+                            confirmLabel: 'Delete row',
+                            cancelLabel: 'Cancel',
+                            onConfirm: () => onDeleteRow(row._rowKey),
+                          })
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

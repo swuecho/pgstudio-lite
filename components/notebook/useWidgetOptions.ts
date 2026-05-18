@@ -5,11 +5,12 @@ import { mapQueryResultToOptions } from '../../lib/notebook-option-source'
 
 export function useWidgetOptions(params: {
   activeNotebookId: string
+  activeConnectionName: string
   sortedCells: NotebookCell[]
   widgetDraftByCell: Record<string, NotebookWidgetMetadata>
   inputValues: Record<string, unknown>
 }) {
-  const { activeNotebookId, sortedCells, widgetDraftByCell, inputValues } = params
+  const { activeNotebookId, activeConnectionName, sortedCells, widgetDraftByCell, inputValues } = params
 
   const [resolvedOptionsByCell, setResolvedOptionsByCell] = useState<Record<string, NotebookResolvedOptionsState>>({})
   const [optionsRefreshTickByCell, setOptionsRefreshTickByCell] = useState<Record<string, number>>({})
@@ -33,7 +34,7 @@ export function useWidgetOptions(params: {
 
       nextTrackedCellIds.add(cell.id)
       const refreshTick = optionsRefreshTickByCell[cell.id] || 0
-      const signature = JSON.stringify({ notebookId: activeNotebookId, query, inputValues: serializedInputValues, refreshTick })
+      const signature = JSON.stringify({ notebookId: activeNotebookId, connectionName: activeConnectionName, query, inputValues: serializedInputValues, refreshTick })
       if (optionRequestSignatureRef.current[cell.id] === signature) continue
       optionRequestSignatureRef.current[cell.id] = signature
 
@@ -90,7 +91,7 @@ export function useWidgetOptions(params: {
     setResolvedOptionsByCell((prev) =>
       Object.fromEntries(Object.entries(prev).filter(([cellId]) => nextTrackedCellIds.has(cellId)))
     )
-  }, [activeNotebookId, inputValues, optionsRefreshTickByCell, sortedCells, widgetDraftByCell])
+  }, [activeNotebookId, activeConnectionName, inputValues, optionsRefreshTickByCell, sortedCells, widgetDraftByCell])
 
   useEffect(() => {
     return () => {
