@@ -159,6 +159,11 @@
   padding: 10px;
 }
 
+.widgetCell.cellCollapsed {
+  gap: 6px;
+  padding: 8px 10px;
+}
+
 .cellSelected {
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
@@ -266,14 +271,6 @@
   line-height: 1.4;
 }
 
-.widgetCollapsedShell {
-  display: block;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--panel-2) 94%, var(--accent) 6%);
-  padding: 10px 12px;
-}
-
 .widgetInlineRow {
   display: grid;
   grid-template-columns: minmax(140px, 240px) minmax(0, 1fr);
@@ -284,11 +281,11 @@
 .widgetInlineLabel {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
+  min-height: 28px;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--panel);
-  padding: 0 14px;
+  padding: 0 12px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
