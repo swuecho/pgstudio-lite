@@ -1064,6 +1064,66 @@ export async function updateTableRowByPrimaryKey(
   })
 }
 
+export async function insertTableRow(
+  connectionName: string | undefined,
+  schema: string,
+  table: string,
+  values: Record<string, unknown>
+) {
+  const connection = getConnectionByName(connectionName)
+  if (connection.readOnly) {
+    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
+    error.statusCode = 403
+    throw error
+  }
+
+  const keys = Object.keys(values)
+  if (keys.length === 0) {
+    const error = new Error('at least one column value is required') as Error & { statusCode?: number }
+    error.statusCode = 400
+    throw error
+  }
+
+  return withClient(connectionName, async (client) => {
+    const columns = await getTableColumns(connectionName, table, schema)
+    const columnByName = new Map(columns.map((column) => [column.name, column]))
+    const unknownColumn = keys.find((key) => !columnByName.has(key))
+    if (unknownColumn) {
+      const error = new Error(`unknown column '${unknownColumn}'`) as Error & { statusCode?: number }
+      error.statusCode = 400
+      throw error
+    }
+
+    const identityColumn = keys.find((key) => columnByName.get(key)?.isIdentity)
+    if (identityColumn) {
+      const error = new Error(`cannot set identity column '${identityColumn}'`) as Error & { statusCode?: number }
+      error.statusCode = 400
+      throw error
+    }
+
+    const primaryKeyColumns = columns.filter((column) => column.isPrimaryKey).map((column) => column.name)
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
+    const columnList = keys.map((key) => sqlIdent(key)).join(', ')
+    const placeholders = keys.map((_, index) => `$${index + 1}`).join(', ')
+    const sql = `insert into ${qTable} (${columnList}) values (${placeholders}) returning *`
+    const { rows } = await client.query(sql, keys.map((key) => values[key]))
+    const row = rows[0] as Record<string, unknown> | undefined
+    if (!row) {
+      const error = new Error('insert did not return a row') as Error & { statusCode?: number }
+      error.statusCode = 500
+      throw error
+    }
+
+    return {
+      ...row,
+      _rowKey:
+        primaryKeyColumns.length > 0
+          ? Object.fromEntries(primaryKeyColumns.map((column) => [column, row[column]]))
+          : null,
+    }
+  })
+}
+
 export async function deleteTableRowByPrimaryKey(
   connectionName: string | undefined,
   schema: string,

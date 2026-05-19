@@ -22,6 +22,7 @@ type EditorPaneProps = {
   onMountEditor: (editor: MonacoEditorNs.IStandaloneCodeEditor) => void
   onSelectionChange: (hasSelection: boolean) => void
   onRunQuery: () => void
+  onExplainQuery: () => void
   onSaveSnippet: () => void
   schemaTablesRef: MutableRefObject<SchemaTable[]>
   tableColumnsByKeyRef: MutableRefObject<Record<string, string[]>>
@@ -33,6 +34,7 @@ export function EditorPane({
   onMountEditor,
   onSelectionChange,
   onRunQuery,
+  onExplainQuery,
   onSaveSnippet,
   schemaTablesRef,
   tableColumnsByKeyRef,
@@ -148,6 +150,9 @@ export function EditorPane({
 
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
             onRunQuery()
+          })
+          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
+            onExplainQuery()
           })
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             onSaveSnippet()

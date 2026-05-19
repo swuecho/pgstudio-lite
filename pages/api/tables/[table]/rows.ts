@@ -4,6 +4,7 @@ import {
   deleteTableRowByPrimaryKey,
   getTableColumns,
   getTableRows,
+  insertTableRow,
   updateTableRowByPrimaryKey,
 } from '../../../../lib/db'
 import { getRequestConnectionName } from '../../../../lib/api/connection'
@@ -36,6 +37,13 @@ const deleteRowBodySchema = z.object({
   rowKey: z.record(z.string(), z.unknown()).refine((value) => Object.keys(value).length > 0, 'rowKey is required'),
 })
 
+const insertRowBodySchema = z.object({
+  schema: optionalSchemaNameSchema.default('public'),
+  values: z
+    .record(z.string(), z.unknown())
+    .refine((value) => Object.keys(value).length > 0, 'values must include at least one column'),
+})
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { table } = parseWithSchema(tableParamSchema, req.query)
@@ -61,6 +69,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ schema, table, columns, rows: rows.rows, total: rows.total })
     }
 
+    if (req.method === 'POST') {
+      const { schema, values } = parseWithSchema(insertRowBodySchema, req.body || {})
+      const row = await insertTableRow(connectionName, schema, table, values)
+      return res.status(200).json({ row })
+    }
+
     if (req.method === 'PATCH') {
       const { schema, rowKey, patch } = parseWithSchema(patchRowBodySchema, req.body || {})
       await updateTableRowByPrimaryKey(connectionName, schema, table, rowKey, patch)
@@ -73,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true })
     }
 
-    return methodNotAllowed(res, ['GET', 'PATCH', 'DELETE'])
+    return methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'])
   } catch (error) {
     return sendApiError(res, error)
   }
