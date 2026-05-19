@@ -1,0 +1,193 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 39, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  padding: 16px;
+}
+
+.modal-card {
+  width: min(860px, 100%);
+  max-height: min(84vh, 760px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.table-confirm-modal {
+  width: min(560px, 100%);
+  max-height: min(72vh, 520px);
+}
+
+.modal-head {
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 12px;
+  display: grid;
+  gap: 14px;
+}
+
+.modal-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-3);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.modal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.modal-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.modal-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.modal-form-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.modal-form-grid input {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--control-bg);
+  padding: 7px 10px;
+}
+
+.dialog-confirm-card {
+  width: min(520px, 100%);
+  max-height: min(72vh, 480px);
+}
+
+.dialog-prompt-card {
+  width: min(560px, 100%);
+  max-height: min(72vh, 480px);
+}
+
+.dialog-quick-actions-card {
+  width: min(620px, 100%);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-copy {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dialog-field {
+  display: grid;
+  gap: 8px;
+}
+
+.dialog-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dialog-field input {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--control-bg);
+  padding: 8px 10px;
+}
+
+.dialog-action-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dialog-action-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--surface-history-start), var(--surface-history-end));
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.dialog-action-item:hover {
+  background: var(--control-bg-hover);
+}
+
+.dialog-action-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dialog-action-description {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.modal-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.modal-error {
+  border: 1px solid #f2b8bf;
+  background: #fff3f5;
+  color: #9f1f36;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+[data-theme='dark'] .modal-form-grid input {
+  background: #121925;
+}
+
+[data-theme='dark'] .dialog-field input {
+  background: #121925;
+}
+
+[data-theme='dark'] .modal-error {
+  border-color: #5f2e36;
+  background: #2a171c;
+  color: #ff9bab;
+}
