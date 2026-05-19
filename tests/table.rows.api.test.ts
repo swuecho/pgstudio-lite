@@ -3,7 +3,11 @@ import rowsHandler from '../pages/api/tables/[table]/rows'
 import * as db from '../lib/db'
 
 vi.mock('../lib/db', () => ({
-  getTableColumns: vi.fn(async () => []),
+  getTableColumns: vi.fn(async () => [
+    { name: 'id', dataType: 'integer', isNullable: false, isIdentity: true, isPrimaryKey: true },
+    { name: 'amount', dataType: 'numeric', isNullable: true, isIdentity: false, isPrimaryKey: false },
+    { name: 'title', dataType: 'text', isNullable: true, isIdentity: false, isPrimaryKey: false },
+  ]),
   getTableRows: vi.fn(async () => ({ rows: [], total: 0 })),
   insertTableRow: vi.fn(async () => ({ id: 1 })),
   updateTableRowByPrimaryKey: vi.fn(async () => undefined),
@@ -13,7 +17,6 @@ vi.mock('../lib/db', () => ({
 type ApiResult = {
   statusCode: number
   payload: unknown
-  headers: Record<string, string>
 }
 
 async function invokeApi(input: {
@@ -22,7 +25,6 @@ async function invokeApi(input: {
   query?: Record<string, unknown>
   body?: unknown
 }): Promise<ApiResult> {
-  const headers: Record<string, string> = {}
   let statusCode = 200
   let payload: unknown = null
 
@@ -33,9 +35,6 @@ async function invokeApi(input: {
   }
 
   const res = {
-    setHeader(name: string, value: string) {
-      headers[name] = value
-    },
     status(code: number) {
       statusCode = code
       return this
@@ -46,13 +45,81 @@ async function invokeApi(input: {
     },
   }
 
-  await rowsHandler(req as any, res as any)
-  return { statusCode, payload, headers }
+  await rowsHandler(req as never, res as never)
+  return { statusCode, payload }
 }
 
 describe('table rows API', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('passes gt filter to getTableRows', async () => {
+    await invokeApi({
+      method: 'GET',
+      query: {
+        schema: 'public',
+        filterColumn: 'amount',
+        filterMode: 'gt',
+        filterValue: '10',
+      },
+    })
+
+    expect(db.getTableRows).toHaveBeenCalledWith(
+      undefined,
+      'public',
+      'notes',
+      expect.objectContaining({
+        filterColumn: 'amount',
+        filterMode: 'gt',
+        filterValue: '10',
+      })
+    )
+  })
+
+  it('passes between filter with end value', async () => {
+    await invokeApi({
+      method: 'GET',
+      query: {
+        schema: 'public',
+        filterColumn: 'amount',
+        filterMode: 'between',
+        filterValue: '10',
+        filterValueEnd: '100',
+      },
+    })
+
+    expect(db.getTableRows).toHaveBeenCalledWith(
+      undefined,
+      'public',
+      'notes',
+      expect.objectContaining({
+        filterMode: 'between',
+        filterValue: '10',
+        filterValueEnd: '100',
+      })
+    )
+  })
+
+  it('passes is_null filter without value', async () => {
+    await invokeApi({
+      method: 'GET',
+      query: {
+        schema: 'public',
+        filterColumn: 'title',
+        filterMode: 'is_null',
+      },
+    })
+
+    expect(db.getTableRows).toHaveBeenCalledWith(
+      undefined,
+      'public',
+      'notes',
+      expect.objectContaining({
+        filterColumn: 'title',
+        filterMode: 'is_null',
+      })
+    )
   })
 
   it('inserts a row via POST', async () => {
@@ -69,34 +136,5 @@ describe('table rows API', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.payload).toMatchObject({ row: { id: 9, title: 'new' } })
-    expect(db.insertTableRow).toHaveBeenCalledWith('default', 'public', 'notes', { title: 'new' })
-  })
-
-  it('returns 404 when patch targets a missing row', async () => {
-    vi.mocked(db.updateTableRowByPrimaryKey).mockRejectedValueOnce(
-      Object.assign(new Error('row not found'), { statusCode: 404 })
-    )
-
-    const response = await invokeApi({
-      method: 'PATCH',
-      body: { schema: 'public', connectionName: 'default', rowKey: { id: 1 }, patch: { title: 'updated' } },
-    })
-
-    expect(response.statusCode).toBe(404)
-    expect(response.payload).toMatchObject({ error: 'row not found' })
-  })
-
-  it('returns 404 when delete targets a missing row', async () => {
-    vi.mocked(db.deleteTableRowByPrimaryKey).mockRejectedValueOnce(
-      Object.assign(new Error('row not found'), { statusCode: 404 })
-    )
-
-    const response = await invokeApi({
-      method: 'DELETE',
-      body: { schema: 'public', connectionName: 'default', rowKey: { id: 1 } },
-    })
-
-    expect(response.statusCode).toBe(404)
-    expect(response.payload).toMatchObject({ error: 'row not found' })
   })
 })

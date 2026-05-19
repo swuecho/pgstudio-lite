@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { isBooleanColumn, isJsonColumn, isNumericColumn } from '../../lib/table-column-kind'
 import type { ColumnInfo } from './types'
 import styles from './TableEditorStyles.module.css'
 
@@ -100,23 +101,3 @@ export function InsertRowModal({ columns, onClose, onSubmit }: InsertRowModalPro
   )
 }
 
-function isBooleanColumn(dataType: string) {
-  return dataType.toLowerCase() === 'boolean'
-}
-
-function isNumericColumn(dataType: string) {
-  const lower = dataType.toLowerCase()
-  return (
-    lower.includes('int') ||
-    lower === 'numeric' ||
-    lower === 'decimal' ||
-    lower.includes('double') ||
-    lower.includes('real') ||
-    lower.includes('serial')
-  )
-}
-
-function isJsonColumn(dataType: string) {
-  const lower = dataType.toLowerCase()
-  return lower === 'json' || lower === 'jsonb'
-}

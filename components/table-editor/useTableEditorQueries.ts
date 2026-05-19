@@ -26,6 +26,7 @@ type TableEditorState = {
   sortOrder: 'asc' | 'desc'
   filterColumn: string
   filterValue: string
+  filterValueEnd: string
   filterMode: TableFilterMode
 }
 
@@ -54,6 +55,7 @@ export function useTableEditorQueries(state: TableEditorState) {
       state.filterColumn,
       state.filterMode,
       state.filterValue.trim(),
+      state.filterValueEnd.trim(),
     ],
     queryFn: () =>
       getRowsService({
@@ -66,6 +68,7 @@ export function useTableEditorQueries(state: TableEditorState) {
         sortOrder: state.sortOrder,
         filterColumn: state.filterColumn,
         filterValue: state.filterValue,
+        filterValueEnd: state.filterValueEnd,
         filterMode: state.filterMode,
       }),
     enabled: Boolean(state.connectionName && selectedTarget.table),

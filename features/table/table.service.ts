@@ -22,6 +22,7 @@ export async function getRows(args: {
   sortOrder: 'asc' | 'desc'
   filterColumn: string
   filterValue: string
+  filterValueEnd?: string
   filterMode: TableFilterMode
 }) {
   const params = new URLSearchParams({
@@ -32,11 +33,14 @@ export async function getRows(args: {
     sortBy: args.sortBy,
     sortOrder: args.sortOrder,
   })
-  if (hasActiveTableFilter(args.filterColumn, args.filterMode, args.filterValue)) {
+  if (hasActiveTableFilter(args.filterColumn, args.filterMode, args.filterValue, args.filterValueEnd ?? '')) {
     params.set('filterColumn', args.filterColumn)
     params.set('filterMode', args.filterMode)
     if (args.filterValue.trim()) {
       params.set('filterValue', args.filterValue.trim())
+    }
+    if (args.filterValueEnd?.trim()) {
+      params.set('filterValueEnd', args.filterValueEnd.trim())
     }
   }
 

@@ -20,6 +20,8 @@ export function useTableEditorLocalState() {
   const setFilterColumn = useTableEditorLocalStore((s) => s.setFilterColumn)
   const filterValue = useTableEditorLocalStore((s) => s.filterValue)
   const setFilterValue = useTableEditorLocalStore((s) => s.setFilterValue)
+  const filterValueEnd = useTableEditorLocalStore((s) => s.filterValueEnd)
+  const setFilterValueEnd = useTableEditorLocalStore((s) => s.setFilterValueEnd)
   const filterMode = useTableEditorLocalStore((s) => s.filterMode)
   const setFilterMode = useTableEditorLocalStore((s) => s.setFilterMode)
   const visibleColumns = useTableEditorLocalStore((s) => s.visibleColumns)
@@ -45,6 +47,8 @@ export function useTableEditorLocalState() {
     setFilterColumn,
     filterValue,
     setFilterValue,
+    filterValueEnd,
+    setFilterValueEnd,
     filterMode,
     setFilterMode,
     visibleColumns,

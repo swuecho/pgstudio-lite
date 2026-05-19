@@ -1,0 +1,65 @@
+.sortPopover {
+  position: relative;
+}
+
+.sortButtonActive {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sortDropdown {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: 0 4px 12px rgba(16, 24, 39, 0.15);
+}
+
+:global([data-theme='dark']) .sortDropdown {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.sortHeader {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.sortTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sortBody {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.sortField {
+  display: grid;
+  gap: 4px;
+}
+
+.sortLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sortControl {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 6px 9px;
+  height: var(--control-h);
+  font-size: 12px;
+}
+
+.sortControl:disabled {
+  opacity: 0.6;
+}

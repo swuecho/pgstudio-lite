@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import { formatTableFilterSummary } from '../../lib/table-filter'
 import { useTableEditorData } from './useTableEditorData'
 import { useTableEditorLocalState } from './useTableEditorLocalState'
 import type { RowKey } from './types'
@@ -30,6 +31,7 @@ export function useTableEditorState() {
       filterColumn: state.filterColumn,
       filterMode: state.filterMode,
       filterValue: state.filterValue,
+      filterValueEnd: state.filterValueEnd,
       filterValueInputRef,
       pageSize: state.pageSize,
       page: state.page,
@@ -41,10 +43,12 @@ export function useTableEditorState() {
       onChangeFilterColumn: state.setFilterColumn,
       onChangeFilterMode: state.setFilterMode,
       onChangeFilterValue: state.setFilterValue,
+      onChangeFilterValueEnd: state.setFilterValueEnd,
       onClearFilters: () => {
         state.setFilterColumn('')
         state.setFilterMode('contains')
         state.setFilterValue('')
+        state.setFilterValueEnd('')
         state.setPage(0)
       },
       onChangePageSize: state.setPageSize,
@@ -67,9 +71,17 @@ export function useTableEditorState() {
     }
   }
 
+  const filterSummary = formatTableFilterSummary(
+    state.filterColumn,
+    state.filterMode,
+    state.filterValue,
+    state.filterValueEnd
+  )
+
   return {
     ...state,
     ...actions,
+    filterSummary,
     getSidebarProps,
     getGridProps,
   }

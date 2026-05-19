@@ -70,6 +70,7 @@ describe('tableEditorContracts', () => {
       sortBy: '',
       filterColumn: '',
       filterValue: '',
+      filterValueEnd: '',
       filterMode: 'contains',
       columnDataType: 'text',
     })
