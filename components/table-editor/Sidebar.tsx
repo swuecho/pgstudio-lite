@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '../theme-toggle'
 import { RelationKindBadge } from '../shared/RelationKindBadge'
+import { useTableEditorSchemaStore } from './stores/tableEditorSchemaStore'
 import { TableInfo } from './types'
 import styles from './TableEditorStyles.module.css'
 
 type TableSidebarProps = {
+  connectionName: string
   tables: TableInfo[]
   loadingTables: boolean
   activeTable: string
@@ -15,6 +17,7 @@ type TableSidebarProps = {
 }
 
 export function TableSidebar({
+  connectionName,
   tables,
   loadingTables,
   activeTable,
@@ -23,7 +26,10 @@ export function TableSidebar({
   onWidthResizerMouseDown,
 }: TableSidebarProps) {
   const toActiveTableKey = (schema: string, table: string) => `${schema}.${table}`
-  const [selectedSchema, setSelectedSchema] = useState('')
+  const persistedSchema = useTableEditorSchemaStore(
+    (state) => state.selectedSchemaByConnection[connectionName] ?? ''
+  )
+  const setPersistedSchema = useTableEditorSchemaStore((state) => state.setSelectedSchemaForConnection)
   const [tableSearch, setTableSearch] = useState('')
 
   const availableSchemas = useMemo(
@@ -31,20 +37,16 @@ export function TableSidebar({
     [tables],
   )
 
-  useEffect(() => {
-    if (availableSchemas.length === 0) {
-      setSelectedSchema('')
-      return
-    }
+  const selectedSchema = useMemo(() => {
+    if (availableSchemas.length === 0) return ''
+
+    if (persistedSchema && availableSchemas.includes(persistedSchema)) return persistedSchema
 
     const activeSchema = activeTable.split('.')[0] || ''
+    if (activeSchema && availableSchemas.includes(activeSchema)) return activeSchema
 
-    setSelectedSchema((prev) => {
-      if (prev && availableSchemas.includes(prev)) return prev
-      if (activeSchema && availableSchemas.includes(activeSchema)) return activeSchema
-      return availableSchemas[0]
-    })
-  }, [activeTable, availableSchemas])
+    return availableSchemas[0]
+  }, [activeTable, availableSchemas, persistedSchema])
 
   const visibleTables = useMemo(() => {
     const query = tableSearch.trim().toLowerCase()
@@ -82,7 +84,7 @@ export function TableSidebar({
           <select
             aria-label="Schema"
             value={selectedSchema}
-            onChange={(event) => setSelectedSchema(event.target.value)}
+            onChange={(event) => setPersistedSchema(connectionName, event.target.value)}
             disabled={availableSchemas.length === 0}
           >
             {availableSchemas.map((schema) => (
