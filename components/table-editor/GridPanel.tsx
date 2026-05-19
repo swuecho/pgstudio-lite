@@ -2,17 +2,11 @@ import { useState } from 'react'
 import type { RefObject } from 'react'
 import { ColumnInfo, RowData, RowKey } from './types'
 import { ColumnsSelector } from './ColumnsSelector'
+import { FilterPopover } from './FilterPopover'
 import { JsonbCellEditor } from './JsonbCellEditor'
 import { InsertRowModal } from './InsertRowModal'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
-import { getColumnKind } from '../../lib/table-column-kind'
-import {
-  defaultFilterModeForColumnKind,
-  filterModeNeedsValue,
-  getFilterModeOptionsForColumnKind,
-  hasActiveTableFilter,
-  type TableFilterMode,
-} from '../../lib/table-filter'
+import type { TableFilterMode } from '../../lib/table-filter'
 import styles from './TableEditorStyles.module.css'
 
 type TableGridPanelProps = {
@@ -275,13 +269,6 @@ export function TableGridPanel({
     return 'pending' as const
   }
 
-  const filterColumnMeta = columns.find((column) => column.name === filterColumn)
-  const filterColumnKind = getColumnKind(filterColumnMeta?.dataType ?? 'text')
-  const filterModeOptions = getFilterModeOptionsForColumnKind(filterColumnKind)
-  const filterValueRequired = filterModeNeedsValue(filterMode)
-  const hasFilters = hasActiveTableFilter(filterColumn, filterMode, filterValue)
-  const showBooleanFilterValue = filterColumnKind === 'boolean' && filterValueRequired
-
   // Filter columns based on visibleColumns selection
   // If no columns are selected, show all columns (backward compatible)
   const matchedVisibleColumns =
@@ -292,104 +279,85 @@ export function TableGridPanel({
     <>
       <div className={styles.tableGridWrap}>
         <div className={styles.tableToolbar}>
-          <ColumnsSelector
-            columns={columns}
-            visibleColumns={visibleColumns}
-            onToggleColumn={onToggleVisibleColumn}
-            onShowAll={onShowAllColumns}
-            onHideAll={onHideAllColumns}
-          />
-          <select
-            className={styles.toolbarSortBy}
-            value={sortBy}
-            onChange={(e) => onChangeSortBy(e.target.value)}
-            title={sortBy ? `Sort: ${sortBy}` : 'Order'}
-          >
-            <option value="">Order</option>
-            {columns.map((col) => (
-              <option key={`sort-${col.name}`} value={col.name}>
-                {col.name}
-              </option>
-            ))}
-          </select>
-          <select value={sortOrder} onChange={(e) => onChangeSortOrder(e.target.value as 'asc' | 'desc')}>
-            <option value="asc">ASC</option>
-            <option value="desc">DESC</option>
-          </select>
-          <select
-            value={filterColumn}
-            onChange={(e) => {
-              const nextColumn = e.target.value
-              onChangeFilterColumn(nextColumn)
-              const nextKind = getColumnKind(
-                columns.find((column) => column.name === nextColumn)?.dataType ?? 'text'
-              )
-              onChangeFilterMode(defaultFilterModeForColumnKind(nextKind))
-            }}
-          >
-            <option value="">Filter column</option>
-            {columns.map((col) => (
-              <option key={`filter-${col.name}`} value={col.name}>
-                {col.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className={styles.toolbarFilterMode}
-            value={filterMode}
-            onChange={(e) => onChangeFilterMode(e.target.value as TableFilterMode)}
-            disabled={!filterColumn}
-          >
-            {filterModeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {showBooleanFilterValue ? (
-            <select
-              className={`${styles.cellInput} ${styles.toolbarFilterValue}`}
-              value={filterValue}
-              onChange={(e) => onChangeFilterValue(e.target.value)}
-            >
-              <option value="">Value</option>
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
-          ) : (
-            <input
-              ref={filterValueInputRef}
-              className={`${styles.cellInput} ${styles.toolbarFilterValue}`}
-              type={
-                filterColumnKind === 'numeric'
-                  ? 'number'
-                  : filterColumnKind === 'date'
-                    ? 'date'
-                    : filterColumnKind === 'datetime'
-                      ? 'datetime-local'
-                      : 'text'
-              }
-              step={filterColumnKind === 'numeric' ? 'any' : undefined}
-              placeholder={filterValueRequired ? 'Filter value' : 'No value needed'}
-              value={filterValue}
-              onChange={(e) => onChangeFilterValue(e.target.value)}
-              disabled={!filterValueRequired}
+          <div className={styles.toolbarGroup}>
+            <ColumnsSelector
+              columns={columns}
+              visibleColumns={visibleColumns}
+              onToggleColumn={onToggleVisibleColumn}
+              onShowAll={onShowAllColumns}
+              onHideAll={onHideAllColumns}
             />
-          )}
-          <select value={String(pageSize)} onChange={(e) => onChangePageSize(Number(e.target.value) || 50)}>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="250">250</option>
-            <option value="500">500</option>
-          </select>
-          <button className="btn small" onClick={onClearFilters} disabled={!hasFilters}>
-            Clear filters
-          </button>
+          </div>
+
+          <div className={styles.toolbarSpacer} aria-hidden="true" />
+
+          <div className={styles.toolbarGroup}>
+            <span className={styles.toolbarGroupLabel}>Sort</span>
+            <select
+              className={styles.toolbarSortBy}
+              value={sortBy}
+              onChange={(e) => onChangeSortBy(e.target.value)}
+              title={sortBy ? `Sort: ${sortBy}` : 'Default order'}
+              aria-label="Sort column"
+            >
+              <option value="">Order</option>
+              {columns.map((col) => (
+                <option key={`sort-${col.name}`} value={col.name}>
+                  {col.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className={styles.toolbarSortOrder}
+              value={sortOrder}
+              onChange={(e) => onChangeSortOrder(e.target.value as 'asc' | 'desc')}
+              aria-label="Sort direction"
+            >
+              <option value="asc">ASC</option>
+              <option value="desc">DESC</option>
+            </select>
+          </div>
+
+          <div className={styles.toolbarGroup}>
+            <FilterPopover
+              columns={columns}
+              filterColumn={filterColumn}
+              filterMode={filterMode}
+              filterValue={filterValue}
+              filterValueInputRef={filterValueInputRef}
+              onChangeFilterColumn={onChangeFilterColumn}
+              onChangeFilterMode={onChangeFilterMode}
+              onChangeFilterValue={onChangeFilterValue}
+              onClearFilters={onClearFilters}
+            />
+          </div>
+
+          <div className={styles.toolbarGroup}>
+            <span className={styles.toolbarGroupLabel}>Rows</span>
+            <select
+              className={styles.toolbarPageSize}
+              value={String(pageSize)}
+              onChange={(e) => onChangePageSize(Number(e.target.value) || 50)}
+              aria-label="Rows per page"
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="250">250</option>
+              <option value="500">500</option>
+            </select>
+          </div>
+
           {!readOnlyTable ? (
-            <button className="btn small primary" onClick={() => setShowInsertRow(true)} disabled={columns.length === 0}>
-              Add row
-            </button>
+            <div className={styles.toolbarGroup}>
+              <button
+                className="btn small primary"
+                onClick={() => setShowInsertRow(true)}
+                disabled={columns.length === 0}
+              >
+                Add row
+              </button>
+            </div>
           ) : null}
         </div>
         <div className={styles.tableScrollArea}>

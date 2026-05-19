@@ -4,6 +4,7 @@ import {
   coerceFilterValue,
   defaultFilterModeForColumnKind,
   filterModeNeedsValue,
+  formatTableFilterSummary,
   getFilterModeOptionsForColumnKind,
   hasActiveTableFilter,
   isFilterModeAllowedForColumnKind,
@@ -60,5 +61,11 @@ describe('table-filter', () => {
     expect(hasActiveTableFilter('title', 'is_empty', '')).toBe(true)
     expect(hasActiveTableFilter('amount', 'gt', '   ')).toBe(false)
     expect(defaultFilterModeForColumnKind('numeric')).toBe('equals')
+  })
+
+  it('formats filter summary for toolbar label', () => {
+    expect(formatTableFilterSummary('title', 'contains', 'todo')).toBe('title contains todo')
+    expect(formatTableFilterSummary('amount', 'gt', '100')).toBe('amount > 100')
+    expect(formatTableFilterSummary('', 'contains', 'todo')).toBeNull()
   })
 })

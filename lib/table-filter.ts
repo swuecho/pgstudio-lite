@@ -91,6 +91,23 @@ export function hasActiveTableFilter(
   return filterModeNeedsValue(filterMode) ? Boolean(filterValue.trim()) : true
 }
 
+export function formatTableFilterSummary(
+  filterColumn: string,
+  filterMode: TableFilterMode,
+  filterValue: string
+): string | null {
+  if (!hasActiveTableFilter(filterColumn, filterMode, filterValue)) return null
+
+  const operator =
+    TABLE_FILTER_MODE_OPTIONS.find((option) => option.value === filterMode)?.label ?? filterMode
+
+  if (!filterModeNeedsValue(filterMode)) {
+    return `${filterColumn} ${operator}`
+  }
+
+  return `${filterColumn} ${operator} ${filterValue.trim()}`
+}
+
 export function coerceFilterValue(
   value: string,
   kind: ColumnKind,
