@@ -1,10 +1,8 @@
 import { useEffect } from 'react'
 import { resolveNextActiveTable, resolveSortAndFilter } from './tableEditorContracts'
-import type { ColumnInfo, Connection, TableInfo } from './types'
+import type { ColumnInfo, TableInfo } from './types'
 
-type TableEditorState = {
-  connectionName: string
-  setConnectionName: (value: string) => void
+type UseTableEditorEffectsParams = {
   activeTable: string
   setActiveTable: (value: string) => void
   pageSize: number
@@ -16,49 +14,43 @@ type TableEditorState = {
   filterValue: string
   filterMode: 'contains' | 'equals'
   setPage: (value: number | ((prev: number) => number)) => void
-}
-
-type UseTableEditorEffectsParams = {
-  state: TableEditorState
-  configuredConnections?: Connection[]
   tables: TableInfo[]
   loadingTables: boolean
   columns: ColumnInfo[]
 }
 
 export function useTableEditorEffects({
-  state,
-  configuredConnections,
+  activeTable,
+  setActiveTable,
+  pageSize,
+  sortBy,
+  setSortBy,
+  sortOrder,
+  filterColumn,
+  setFilterColumn,
+  filterValue,
+  filterMode,
+  setPage,
   tables,
   loadingTables,
   columns,
 }: UseTableEditorEffectsParams) {
   useEffect(() => {
-    if (!configuredConnections || configuredConnections.length === 0) return
-    const currentExists = configuredConnections.some((connection) => connection.name === state.connectionName)
-    if (!currentExists) {
-      const preferred =
-        configuredConnections.find((connection) => connection.isDefault)?.name || configuredConnections[0].name
-      state.setConnectionName(preferred)
+    const nextActiveTable = resolveNextActiveTable(tables, activeTable, loadingTables)
+    if (nextActiveTable !== null && nextActiveTable !== activeTable) {
+      setActiveTable(nextActiveTable)
     }
-  }, [configuredConnections, state.connectionName, state.setConnectionName])
+  }, [tables, loadingTables, activeTable, setActiveTable])
 
   useEffect(() => {
-    const nextActiveTable = resolveNextActiveTable(tables, state.activeTable, loadingTables)
-    if (nextActiveTable !== null && nextActiveTable !== state.activeTable) {
-      state.setActiveTable(nextActiveTable)
-    }
-  }, [tables, loadingTables, state.activeTable, state.setActiveTable])
-
-  useEffect(() => {
-    if (!state.activeTable) return
-    state.setPage(0)
-  }, [state.activeTable, state.pageSize, state.sortBy, state.sortOrder, state.filterColumn, state.filterMode, state.filterValue, state.setPage])
+    if (!activeTable) return
+    setPage(0)
+  }, [activeTable, pageSize, sortBy, sortOrder, filterColumn, filterMode, filterValue, setPage])
 
   useEffect(() => {
     if (columns.length === 0) return
-    const { nextSortBy, nextFilterColumn } = resolveSortAndFilter(columns, state.sortBy, state.filterColumn)
-    if (nextSortBy !== state.sortBy) state.setSortBy(nextSortBy)
-    if (nextFilterColumn !== state.filterColumn) state.setFilterColumn(nextFilterColumn)
-  }, [columns, state.filterColumn, state.sortBy, state.setFilterColumn, state.setSortBy])
+    const { nextSortBy, nextFilterColumn } = resolveSortAndFilter(columns, sortBy, filterColumn)
+    if (nextSortBy !== sortBy) setSortBy(nextSortBy)
+    if (nextFilterColumn !== filterColumn) setFilterColumn(nextFilterColumn)
+  }, [columns, filterColumn, sortBy, setFilterColumn, setSortBy])
 }
