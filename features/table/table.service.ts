@@ -42,6 +42,17 @@ export async function getRows(args: {
   )
 }
 
+export async function createRow(
+  table: string,
+  payload: { connectionName: string; schema?: string; values: Record<string, unknown> }
+) {
+  const body = { ...payload, schema: payload.schema || 'public' }
+  return fetchJson<{ row: RowData }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
 export async function patchRow(
   table: string,
   payload: { connectionName: string; schema?: string; rowKey: RowKey; patch: Record<string, unknown> }

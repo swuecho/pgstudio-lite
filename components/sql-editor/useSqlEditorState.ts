@@ -1,7 +1,7 @@
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useState } from 'react'
 import { runQuery } from '../../features/sql/sql.service'
-import { detectOS, suffixWithLimit } from './utils'
+import { buildExplainQuery, detectOS, suffixWithLimit } from './utils'
 import type { QueryResult, SnippetItem } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'
 import { useSqlEditorHistory } from './useSqlEditorHistory'
@@ -15,6 +15,7 @@ export function useSqlEditorState() {
   const [activeNavTab, setActiveNavTab] = useState<'history' | 'snippets' | 'explorer'>('explorer')
   const [historySearch, setHistorySearch] = useState('')
   const [running, setRunning] = useState(false)
+  const [explaining, setExplaining] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
   const { connections, connectionName, setConnectionName } = useActiveConnection({
@@ -65,14 +66,18 @@ export function useSqlEditorState() {
     editorRef.focus()
   }
 
-  async function runCurrentQuery() {
-    if (running || !editorRef || !tabs.activeQueryTab) return
-
+  function getActiveQueryText() {
+    if (!editorRef || !tabs.activeQueryTab) return ''
     const selection = editorRef.getSelection()
     const selectedQuery =
       selection && !selection.isEmpty() ? editorRef.getModel()?.getValueInRange(selection) || '' : ''
+    return selectedQuery || tabs.activeQueryTab.query
+  }
 
-    const current = selectedQuery || tabs.activeQueryTab.query
+  async function runCurrentQuery() {
+    if (running || explaining || !editorRef || !tabs.activeQueryTab) return
+
+    const current = getActiveQueryText()
     if (!current.trim()) {
       setStatus({ text: 'Query is empty', tone: 'warning' })
       return
@@ -93,6 +98,39 @@ export function useSqlEditorState() {
       await history.loadHistory()
     } finally {
       setRunning(false)
+    }
+  }
+
+  async function runExplainQuery() {
+    if (running || explaining || !editorRef || !tabs.activeQueryTab) return
+
+    const current = getActiveQueryText()
+    if (!current.trim()) {
+      setStatus({ text: 'Query is empty', tone: 'warning' })
+      return
+    }
+
+    const connection = connections.find((item) => item.name === connectionName)
+    const readOnly = Boolean(connection?.readOnly)
+    const explainQuery = buildExplainQuery(current, readOnly)
+
+    setExplaining(true)
+    setStatus({
+      text: readOnly ? 'Explaining query (no analyze on read-only)...' : 'Explaining query (analyze)...',
+      tone: 'running',
+    })
+
+    try {
+      const payload = await runQuery(connectionName, explainQuery)
+      setResult(payload)
+      setStatus({ text: `Explain finished in ${payload.durationMs} ms`, tone: 'ok' })
+      await history.loadHistory()
+    } catch (error) {
+      setResult(null)
+      setStatus({ text: error instanceof Error ? error.message : 'Explain failed', tone: 'error' })
+      await history.loadHistory()
+    } finally {
+      setExplaining(false)
     }
   }
 
@@ -128,6 +166,7 @@ export function useSqlEditorState() {
     cancelRenameSnippet: snippets.cancelRenameSnippet,
     runLabel,
     running,
+    explaining,
     result,
     queryTabs: tabs.queryTabs,
     activeQueryTabId: tabs.activeQueryTabId,
@@ -144,6 +183,7 @@ export function useSqlEditorState() {
     renameSnippet: snippets.renameSnippet,
     deleteSnippet: snippets.deleteSnippet,
     runCurrentQuery,
+    runExplainQuery,
     saveCurrentAsSnippet: snippets.saveCurrentAsSnippet,
     clearHistory: history.clearHistory,
     loadHistory: history.loadHistory,

@@ -75,6 +75,22 @@ describe('table service', () => {
     expect(calls[0].path.includes('filterMode=')).toBe(false)
   })
 
+  it('createRow sends POST with values', async () => {
+    const calls = installFetchMock([{ ok: true, status: 200, payload: { row: { id: 3, name: 'new' } } }])
+
+    await tableService.createRow('notes', {
+      connectionName: 'default',
+      schema: 'public',
+      values: { name: 'new' },
+    })
+
+    expect(calls[0].path).toBe('/api/tables/notes/rows')
+    expect(calls[0].options?.method).toBe('POST')
+    expect(calls[0].options?.body).toBe(
+      JSON.stringify({ connectionName: 'default', schema: 'public', values: { name: 'new' } })
+    )
+  })
+
   it('patchRow sends PATCH with payload', async () => {
     const calls = installFetchMock([{ ok: true, status: 200, payload: { ok: true } }])
 

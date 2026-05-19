@@ -3,6 +3,43 @@ import styles from './ResultsPanel.module.css'
 import type { CSSProperties } from 'react'
 import { QueryResult } from './types'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
+import {
+  buildResultExportFilename,
+  downloadText,
+  rowsToCsv,
+  rowsToJson,
+  rowsToTsv,
+} from '../../lib/result-export'
+import { formatExplainPlan } from './utils'
+
+type StatementResult = QueryResult['statements'][number]
+
+function isExplainStatement(statement: StatementResult) {
+  return statement.command === 'EXPLAIN' || statement.fields.some((field) => /query plan/i.test(field))
+}
+
+function getExplainPlanText(statement: StatementResult) {
+  const planField = statement.fields.find((field) => /query plan/i.test(field)) || statement.fields[0]
+  if (!planField || statement.rows.length === 0) return ''
+  return formatExplainPlan(statement.rows[0][planField])
+}
+
+function exportStatement(
+  statement: StatementResult,
+  statementIndex: number,
+  format: 'csv' | 'json',
+  formatCell: (value: unknown) => string
+) {
+  if (statement.fields.length === 0 || statement.rows.length === 0) return
+  const content =
+    format === 'csv' ? rowsToCsv(statement.fields, statement.rows, formatCell) : rowsToJson(statement.fields, statement.rows)
+  downloadText(buildResultExportFilename('query-result', format, statementIndex), content, `text/${format}`)
+}
+
+async function copyStatementTsv(statement: StatementResult, formatCell: (value: unknown) => string) {
+  if (statement.fields.length === 0 || statement.rows.length === 0) return
+  await navigator.clipboard.writeText(rowsToTsv(statement.fields, statement.rows, formatCell))
+}
 
 type SqlResultsPanelProps = {
   result: QueryResult | null
@@ -34,6 +71,31 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                       Showing {statement.returnedRowCount} of {statement.rowCount}
                     </span>
                   ) : null}
+                  {statement.fields.length > 0 && statement.rows.length > 0 && !isExplainStatement(statement) ? (
+                    <div className={styles.resultExportActions}>
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={() => exportStatement(statement, index, 'csv', formatCell)}
+                      >
+                        CSV
+                      </button>
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={() => exportStatement(statement, index, 'json', formatCell)}
+                      >
+                        JSON
+                      </button>
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={() => void copyStatementTsv(statement, formatCell)}
+                      >
+                        Copy TSV
+                      </button>
+                    </div>
+                  ) : null}
                   {statement.tableTarget ? (
                     <Link
                       className={styles.resultOpenLink}
@@ -52,10 +114,12 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                 </div>
                 {statement.truncated ? (
                   <div className={styles.resultAlert}>
-                    Result payload capped at {statement.returnedRowCount} rows. Refine the query or open the table view.
+                    Export includes {statement.returnedRowCount} displayed rows (capped at server limit).
                   </div>
                 ) : null}
-                {statement.fields.length > 0 ? (
+                {isExplainStatement(statement) ? (
+                  <pre className={styles.explainPlan}>{getExplainPlanText(statement) || 'No plan returned.'}</pre>
+                ) : statement.fields.length > 0 ? (
                   <div className={styles.tableWrap}>
                     <table>
                       <thead>

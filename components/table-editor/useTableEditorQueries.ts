@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  createRow,
   getRows as getRowsService,
   getTables as getTablesService,
   patchRow,
@@ -105,6 +106,16 @@ export function useTableEditorQueries(state: TableEditorState) {
     onSuccess: invalidateRows,
   })
 
+  const insertRowMutation = useMutation({
+    mutationFn: (values: Record<string, unknown>) =>
+      createRow(selectedTarget.table, {
+        connectionName: state.connectionName,
+        schema: selectedTarget.schema,
+        values,
+      }),
+    onSuccess: invalidateRows,
+  })
+
   async function loadTables(conn = state.connectionName) {
     await tablesQuery.refetch()
     await queryClient.invalidateQueries({
@@ -127,6 +138,26 @@ export function useTableEditorQueries(state: TableEditorState) {
       state.setStatus('Saved')
     } catch (error) {
       state.setStatus(error instanceof Error ? error.message : 'Failed to save row')
+    }
+  }
+
+  async function insertRow(values: Record<string, unknown>) {
+    if (rowMutationsReadOnly) {
+      state.setStatus(rowMutationsDisabledReason || 'Row inserts are disabled')
+      return false
+    }
+    if (Object.keys(values).length === 0) {
+      state.setStatus('Provide at least one column value')
+      return false
+    }
+    state.setStatus('Inserting...')
+    try {
+      await insertRowMutation.mutateAsync(values)
+      state.setStatus('Row inserted')
+      return true
+    } catch (error) {
+      state.setStatus(error instanceof Error ? error.message : 'Failed to insert row')
+      return false
     }
   }
 
@@ -155,6 +186,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     loadTables,
     loadRows,
     updateCell,
+    insertRow,
     deleteRow,
     loadingRows: rowsQuery.isFetching,
     loadingTables: tablesQuery.isFetching,

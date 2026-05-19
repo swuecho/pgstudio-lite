@@ -56,3 +56,24 @@ export function suffixWithLimit(sql: string, limit = 0) {
     ? trimmedSql.replace(/[;]+$/, ` limit ${limit};`)
     : `${trimmedSql} limit ${limit};`
 }
+
+export function buildExplainQuery(sql: string, readOnly: boolean) {
+  const trimmed = sql.trim().replace(/;+\s*$/, '')
+  const options = readOnly ? 'FORMAT JSON' : 'ANALYZE, BUFFERS, FORMAT JSON'
+  return `EXPLAIN (${options}) ${trimmed}`
+}
+
+export function formatExplainPlan(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') {
+    try {
+      return `${JSON.stringify(JSON.parse(value), null, 2)}\n`
+    } catch {
+      return value
+    }
+  }
+  if (typeof value === 'object') {
+    return `${JSON.stringify(value, null, 2)}\n`
+  }
+  return String(value)
+}

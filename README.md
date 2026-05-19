@@ -197,7 +197,7 @@ Migrations also run automatically on server startup unless `SKIP_RUNTIME_MIGRATE
 - `POST|PATCH|DELETE /api/notebooks/[id]/cells`
 - `POST /api/notebooks/[id]/run-cell`
 - `GET /api/tables`
-- `GET|POST|PATCH|DELETE /api/tables/[table]/rows`
+- `GET|POST|PATCH|DELETE /api/tables/[table]/rows` (POST inserts a row)
 - `GET /api/monaco/*`
 - `GET /api/vs/*`
 

@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import { ColumnInfo, RowData, RowKey } from './types'
 import { ColumnsSelector } from './ColumnsSelector'
 import { JsonbCellEditor } from './JsonbCellEditor'
+import { InsertRowModal } from './InsertRowModal'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import styles from './TableEditorStyles.module.css'
 
@@ -30,6 +31,7 @@ type TableGridPanelProps = {
   onChangePageSize: (value: number) => void
   onUpdateCell: (rowKey: RowKey | null, column: string, value: unknown) => void
   onDeleteRow: (rowKey: RowKey | null) => void
+  onInsertRow: (values: Record<string, unknown>) => Promise<boolean>
   onPrevPage: () => void
   onNextPage: () => void
   onToggleVisibleColumn: (columnName: string) => void
@@ -71,6 +73,7 @@ export function TableGridPanel({
   onChangePageSize,
   onUpdateCell,
   onDeleteRow,
+  onInsertRow,
   onPrevPage,
   onNextPage,
   onToggleVisibleColumn,
@@ -79,6 +82,7 @@ export function TableGridPanel({
 }: TableGridPanelProps) {
   const [dialog, setDialog] = useState<GridDialogState | null>(null)
   const [jsonbEditCell, setJsonbEditCell] = useState<{row: RowData, column: string} | null>(null)
+  const [showInsertRow, setShowInsertRow] = useState(false)
 
   function closeDialog() {
     setDialog(null)
@@ -327,6 +331,11 @@ export function TableGridPanel({
           <button className="btn small" onClick={onClearFilters} disabled={!hasFilters}>
             Clear filters
           </button>
+          {!readOnlyTable ? (
+            <button className="btn small primary" onClick={() => setShowInsertRow(true)} disabled={columns.length === 0}>
+              Add row
+            </button>
+          ) : null}
         </div>
         <div className={styles.tableScrollArea}>
           <table className={styles.tableGridTable}>
@@ -514,6 +523,18 @@ export function TableGridPanel({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {showInsertRow ? (
+        <InsertRowModal
+          columns={columns}
+          onClose={() => setShowInsertRow(false)}
+          onSubmit={(values) => {
+            void onInsertRow(values).then((ok) => {
+              if (ok) setShowInsertRow(false)
+            })
+          }}
+        />
       ) : null}
 
       {jsonbEditCell ? (

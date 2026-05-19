@@ -64,6 +64,26 @@
   font-size: 11px;
 }
 
+.resultExportActions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.explainPlan {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.45;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  background: var(--panel);
+}
+
 .resultOpenLink {
   margin-left: auto;
   text-decoration: none;

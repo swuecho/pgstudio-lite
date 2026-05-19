@@ -38,6 +38,7 @@ function makeProps(overrides: Partial<React.ComponentProps<typeof TableGridPanel
     onChangePageSize: vi.fn(),
     onUpdateCell: vi.fn(),
     onDeleteRow: vi.fn(),
+    onInsertRow: vi.fn().mockResolvedValue(true),
     onPrevPage: vi.fn(),
     onNextPage: vi.fn(),
     onToggleVisibleColumn: vi.fn(),

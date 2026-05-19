@@ -53,6 +53,7 @@ export function useTableEditorState() {
       onDeleteRow: (rowKey: RowKey | null) => {
         void actions.deleteRow(rowKey)
       },
+      onInsertRow: (values: Record<string, unknown>) => actions.insertRow(values),
       onPrevPage: () => state.setPage((p) => Math.max(0, p - 1)),
       onNextPage: () => state.setPage((p) => p + 1),
       onToggleVisibleColumn: state.toggleVisibleColumn,

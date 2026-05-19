@@ -49,6 +49,14 @@ export default function SqlEditorPage() {
       },
     },
     {
+      id: 'explain',
+      title: 'Explain query',
+      description: 'Run EXPLAIN on the active selection or tab.',
+      onSelect: () => {
+        void state.runExplainQuery()
+      },
+    },
+    {
       id: 'save',
       title: 'Save snippet',
       description: 'Save or update the current SQL as a snippet.',
@@ -297,6 +305,9 @@ export default function SqlEditorPage() {
             onRunQuery={() => {
               void state.runCurrentQuery()
             }}
+            onExplainQuery={() => {
+              void state.runExplainQuery()
+            }}
             onSaveSnippet={() => {
               openSaveSnippetDialog(false)
             }}
@@ -322,7 +333,18 @@ export default function SqlEditorPage() {
           </ErrorBoundary>
 
           <div className={styles.editorFooter} ref={editorFooterRef}>
-            <button className="btn primary" disabled={state.running} onClick={() => void state.runCurrentQuery()}>
+            <button
+              className="btn"
+              disabled={state.running || state.explaining}
+              onClick={() => void state.runExplainQuery()}
+            >
+              {state.explaining ? 'Explaining...' : 'Explain'}
+            </button>
+            <button
+              className="btn primary"
+              disabled={state.running || state.explaining}
+              onClick={() => void state.runCurrentQuery()}
+            >
               {state.running ? 'Running...' : state.runLabel}
             </button>
           </div>
