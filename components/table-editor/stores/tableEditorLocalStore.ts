@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { TableFilterMode } from '../../../lib/table-filter'
 
 type TableEditorLocalStore = {
   activeTable: string
@@ -9,7 +10,7 @@ type TableEditorLocalStore = {
   sortOrder: 'asc' | 'desc'
   filterColumn: string
   filterValue: string
-  filterMode: 'contains' | 'equals'
+  filterMode: TableFilterMode
   visibleColumns: string[]
   setActiveTable: (value: string) => void
   setStatus: (value: string) => void
@@ -19,7 +20,7 @@ type TableEditorLocalStore = {
   setSortOrder: (value: 'asc' | 'desc') => void
   setFilterColumn: (value: string) => void
   setFilterValue: (value: string) => void
-  setFilterMode: (value: 'contains' | 'equals') => void
+  setFilterMode: (value: TableFilterMode) => void
   setVisibleColumns: (value: string[]) => void
   toggleVisibleColumn: (columnName: string) => void
 }

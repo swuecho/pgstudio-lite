@@ -152,7 +152,7 @@
 
 .tableToolbar {
   display: grid;
-  grid-template-columns: 1fr auto auto 1fr minmax(120px, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr) auto minmax(180px, 2fr) auto auto auto;
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
@@ -172,9 +172,29 @@
   height: var(--control-h);
 }
 
-.tableToolbar :global(.cell-input) {
+.tableToolbar .cellInput {
   height: var(--control-h);
   padding: 4px 9px;
+  min-width: 0;
+  width: 100%;
+}
+
+.toolbarSortBy {
+  width: 7.75rem;
+  max-width: 7.75rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbarFilterMode {
+  width: auto;
+  min-width: 7.5rem;
+  max-width: 9.5rem;
+}
+
+.toolbarFilterValue {
+  min-width: 180px;
 }
 
 .tableScrollArea {

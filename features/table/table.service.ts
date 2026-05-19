@@ -1,4 +1,5 @@
 import { fetchJson } from '../../lib/http'
+import { hasActiveTableFilter, type TableFilterMode } from '../../lib/table-filter'
 import type { ColumnInfo, Connection, RowData, RowKey, TableInfo } from '../../components/table-editor/types'
 
 export async function getConnections() {
@@ -21,7 +22,7 @@ export async function getRows(args: {
   sortOrder: 'asc' | 'desc'
   filterColumn: string
   filterValue: string
-  filterMode: 'contains' | 'equals'
+  filterMode: TableFilterMode
 }) {
   const params = new URLSearchParams({
     connectionName: args.connectionName,
@@ -31,10 +32,12 @@ export async function getRows(args: {
     sortBy: args.sortBy,
     sortOrder: args.sortOrder,
   })
-  if (args.filterColumn && args.filterValue.trim()) {
+  if (hasActiveTableFilter(args.filterColumn, args.filterMode, args.filterValue)) {
     params.set('filterColumn', args.filterColumn)
-    params.set('filterValue', args.filterValue.trim())
     params.set('filterMode', args.filterMode)
+    if (args.filterValue.trim()) {
+      params.set('filterValue', args.filterValue.trim())
+    }
   }
 
   return fetchJson<{ columns: ColumnInfo[]; rows: RowData[]; total: number }>(

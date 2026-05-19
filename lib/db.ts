@@ -4,6 +4,7 @@ import pg from 'pg'
 import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 import { isMutableRelationKind, mapPgRelkind, type RelationKind } from './relation-kind'
+import { buildTableRowFilter, filterModeNeedsValue, type TableFilterMode } from './table-filter'
 import { sanitizeRowsQueryOptions } from './table-query-options'
 
 const { Pool } = pg
@@ -1033,33 +1034,35 @@ export async function getTableRows(
     sortOrder?: 'asc' | 'desc'
     filterColumn?: string
     filterValue?: string
-    filterMode?: 'contains' | 'equals'
+    filterMode?: TableFilterMode
+    columns?: Array<{ name: string; dataType: string }>
   } = {}
 ) {
   return withClient(connectionName, async (client) => {
     const limit = Math.max(1, Math.min(500, Number(options.limit || 100)))
     const offset = Math.max(0, Number(options.offset || 0))
-    const columnNames = await getRelationColumnNames(client, schema, table)
-    const { sortBy: safeSortBy, filterColumn: safeFilterColumn, filterValue } = sanitizeRowsQueryOptions(
-      columnNames,
-      options
-    )
+    const tableColumns = options.columns ?? (await getTableColumns(connectionName, table, schema))
+    const columnNames = tableColumns.map((column) => column.name)
+    const {
+      sortBy: safeSortBy,
+      filterColumn: safeFilterColumn,
+      filterValue,
+      filterMode: safeFilterMode,
+      columnDataType,
+    } = sanitizeRowsQueryOptions(tableColumns, options)
     const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
     const sortBy = safeSortBy ? sqlIdent(safeSortBy) : ''
     const sortOrder = options.sortOrder === 'desc' ? 'desc' : 'asc'
-    const filterMode = options.filterMode === 'equals' ? 'equals' : 'contains'
+    const filterMode = safeFilterMode
     const filterColumn = safeFilterColumn ? sqlIdent(safeFilterColumn) : ''
 
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
-    const whereClause =
-      filterColumn && filterValue
-        ? filterMode === 'equals'
-          ? ` where cast(${filterColumn} as text) = $1 `
-          : ` where cast(${filterColumn} as text) ilike $1 `
-        : ''
-    const filterParam =
-      filterColumn && filterValue ? (filterMode === 'equals' ? filterValue : `%${filterValue}%`) : undefined
-    const params = filterParam ? [filterParam] : []
+    const filter =
+      filterColumn && (filterValue || !filterModeNeedsValue(filterMode))
+        ? buildTableRowFilter(filterColumn, filterMode, filterValue, columnDataType)
+        : null
+    const whereClause = filter?.whereClause ?? ''
+    const params = filter?.params ?? []
     const defaultOrderClause =
       primaryKeyColumns.length > 0
         ? primaryKeyColumns.map((column) => `${sqlIdent(column)} asc`).join(', ')
