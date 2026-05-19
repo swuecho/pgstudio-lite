@@ -9,6 +9,7 @@ export function useTableEditorState() {
 
   function getSidebarProps() {
     return {
+      connectionName: state.connectionName,
       tables: actions.tables,
       loadingTables: actions.loadingTables,
       activeTable: state.activeTable,
