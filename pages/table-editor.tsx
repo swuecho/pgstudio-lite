@@ -80,36 +80,6 @@ export default function TableEditorPage() {
     void router.replace({ pathname: '/table-editor', query: nextQuery }, undefined, { shallow: true })
   }, [router, router.isReady, router.query.connectionName, router.query.schema, router.query.table, state.activeTable, state.connectionName])
 
-  useEffect(() => {
-    const isEditableTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false
-      if (target.isContentEditable) return true
-      const tag = target.tagName
-      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableTarget(event.target)) {
-        event.preventDefault()
-        filterValueInputRef.current?.focus()
-        filterValueInputRef.current?.select()
-        return
-      }
-
-      if (event.key === 'Escape' && document.activeElement === filterValueInputRef.current) {
-        if (state.filterValue) {
-          state.setFilterValue('')
-          state.setPage(0)
-        } else {
-          filterValueInputRef.current?.blur()
-        }
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [state.filterValue, state.setFilterValue, state.setPage])
-
   return (
     <div className={pageStyles.layoutRoot} style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
       <TableSidebar

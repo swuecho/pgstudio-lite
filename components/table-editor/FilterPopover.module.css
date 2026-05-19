@@ -1,0 +1,84 @@
+.filterPopover {
+  position: relative;
+  z-index: 1;
+}
+
+.filterButtonActive {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filterDropdown {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: 0 4px 12px rgba(16, 24, 39, 0.15);
+}
+
+:global([data-theme='dark']) .filterDropdown {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.filterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.filterTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.filterBody {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.filterField {
+  display: grid;
+  gap: 4px;
+}
+
+.filterLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.filterControl {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 6px 9px;
+  height: var(--control-h);
+  font-size: 12px;
+}
+
+.filterControl:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.filterSummary {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.filterHint {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 10px 10px;
+}

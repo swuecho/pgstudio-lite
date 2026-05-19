@@ -151,16 +151,38 @@
 }
 
 .tableToolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr) auto minmax(180px, 2fr) auto auto auto;
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
-  height: 46px;
-  align-items: center;
-  z-index: 10;
+  min-height: 46px;
+  flex-shrink: 0;
   position: relative;
+  z-index: 10;
+}
+
+.toolbarSpacer {
+  flex: 1 1 auto;
+  min-width: 12px;
+}
+
+.toolbarGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.toolbarGroupLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .tableToolbar select {
@@ -170,31 +192,21 @@
   color: var(--text);
   padding: 4px 9px;
   height: var(--control-h);
-}
-
-.tableToolbar .cellInput {
-  height: var(--control-h);
-  padding: 4px 9px;
-  min-width: 0;
-  width: 100%;
+  flex-shrink: 0;
 }
 
 .toolbarSortBy {
-  width: 7.75rem;
-  max-width: 7.75rem;
+  width: 8.5rem;
+  max-width: 8.5rem;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.toolbarFilterMode {
+.toolbarSortOrder,
+.toolbarPageSize {
   width: auto;
-  min-width: 7.5rem;
-  max-width: 9.5rem;
-}
-
-.toolbarFilterValue {
-  min-width: 180px;
+  min-width: 4.75rem;
 }
 
 .tableScrollArea {
@@ -419,9 +431,6 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .tableToolbar {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 :global([data-theme='dark']) .tableMainHeader {
