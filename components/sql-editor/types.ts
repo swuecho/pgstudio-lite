@@ -42,8 +42,13 @@ export type QueryTab = {
   snippetConnectionName?: string
 }
 
+import type { RelationKind } from '../../lib/relation-kind'
+
+export type { RelationKind }
+
 export type SchemaTable = {
   schema: string
   table: string
   estimatedRows: number
+  kind: RelationKind
 }

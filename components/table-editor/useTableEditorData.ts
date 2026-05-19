@@ -16,7 +16,9 @@ type TableEditorState = {
   filterColumn: string
   setFilterColumn: (value: string) => void
   filterValue: string
+  setFilterValue: (value: string) => void
   filterMode: 'contains' | 'equals'
+  setVisibleColumns: (value: string[]) => void
 }
 
 export function useTableEditorData(state: TableEditorState) {
@@ -32,8 +34,10 @@ export function useTableEditorData(state: TableEditorState) {
     filterColumn: state.filterColumn,
     setFilterColumn: state.setFilterColumn,
     filterValue: state.filterValue,
+    setFilterValue: state.setFilterValue,
     filterMode: state.filterMode,
     setPage: state.setPage,
+    setVisibleColumns: state.setVisibleColumns,
     tables: queries.tables,
     loadingTables: queries.loadingTables,
     columns: queries.columns,
@@ -54,6 +58,7 @@ export function useTableEditorData(state: TableEditorState) {
     loadingRows: queries.loadingRows,
     loadingTables: queries.loadingTables,
     connectionReadOnly: queries.connectionReadOnly,
+    activeRelation: queries.activeRelation,
     rowMutationsReadOnly: queries.rowMutationsReadOnly,
     rowMutationsDisabledReason: queries.rowMutationsDisabledReason,
   }

@@ -12,8 +12,10 @@ type UseTableEditorEffectsParams = {
   filterColumn: string
   setFilterColumn: (value: string) => void
   filterValue: string
+  setFilterValue: (value: string) => void
   filterMode: 'contains' | 'equals'
   setPage: (value: number | ((prev: number) => number)) => void
+  setVisibleColumns: (value: string[]) => void
   tables: TableInfo[]
   loadingTables: boolean
   columns: ColumnInfo[]
@@ -29,8 +31,10 @@ export function useTableEditorEffects({
   filterColumn,
   setFilterColumn,
   filterValue,
+  setFilterValue,
   filterMode,
   setPage,
+  setVisibleColumns,
   tables,
   loadingTables,
   columns,
@@ -45,7 +49,16 @@ export function useTableEditorEffects({
   useEffect(() => {
     if (!activeTable) return
     setPage(0)
-  }, [activeTable, pageSize, sortBy, sortOrder, filterColumn, filterMode, filterValue, setPage])
+    setSortBy('')
+    setFilterColumn('')
+    setFilterValue('')
+    setVisibleColumns([])
+  }, [activeTable, setPage, setSortBy, setFilterColumn, setFilterValue, setVisibleColumns])
+
+  useEffect(() => {
+    if (!activeTable) return
+    setPage(0)
+  }, [pageSize, sortBy, sortOrder, filterColumn, filterMode, filterValue, activeTable, setPage])
 
   useEffect(() => {
     if (columns.length === 0) return

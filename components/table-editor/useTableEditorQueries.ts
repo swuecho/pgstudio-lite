@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createRow,
@@ -8,6 +8,7 @@ import {
   removeRow,
 } from '../../features/table/table.service'
 import { useActiveConnection } from '../shared/hooks/useActiveConnection'
+import { isMutableRelationKind } from '../../lib/relation-kind'
 import { parseActiveTableKey } from './tableEditorContracts'
 import type { RowKey } from './types'
 
@@ -71,17 +72,50 @@ export function useTableEditorQueries(state: TableEditorState) {
   const columns = useMemo(() => rowsQuery.data?.columns || [], [rowsQuery.data?.columns])
   const rows = rowsQuery.data?.rows || []
   const totalRows = Number(rowsQuery.data?.total || 0)
+  const activeRelation = useMemo(
+    () =>
+      tables.find(
+        (item) => item.schema === selectedTarget.schema && item.table === selectedTarget.table
+      ) || null,
+    [tables, selectedTarget.schema, selectedTarget.table]
+  )
   const hasPrimaryKey = columns.some((column) => column.isPrimaryKey)
-  const rowMutationsReadOnly = connectionReadOnly || !hasPrimaryKey
+  const relationMutable = activeRelation ? isMutableRelationKind(activeRelation.kind) : true
+  const rowMutationsReadOnly = connectionReadOnly || !relationMutable || !hasPrimaryKey
   const rowMutationsDisabledReason = connectionReadOnly
     ? 'Connection is read-only'
-    : hasPrimaryKey
-      ? ''
-      : 'Table has no primary key; row edits are disabled'
+    : !relationMutable
+      ? `${activeRelation?.kind === 'materialized_view' ? 'Materialized view' : 'View'} is read-only`
+      : hasPrimaryKey
+        ? ''
+        : 'Table has no primary key; row edits are disabled'
   const editableColumns = useMemo(
     () => columns.filter((c) => !c.isIdentity && !c.isPrimaryKey),
     [columns]
   )
+
+  useEffect(() => {
+    if (!selectedTarget.table) return
+    if (rowsQuery.isFetching) {
+      state.setStatus('Loading rows...')
+      return
+    }
+    if (rowsQuery.isError) {
+      state.setStatus(rowsQuery.error instanceof Error ? rowsQuery.error.message : 'Failed to load rows')
+      return
+    }
+    if (rowsQuery.isSuccess && columns.length > 0) {
+      state.setStatus('Ready')
+    }
+  }, [
+    selectedTarget.table,
+    rowsQuery.isFetching,
+    rowsQuery.isError,
+    rowsQuery.isSuccess,
+    rowsQuery.error,
+    columns.length,
+    state.setStatus,
+  ])
 
   function invalidateRows() {
     return queryClient.invalidateQueries({
@@ -191,6 +225,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     loadingRows: rowsQuery.isFetching,
     loadingTables: tablesQuery.isFetching,
     connectionReadOnly,
+    activeRelation,
     rowMutationsReadOnly,
     rowMutationsDisabledReason,
   }

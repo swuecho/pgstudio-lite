@@ -271,9 +271,9 @@ export function TableGridPanel({
 
   // Filter columns based on visibleColumns selection
   // If no columns are selected, show all columns (backward compatible)
-  const displayColumns = visibleColumns.length > 0
-    ? columns.filter(col => visibleColumns.includes(col.name))
-    : columns
+  const matchedVisibleColumns =
+    visibleColumns.length > 0 ? columns.filter((col) => visibleColumns.includes(col.name)) : columns
+  const displayColumns = matchedVisibleColumns.length > 0 ? matchedVisibleColumns : columns
 
   return (
     <>

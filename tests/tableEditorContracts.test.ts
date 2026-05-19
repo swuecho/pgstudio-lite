@@ -3,6 +3,7 @@ import {
   parseActiveTableKey,
   resolveNextActiveTable,
   resolveSortAndFilter,
+  sanitizeRowsQueryOptions,
   toActiveTableKey,
 } from '../components/table-editor/tableEditorContracts'
 
@@ -31,8 +32,8 @@ describe('tableEditorContracts', () => {
   it('falls back to first table when selected table is missing', () => {
     const next = resolveNextActiveTable(
       [
-        { schema: 'public', table: 'users', estimatedRows: 10 },
-        { schema: 'public', table: 'orders', estimatedRows: 20 },
+        { schema: 'public', table: 'users', estimatedRows: 10, kind: 'table' },
+        { schema: 'public', table: 'orders', estimatedRows: 20, kind: 'table' },
       ],
       'public.missing_table',
       false
@@ -50,6 +51,16 @@ describe('tableEditorContracts', () => {
       'name'
     )
     expect(result).toEqual({ nextSortBy: 'name', nextFilterColumn: 'name' })
+  })
+
+  it('drops sort and filter options that do not exist on the target relation', () => {
+    expect(
+      sanitizeRowsQueryOptions(['id', 'name'], {
+        sortBy: 'missing',
+        filterColumn: 'other_missing',
+        filterValue: 'x',
+      })
+    ).toEqual({ sortBy: '', filterColumn: '', filterValue: '' })
   })
 
   it('resets invalid sort and filter columns', () => {

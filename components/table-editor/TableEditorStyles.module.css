@@ -75,6 +75,14 @@
   min-width: 0;
 }
 
+.tableCardNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
 .tableCardName {
   font-size: 14px;
   font-weight: 600;

@@ -265,6 +265,19 @@
   border-top: 0;
 }
 
+.explorerTableName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.explorerTableName > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .explorerTable,
 .explorerCol {
   border: 0;
