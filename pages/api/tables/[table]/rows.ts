@@ -24,6 +24,7 @@ const rowsQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional(),
   filterColumn: z.string().trim().optional(),
   filterValue: z.string().trim().optional(),
+  filterValueEnd: z.string().trim().optional(),
   filterMode: z.enum(TABLE_FILTER_MODES).optional(),
 })
 
@@ -51,10 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const connectionName = getRequestConnectionName(req)
 
     if (req.method === 'GET') {
-      const { schema, limit, offset, sortBy, sortOrder, filterColumn, filterValue, filterMode } = parseWithSchema(
-        rowsQuerySchema,
-        req.query
-      )
+      const { schema, limit, offset, sortBy, sortOrder, filterColumn, filterValue, filterValueEnd, filterMode } =
+        parseWithSchema(rowsQuerySchema, req.query)
       const columns = await getTableColumns(connectionName, table, schema)
       const rows = await getTableRows(connectionName, schema, table, {
         limit,
@@ -63,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sortOrder,
         filterColumn,
         filterValue,
+        filterValueEnd,
         filterMode,
         columns: columns.map((column) => ({ name: column.name, dataType: column.dataType })),
       })

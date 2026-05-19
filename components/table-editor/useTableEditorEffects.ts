@@ -1,14 +1,20 @@
 import { useEffect } from 'react'
 import {
   defaultFilterModeForColumnKind,
+  hasActiveTableFilter,
   isFilterModeAllowedForColumnKind,
   type TableFilterMode,
 } from '../../lib/table-filter'
 import { getColumnKind } from '../../lib/table-column-kind'
 import { resolveNextActiveTable, resolveSortAndFilter } from './tableEditorContracts'
+import {
+  tableEditorFilterKey,
+  useTableEditorFilterStore,
+} from './stores/tableEditorFilterStore'
 import type { ColumnInfo, TableInfo } from './types'
 
 type UseTableEditorEffectsParams = {
+  connectionName: string
   activeTable: string
   setActiveTable: (value: string) => void
   pageSize: number
@@ -19,8 +25,12 @@ type UseTableEditorEffectsParams = {
   setFilterColumn: (value: string) => void
   filterValue: string
   setFilterValue: (value: string) => void
+  filterValueEnd: string
+  setFilterValueEnd: (value: string) => void
   filterMode: TableFilterMode
   setFilterMode: (value: TableFilterMode) => void
+  debouncedFilterValue: string
+  debouncedFilterValueEnd: string
   setPage: (value: number | ((prev: number) => number)) => void
   setVisibleColumns: (value: string[]) => void
   tables: TableInfo[]
@@ -29,6 +39,7 @@ type UseTableEditorEffectsParams = {
 }
 
 export function useTableEditorEffects({
+  connectionName,
   activeTable,
   setActiveTable,
   pageSize,
@@ -39,14 +50,21 @@ export function useTableEditorEffects({
   setFilterColumn,
   filterValue,
   setFilterValue,
+  filterValueEnd,
+  setFilterValueEnd,
   filterMode,
   setFilterMode,
+  debouncedFilterValue,
+  debouncedFilterValueEnd,
   setPage,
   setVisibleColumns,
   tables,
   loadingTables,
   columns,
 }: UseTableEditorEffectsParams) {
+  const setFilterForKey = useTableEditorFilterStore((state) => state.setFilterForKey)
+  const clearFilterForKey = useTableEditorFilterStore((state) => state.clearFilterForKey)
+
   useEffect(() => {
     const nextActiveTable = resolveNextActiveTable(tables, activeTable, loadingTables)
     if (nextActiveTable !== null && nextActiveTable !== activeTable) {
@@ -56,17 +74,71 @@ export function useTableEditorEffects({
 
   useEffect(() => {
     if (!activeTable) return
+
     setPage(0)
     setSortBy('')
+    setVisibleColumns([])
+
+    const saved = useTableEditorFilterStore.getState().filtersByKey[tableEditorFilterKey(connectionName, activeTable)]
+    if (saved) {
+      setFilterColumn(saved.filterColumn)
+      setFilterMode(saved.filterMode)
+      setFilterValue(saved.filterValue)
+      setFilterValueEnd(saved.filterValueEnd)
+      return
+    }
+
     setFilterColumn('')
     setFilterValue('')
-    setVisibleColumns([])
-  }, [activeTable, setPage, setSortBy, setFilterColumn, setFilterValue, setVisibleColumns])
+    setFilterValueEnd('')
+    setFilterMode('contains')
+  }, [
+    activeTable,
+    connectionName,
+    setPage,
+    setSortBy,
+    setFilterColumn,
+    setFilterValue,
+    setFilterValueEnd,
+    setFilterMode,
+    setVisibleColumns,
+  ])
+
+  useEffect(() => {
+    if (!activeTable || !connectionName) return
+
+    const key = tableEditorFilterKey(connectionName, activeTable)
+    if (!hasActiveTableFilter(filterColumn, filterMode, filterValue, filterValueEnd)) {
+      clearFilterForKey(key)
+      return
+    }
+
+    setFilterForKey(key, { filterColumn, filterMode, filterValue, filterValueEnd })
+  }, [
+    activeTable,
+    connectionName,
+    filterColumn,
+    filterMode,
+    filterValue,
+    filterValueEnd,
+    setFilterForKey,
+    clearFilterForKey,
+  ])
 
   useEffect(() => {
     if (!activeTable) return
     setPage(0)
-  }, [pageSize, sortBy, sortOrder, filterColumn, filterMode, filterValue, activeTable, setPage])
+  }, [
+    pageSize,
+    sortBy,
+    sortOrder,
+    filterColumn,
+    filterMode,
+    debouncedFilterValue,
+    debouncedFilterValueEnd,
+    activeTable,
+    setPage,
+  ])
 
   useEffect(() => {
     if (columns.length === 0) return

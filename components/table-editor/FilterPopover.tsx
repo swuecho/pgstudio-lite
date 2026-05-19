@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { getColumnKind } from '../../lib/table-column-kind'
+import { DATETIME_FILTER_TIMEZONE_HINT, getColumnKind } from '../../lib/table-column-kind'
 import {
   defaultFilterModeForColumnKind,
+  filterModeNeedsEndValue,
   filterModeNeedsValue,
   formatTableFilterSummary,
   getFilterModeOptionsForColumnKind,
   hasActiveTableFilter,
+  isSlowFilterMode,
   type TableFilterMode,
 } from '../../lib/table-filter'
 import type { ColumnInfo } from './types'
@@ -18,10 +20,13 @@ type FilterPopoverProps = {
   filterColumn: string
   filterMode: TableFilterMode
   filterValue: string
+  filterValueEnd: string
+  totalRows: number
   filterValueInputRef: RefObject<HTMLInputElement | null>
   onChangeFilterColumn: (value: string) => void
   onChangeFilterMode: (value: TableFilterMode) => void
   onChangeFilterValue: (value: string) => void
+  onChangeFilterValueEnd: (value: string) => void
   onClearFilters: () => void
 }
 
@@ -41,10 +46,13 @@ export function FilterPopover({
   filterColumn,
   filterMode,
   filterValue,
+  filterValueEnd,
+  totalRows,
   filterValueInputRef,
   onChangeFilterColumn,
   onChangeFilterMode,
   onChangeFilterValue,
+  onChangeFilterValueEnd,
   onClearFilters,
 }: FilterPopoverProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -57,9 +65,11 @@ export function FilterPopover({
   const filterColumnKind = getColumnKind(filterColumnMeta?.dataType ?? 'text')
   const filterModeOptions = getFilterModeOptionsForColumnKind(filterColumnKind)
   const filterValueRequired = filterModeNeedsValue(filterMode)
-  const hasFilters = hasActiveTableFilter(filterColumn, filterMode, filterValue)
+  const filterEndRequired = filterModeNeedsEndValue(filterMode)
+  const hasFilters = hasActiveTableFilter(filterColumn, filterMode, filterValue, filterValueEnd)
   const showBooleanFilterValue = filterColumnKind === 'boolean' && filterValueRequired
-  const filterSummary = formatTableFilterSummary(filterColumn, filterMode, filterValue)
+  const filterSummary = formatTableFilterSummary(filterColumn, filterMode, filterValue, filterValueEnd)
+  const showSlowFilterWarning = isSlowFilterMode(filterMode) && totalRows > 1000
 
   useEffect(() => {
     setPortalReady(true)
@@ -199,6 +209,39 @@ export function FilterPopover({
               />
             )}
           </label>
+
+          {filterEndRequired ? (
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>To</span>
+              <input
+                className={styles.filterControl}
+                type={
+                  filterColumnKind === 'numeric'
+                    ? 'number'
+                    : filterColumnKind === 'date'
+                      ? 'date'
+                      : filterColumnKind === 'datetime'
+                        ? 'datetime-local'
+                        : 'text'
+                }
+                step={filterColumnKind === 'numeric' ? 'any' : undefined}
+                placeholder="End value"
+                value={filterValueEnd}
+                onChange={(event) => onChangeFilterValueEnd(event.target.value)}
+                disabled={!filterColumn}
+              />
+            </label>
+          ) : null}
+
+          {filterColumnKind === 'datetime' && filterValueRequired ? (
+            <div className={styles.filterNotice}>{DATETIME_FILTER_TIMEZONE_HINT}</div>
+          ) : null}
+
+          {showSlowFilterWarning ? (
+            <div className={styles.filterWarning}>
+              This filter may be slow on large tables because it cannot use a standard index.
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.filterHint}>Press / to open and focus filter value</div>

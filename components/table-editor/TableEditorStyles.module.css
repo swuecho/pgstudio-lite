@@ -134,6 +134,20 @@
   line-height: 1.5;
 }
 
+.tableHeaderFilterChip {
+  max-width: min(48vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  color: var(--accent);
+  padding: 3px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .tablePage {
   min-height: 0;
   flex: 1 1 auto;

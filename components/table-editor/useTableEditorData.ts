@@ -1,4 +1,5 @@
 import type { TableFilterMode } from '../../lib/table-filter'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { useTableEditorEffects } from './useTableEditorEffects'
 import { useTableEditorQueries } from './useTableEditorQueries'
 
@@ -18,15 +19,25 @@ type TableEditorState = {
   setFilterColumn: (value: string) => void
   filterValue: string
   setFilterValue: (value: string) => void
+  filterValueEnd: string
+  setFilterValueEnd: (value: string) => void
   filterMode: TableFilterMode
   setFilterMode: (value: TableFilterMode) => void
   setVisibleColumns: (value: string[]) => void
 }
 
 export function useTableEditorData(state: TableEditorState) {
-  const queries = useTableEditorQueries(state)
+  const debouncedFilterValue = useDebouncedValue(state.filterValue)
+  const debouncedFilterValueEnd = useDebouncedValue(state.filterValueEnd)
+
+  const queries = useTableEditorQueries({
+    ...state,
+    filterValue: debouncedFilterValue,
+    filterValueEnd: debouncedFilterValueEnd,
+  })
 
   useTableEditorEffects({
+    connectionName: state.connectionName,
     activeTable: state.activeTable,
     setActiveTable: state.setActiveTable,
     pageSize: state.pageSize,
@@ -37,8 +48,12 @@ export function useTableEditorData(state: TableEditorState) {
     setFilterColumn: state.setFilterColumn,
     filterValue: state.filterValue,
     setFilterValue: state.setFilterValue,
+    filterValueEnd: state.filterValueEnd,
+    setFilterValueEnd: state.setFilterValueEnd,
     filterMode: state.filterMode,
     setFilterMode: state.setFilterMode,
+    debouncedFilterValue,
+    debouncedFilterValueEnd,
     setPage: state.setPage,
     setVisibleColumns: state.setVisibleColumns,
     tables: queries.tables,

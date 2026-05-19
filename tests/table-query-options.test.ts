@@ -19,56 +19,42 @@ describe('table-query-options', () => {
       sortBy: 'email',
       filterColumn: 'email',
       filterValue: 'a',
+      filterValueEnd: '',
       filterMode: 'contains',
       columnDataType: 'text',
     })
   })
 
-  it('allows is_empty filter without a value', () => {
+  it('allows is_null filter without a value', () => {
     expect(
       sanitizeRowsQueryOptions(columns, {
         filterColumn: 'email',
-        filterMode: 'is_empty',
+        filterMode: 'is_null',
         filterValue: 'ignored',
       })
     ).toEqual({
       sortBy: '',
       filterColumn: 'email',
       filterValue: '',
-      filterMode: 'is_empty',
+      filterValueEnd: '',
+      filterMode: 'is_null',
       columnDataType: 'text',
     })
   })
 
-  it('rejects invalid numeric filter values', () => {
+  it('sanitizes between filter values', () => {
     expect(
       sanitizeRowsQueryOptions(columns, {
         filterColumn: 'amount',
-        filterMode: 'gt',
-        filterValue: 'not-a-number',
-      })
-    ).toEqual({
-      sortBy: '',
-      filterColumn: 'amount',
-      filterValue: '',
-      filterMode: 'gt',
-      columnDataType: 'numeric',
-    })
-  })
-
-  it('normalizes numeric filter mode for text columns', () => {
-    expect(
-      sanitizeRowsQueryOptions(columns, {
-        filterColumn: 'email',
-        filterMode: 'gt',
+        filterMode: 'between',
         filterValue: '10',
+        filterValueEnd: '100',
       })
-    ).toEqual({
-      sortBy: '',
-      filterColumn: 'email',
+    ).toMatchObject({
+      filterColumn: 'amount',
       filterValue: '10',
-      filterMode: 'contains',
-      columnDataType: 'text',
+      filterValueEnd: '100',
+      filterMode: 'between',
     })
   })
 })

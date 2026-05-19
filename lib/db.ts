@@ -4,7 +4,7 @@ import pg from 'pg'
 import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 import { isMutableRelationKind, mapPgRelkind, type RelationKind } from './relation-kind'
-import { buildTableRowFilter, filterModeNeedsValue, type TableFilterMode } from './table-filter'
+import { buildTableRowFilter, hasActiveTableFilter, type TableFilterMode } from './table-filter'
 import { sanitizeRowsQueryOptions } from './table-query-options'
 
 const { Pool } = pg
@@ -1034,6 +1034,7 @@ export async function getTableRows(
     sortOrder?: 'asc' | 'desc'
     filterColumn?: string
     filterValue?: string
+    filterValueEnd?: string
     filterMode?: TableFilterMode
     columns?: Array<{ name: string; dataType: string }>
   } = {}
@@ -1047,6 +1048,7 @@ export async function getTableRows(
       sortBy: safeSortBy,
       filterColumn: safeFilterColumn,
       filterValue,
+      filterValueEnd,
       filterMode: safeFilterMode,
       columnDataType,
     } = sanitizeRowsQueryOptions(tableColumns, options)
@@ -1058,8 +1060,8 @@ export async function getTableRows(
 
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const filter =
-      filterColumn && (filterValue || !filterModeNeedsValue(filterMode))
-        ? buildTableRowFilter(filterColumn, filterMode, filterValue, columnDataType)
+      filterColumn && hasActiveTableFilter(safeFilterColumn, filterMode, filterValue, filterValueEnd)
+        ? buildTableRowFilter(filterColumn, filterMode, filterValue, columnDataType, filterValueEnd)
         : null
     const whereClause = filter?.whereClause ?? ''
     const params = filter?.params ?? []

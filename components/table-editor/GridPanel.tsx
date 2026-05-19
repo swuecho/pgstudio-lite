@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import type { RefObject } from 'react'
 import { ColumnInfo, RowData, RowKey } from './types'
+import {
+  isBooleanColumn,
+  isDateColumn,
+  isDateTimeColumn,
+  isJsonColumn,
+} from '../../lib/table-column-kind'
 import { ColumnsSelector } from './ColumnsSelector'
 import { FilterPopover } from './FilterPopover'
+import { SortPopover } from './SortPopover'
 import { JsonbCellEditor } from './JsonbCellEditor'
 import { InsertRowModal } from './InsertRowModal'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
@@ -18,6 +25,7 @@ type TableGridPanelProps = {
   filterColumn: string
   filterMode: TableFilterMode
   filterValue: string
+  filterValueEnd: string
   filterValueInputRef: RefObject<HTMLInputElement | null>
   pageSize: number
   page: number
@@ -29,6 +37,7 @@ type TableGridPanelProps = {
   onChangeFilterColumn: (value: string) => void
   onChangeFilterMode: (value: TableFilterMode) => void
   onChangeFilterValue: (value: string) => void
+  onChangeFilterValueEnd: (value: string) => void
   onClearFilters: () => void
   onChangePageSize: (value: number) => void
   onUpdateCell: (rowKey: RowKey | null, column: string, value: unknown) => void
@@ -60,6 +69,7 @@ export function TableGridPanel({
   filterColumn,
   filterMode,
   filterValue,
+  filterValueEnd,
   filterValueInputRef,
   pageSize,
   page,
@@ -71,6 +81,7 @@ export function TableGridPanel({
   onChangeFilterColumn,
   onChangeFilterMode,
   onChangeFilterValue,
+  onChangeFilterValueEnd,
   onClearFilters,
   onChangePageSize,
   onUpdateCell,
@@ -148,24 +159,6 @@ export function TableGridPanel({
 
   function truncate(value: string, max = 220) {
     return value.length > max ? `${value.slice(0, max)}...` : value
-  }
-
-  function isBooleanColumn(dataType: string) {
-    return dataType.toLowerCase() === 'boolean'
-  }
-
-  function isJsonColumn(dataType: string) {
-    const lower = dataType.toLowerCase()
-    return lower === 'json' || lower === 'jsonb'
-  }
-
-  function isDateColumn(dataType: string) {
-    return dataType.toLowerCase() === 'date'
-  }
-
-  function isDateTimeColumn(dataType: string) {
-    const lower = dataType.toLowerCase()
-    return lower === 'timestamp without time zone' || lower === 'timestamp with time zone'
   }
 
   function getEditorKind(dataType: string) {
@@ -292,30 +285,13 @@ export function TableGridPanel({
           <div className={styles.toolbarSpacer} aria-hidden="true" />
 
           <div className={styles.toolbarGroup}>
-            <span className={styles.toolbarGroupLabel}>Sort</span>
-            <select
-              className={styles.toolbarSortBy}
-              value={sortBy}
-              onChange={(e) => onChangeSortBy(e.target.value)}
-              title={sortBy ? `Sort: ${sortBy}` : 'Default order'}
-              aria-label="Sort column"
-            >
-              <option value="">Order</option>
-              {columns.map((col) => (
-                <option key={`sort-${col.name}`} value={col.name}>
-                  {col.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className={styles.toolbarSortOrder}
-              value={sortOrder}
-              onChange={(e) => onChangeSortOrder(e.target.value as 'asc' | 'desc')}
-              aria-label="Sort direction"
-            >
-              <option value="asc">ASC</option>
-              <option value="desc">DESC</option>
-            </select>
+            <SortPopover
+              columns={columns}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onChangeSortBy={onChangeSortBy}
+              onChangeSortOrder={onChangeSortOrder}
+            />
           </div>
 
           <div className={styles.toolbarGroup}>
@@ -324,10 +300,13 @@ export function TableGridPanel({
               filterColumn={filterColumn}
               filterMode={filterMode}
               filterValue={filterValue}
+              filterValueEnd={filterValueEnd}
+              totalRows={totalRows}
               filterValueInputRef={filterValueInputRef}
               onChangeFilterColumn={onChangeFilterColumn}
               onChangeFilterMode={onChangeFilterMode}
               onChangeFilterValue={onChangeFilterValue}
+              onChangeFilterValueEnd={onChangeFilterValueEnd}
               onClearFilters={onClearFilters}
             />
           </div>

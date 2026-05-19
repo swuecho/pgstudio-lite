@@ -10,6 +10,7 @@ type TableEditorLocalStore = {
   sortOrder: 'asc' | 'desc'
   filterColumn: string
   filterValue: string
+  filterValueEnd: string
   filterMode: TableFilterMode
   visibleColumns: string[]
   setActiveTable: (value: string) => void
@@ -20,6 +21,7 @@ type TableEditorLocalStore = {
   setSortOrder: (value: 'asc' | 'desc') => void
   setFilterColumn: (value: string) => void
   setFilterValue: (value: string) => void
+  setFilterValueEnd: (value: string) => void
   setFilterMode: (value: TableFilterMode) => void
   setVisibleColumns: (value: string[]) => void
   toggleVisibleColumn: (columnName: string) => void
@@ -34,6 +36,7 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   sortOrder: 'asc',
   filterColumn: '',
   filterValue: '',
+  filterValueEnd: '',
   filterMode: 'contains',
   visibleColumns: [],
   setActiveTable: (value) => set({ activeTable: value }),
@@ -44,6 +47,7 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   setSortOrder: (value) => set({ sortOrder: value }),
   setFilterColumn: (value) => set({ filterColumn: value }),
   setFilterValue: (value) => set({ filterValue: value }),
+  setFilterValueEnd: (value) => set({ filterValueEnd: value }),
   setFilterMode: (value) => set({ filterMode: value }),
   setVisibleColumns: (value) => set({ visibleColumns: value }),
   toggleVisibleColumn: (columnName) => set((state) => ({

@@ -16,10 +16,13 @@ function makeProps(overrides: Partial<React.ComponentProps<typeof FilterPopover>
     filterColumn: '',
     filterMode: 'contains' as const,
     filterValue: '',
+    filterValueEnd: '',
+    totalRows: 0,
     filterValueInputRef: createRef<HTMLInputElement>(),
     onChangeFilterColumn: vi.fn(),
     onChangeFilterMode: vi.fn(),
     onChangeFilterValue: vi.fn(),
+    onChangeFilterValueEnd: vi.fn(),
     onClearFilters: vi.fn(),
     ...overrides,
   }
