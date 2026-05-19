@@ -24,7 +24,10 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
   const filteredSchemaTables = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
     if (!q) return schemaTables
-    return schemaTables.filter((item) => `${item.schema}.${item.table}`.toLowerCase().includes(q))
+    return schemaTables.filter((item) => {
+      const haystack = `${item.schema}.${item.table} ${item.kind}`.toLowerCase()
+      return haystack.includes(q)
+    })
   }, [schemaTables, historySearch])
 
   const schemaGroups = useMemo(() => {

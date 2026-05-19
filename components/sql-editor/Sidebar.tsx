@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { RefObject } from 'react'
 import ThemeToggle from '../theme-toggle'
+import { RelationKindBadge } from '../shared/RelationKindBadge'
 import { HistoryItem, SchemaTable, SnippetItem } from './types'
 import styles from './Sidebar.module.css'
 
@@ -96,7 +97,7 @@ export function SqlSidebar({
       ? 'Search history'
       : activeNavTab === 'snippets'
         ? 'Search snippets'
-        : 'Search schema.table'
+        : 'Search tables & views'
 
   return (
     <>
@@ -275,8 +276,8 @@ export function SqlSidebar({
             schemaGroups.length === 0 ? (
               <div className="empty-state">
                 {historySearch.trim()
-                  ? 'No tables match your search.'
-                  : 'No tables found for this connection.'}
+                  ? 'No tables or views match your search.'
+                  : 'No tables or views found for this connection.'}
               </div>
             ) : (
             schemaGroups.map(([schema, tables]) => (
@@ -297,7 +298,10 @@ export function SqlSidebar({
                           title={`${isExpanded ? 'Collapse' : 'Expand'} ${schema}.${table.table}`}
                         >
                           <span className={styles.explorerChevron}>{isExpanded ? '▾' : '▸'}</span>
-                          <span>{table.table}</span>
+                          <span className={styles.explorerTableName}>
+                            <span>{table.table}</span>
+                            <RelationKindBadge kind={table.kind} compact />
+                          </span>
                         </button>
                         <div className={styles.explorerActions}>
                           <button

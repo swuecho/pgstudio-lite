@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '../theme-toggle'
+import { RelationKindBadge } from '../shared/RelationKindBadge'
 import { TableInfo } from './types'
 import styles from './TableEditorStyles.module.css'
 
@@ -52,7 +53,7 @@ export function TableSidebar({
       if (selectedSchema && table.schema !== selectedSchema) return false
       if (!query) return true
 
-      const fullName = `${table.schema}.${table.table}`.toLowerCase()
+      const fullName = `${table.schema}.${table.table} ${table.kind}`.toLowerCase()
       return fullName.includes(query) || table.table.toLowerCase().includes(query)
     })
   }, [selectedSchema, tableSearch, tables])
@@ -91,10 +92,10 @@ export function TableSidebar({
             ))}
           </select>
           <input
-            placeholder="Search tables"
+            placeholder="Search tables & views"
             value={tableSearch}
             onChange={(event) => setTableSearch(event.target.value)}
-            aria-label="Search tables"
+            aria-label="Search tables and views"
           />
           <button className="btn small" onClick={onRefreshTables}>
             {loadingTables ? 'Refreshing...' : 'Refresh'}
@@ -105,10 +106,10 @@ export function TableSidebar({
           {visibleTables.length === 0 ? (
             <div className="empty-state">
               {tables.length === 0
-                ? 'No tables found for this connection.'
+                ? 'No tables or views found for this connection.'
                 : tableSearch.trim()
-                  ? 'No tables match your search in this schema.'
-                  : 'No tables found in this schema.'}
+                  ? 'No tables or views match your search in this schema.'
+                  : 'No tables or views found in this schema.'}
             </div>
           ) : (
             visibleTables.map((table) => (
@@ -118,7 +119,10 @@ export function TableSidebar({
                 onClick={() => onSelectTable(toActiveTableKey(table.schema, table.table))}
               >
                 <div className={styles.tableCardHeader}>
-                  <div className={styles.tableCardName}>{table.table}</div>
+                  <div className={styles.tableCardNameRow}>
+                    <div className={styles.tableCardName}>{table.table}</div>
+                    <RelationKindBadge kind={table.kind} compact />
+                  </div>
                   <div className={styles.tableCardRows}>~{table.estimatedRows} rows</div>
                 </div>
               </button>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
+import { RelationKindBadge } from '../components/shared/RelationKindBadge'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
 import { ErrorBoundary } from '../components/shared/ErrorBoundary'
@@ -125,9 +126,13 @@ export default function TableEditorPage() {
             <code className={tableStyles.tableHeaderTable}>
               {state.activeTable || 'No table selected'}
             </code>
+            {state.activeRelation ? <RelationKindBadge kind={state.activeRelation.kind} /> : null}
           </div>
           <div className={pageStyles.editorHeaderRight}>
             {state.connectionReadOnly ? <span className={pageStyles.readonlyPill}>Read-only connection</span> : null}
+            {state.rowMutationsReadOnly && state.activeRelation && state.activeRelation.kind !== 'table' ? (
+              <span className={pageStyles.readonlyPill}>View (read-only)</span>
+            ) : null}
             <span className={pageStyles.statusPill}>{state.status}</span>
             <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
               {state.connections.map((c) => (

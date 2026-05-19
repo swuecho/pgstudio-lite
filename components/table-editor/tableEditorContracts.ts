@@ -42,3 +42,5 @@ export function resolveSortAndFilter(columns: ColumnInfo[], sortBy: string, filt
     nextFilterColumn: canFilterByCurrent ? filterColumn : '',
   }
 }
+
+export { sanitizeRowsQueryOptions } from '../../lib/table-query-options'

@@ -1,7 +1,12 @@
+import type { RelationKind } from '../../lib/relation-kind'
+
+export type { RelationKind }
+
 export type TableInfo = {
   table: string
   schema: string
   estimatedRows: number
+  kind: RelationKind
 }
 
 export type ColumnInfo = {

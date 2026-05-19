@@ -3,6 +3,8 @@ import { and, desc, eq } from 'drizzle-orm'
 import pg from 'pg'
 import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
+import { isMutableRelationKind, mapPgRelkind, type RelationKind } from './relation-kind'
+import { sanitizeRowsQueryOptions } from './table-query-options'
 
 const { Pool } = pg
 type PgPool = InstanceType<typeof Pool>
@@ -43,10 +45,13 @@ type QuerySnippetRow = {
   updated_at: string
 }
 
+export type { RelationKind } from './relation-kind'
+
 export type TableInfo = {
   table: string
   schema: string
   estimatedRows: number
+  kind: RelationKind
 }
 
 export type TableColumn = {
@@ -61,6 +66,7 @@ export type SchemaTable = {
   schema: string
   table: string
   estimatedRows: number
+  kind: RelationKind
 }
 
 type RowKey = Record<string, unknown>
@@ -209,6 +215,35 @@ async function withClient<T>(connectionName: string | undefined, fn: (client: Po
   } finally {
     // Pools are intentionally reused across requests.
   }
+}
+
+async function getRelationColumnNames(client: PoolClient, schema: string, table: string): Promise<string[]> {
+  const informationSchemaSql = `
+    select column_name
+    from information_schema.columns
+    where table_schema = $1
+      and table_name = $2
+    order by ordinal_position
+  `
+  const { rows } = await client.query(informationSchemaSql, [schema, table])
+  if (rows.length > 0) {
+    return rows.map((row: { column_name: string }) => String(row.column_name))
+  }
+
+  const catalogSql = `
+    select a.attname as column_name
+    from pg_attribute a
+    join pg_class c on c.oid = a.attrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = $1
+      and c.relname = $2
+      and c.relkind in ('r', 'v', 'm')
+      and a.attnum > 0
+      and not a.attisdropped
+    order by a.attnum
+  `
+  const catalogRows = await client.query(catalogSql, [schema, table])
+  return catalogRows.rows.map((row: { column_name: string }) => String(row.column_name))
 }
 
 async function getPrimaryKeyColumns(client: PoolClient, schema: string, table: string): Promise<string[]> {
@@ -877,27 +912,64 @@ export async function executeQuery({
   }
 }
 
-export async function listTables(connectionName?: string): Promise<TableInfo[]> {
+async function getRelationKind(client: PoolClient, schema: string, table: string): Promise<RelationKind> {
+  const sql = `
+    select c.relkind
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = $1
+      and c.relname = $2
+      and c.relkind in ('r', 'v', 'm')
+    limit 1
+  `
+  const { rows } = await client.query(sql, [schema, table])
+  const relkind = rows[0]?.relkind
+  if (!relkind) {
+    const error = new Error(`relation '${schema}.${table}' not found`) as Error & { statusCode?: number }
+    error.statusCode = 404
+    throw error
+  }
+  return mapPgRelkind(String(relkind))
+}
+
+async function assertMutableRelation(client: PoolClient, schema: string, table: string) {
+  const kind = await getRelationKind(client, schema, table)
+  if (!isMutableRelationKind(kind)) {
+    const error = new Error(`relation '${schema}.${table}' is a ${kind}; row edits are not supported`) as Error & {
+      statusCode?: number
+    }
+    error.statusCode = 409
+    throw error
+  }
+}
+
+async function listRelations(connectionName: string | undefined, limit: number): Promise<TableInfo[]> {
   return withClient(connectionName, async (client) => {
     const sql = `
       select
         n.nspname as schema,
         c.relname as table,
+        c.relkind as relkind,
         greatest(c.reltuples::bigint, 0)::bigint as estimated_rows
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
-      where c.relkind = 'r'
+      where c.relkind in ('r', 'v', 'm')
         and n.nspname not in ('pg_catalog', 'information_schema')
-      order by n.nspname, c.relname
-      limit 200
+      order by n.nspname, c.relkind, c.relname
+      limit $1
     `
-    const { rows } = await client.query(sql)
-    return rows.map((r: any) => ({
-      schema: String(r.schema),
-      table: String(r.table),
-      estimatedRows: Number(r.estimated_rows || 0),
+    const { rows } = await client.query(sql, [limit])
+    return rows.map((row: Record<string, unknown>) => ({
+      schema: String(row.schema || 'public'),
+      table: String(row.table || ''),
+      estimatedRows: Number(row.estimated_rows || 0),
+      kind: mapPgRelkind(String(row.relkind || 'r')),
     }))
   })
+}
+
+export async function listTables(connectionName?: string): Promise<TableInfo[]> {
+  return listRelations(connectionName, 500)
 }
 
 export async function getTableColumns(
@@ -908,7 +980,7 @@ export async function getTableColumns(
   return withClient(connectionName, async (client) => {
     const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
     const primaryKeySet = new Set(primaryKeyColumns)
-    const sql = `
+    const informationSchemaSql = `
       select
         column_name,
         data_type,
@@ -919,12 +991,32 @@ export async function getTableColumns(
         and table_name = $2
       order by ordinal_position
     `
-    const { rows } = await client.query(sql, [schema, table])
-    return rows.map((r: any) => ({
+    let { rows } = await client.query(informationSchemaSql, [schema, table])
+    if (rows.length === 0) {
+      const catalogSql = `
+        select
+          a.attname as column_name,
+          pg_catalog.format_type(a.atttypid, a.atttypmod) as data_type,
+          not a.attnotnull as is_nullable,
+          false as is_identity
+        from pg_attribute a
+        join pg_class c on c.oid = a.attrelid
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = $1
+          and c.relname = $2
+          and c.relkind in ('r', 'v', 'm')
+          and a.attnum > 0
+          and not a.attisdropped
+        order by a.attnum
+      `
+      const catalogResult = await client.query(catalogSql, [schema, table])
+      rows = catalogResult.rows
+    }
+    return rows.map((r: Record<string, unknown>) => ({
       name: String(r.column_name),
       dataType: String(r.data_type),
-      isNullable: r.is_nullable === 'YES',
-      isIdentity: r.is_identity === 'YES',
+      isNullable: r.is_nullable === true || r.is_nullable === 'YES',
+      isIdentity: r.is_identity === true || r.is_identity === 'YES',
       isPrimaryKey: primaryKeySet.has(String(r.column_name)),
     }))
   })
@@ -947,12 +1039,16 @@ export async function getTableRows(
   return withClient(connectionName, async (client) => {
     const limit = Math.max(1, Math.min(500, Number(options.limit || 100)))
     const offset = Math.max(0, Number(options.offset || 0))
+    const columnNames = await getRelationColumnNames(client, schema, table)
+    const { sortBy: safeSortBy, filterColumn: safeFilterColumn, filterValue } = sanitizeRowsQueryOptions(
+      columnNames,
+      options
+    )
     const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
-    const sortBy = options.sortBy ? sqlIdent(options.sortBy) : ''
+    const sortBy = safeSortBy ? sqlIdent(safeSortBy) : ''
     const sortOrder = options.sortOrder === 'desc' ? 'desc' : 'asc'
     const filterMode = options.filterMode === 'equals' ? 'equals' : 'contains'
-    const filterColumn = options.filterColumn ? sqlIdent(options.filterColumn) : ''
-    const filterValue = (options.filterValue || '').trim()
+    const filterColumn = safeFilterColumn ? sqlIdent(safeFilterColumn) : ''
 
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const whereClause =
@@ -967,7 +1063,9 @@ export async function getTableRows(
     const defaultOrderClause =
       primaryKeyColumns.length > 0
         ? primaryKeyColumns.map((column) => `${sqlIdent(column)} asc`).join(', ')
-        : ''
+        : columnNames.length > 0
+          ? `${sqlIdent(columnNames[0])} asc`
+          : ''
     const orderClause = sortBy ? `${sortBy} ${sortOrder}` : defaultOrderClause
 
     const sql = `
@@ -996,26 +1094,7 @@ export async function getTableRows(
 }
 
 export async function listSchemaObjects(connectionName?: string): Promise<SchemaTable[]> {
-  return withClient(connectionName, async (client) => {
-    const sql = `
-      select
-        n.nspname as schema,
-        c.relname as table,
-        greatest(c.reltuples::bigint, 0)::bigint as estimated_rows
-      from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-      where c.relkind = 'r'
-        and n.nspname not in ('pg_catalog', 'information_schema')
-      order by n.nspname, c.relname
-      limit 2000
-    `
-    const { rows } = await client.query(sql)
-    return (rows as Array<Record<string, unknown>>).map((row) => ({
-      schema: String(row.schema || 'public'),
-      table: String(row.table || ''),
-      estimatedRows: Number(row.estimated_rows || 0),
-    }))
-  })
+  return listRelations(connectionName, 2000)
 }
 
 export async function updateTableRowByPrimaryKey(
@@ -1035,6 +1114,7 @@ export async function updateTableRowByPrimaryKey(
   if (keys.length === 0) return
 
   return withClient(connectionName, async (client) => {
+    await assertMutableRelation(client, schema, table)
     const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
     if (primaryKeyColumns.length === 0) {
       const error = new Error('table has no primary key') as Error & { statusCode?: number }
@@ -1085,6 +1165,7 @@ export async function insertTableRow(
   }
 
   return withClient(connectionName, async (client) => {
+    await assertMutableRelation(client, schema, table)
     const columns = await getTableColumns(connectionName, table, schema)
     const columnByName = new Map(columns.map((column) => [column.name, column]))
     const unknownColumn = keys.find((key) => !columnByName.has(key))
@@ -1137,6 +1218,7 @@ export async function deleteTableRowByPrimaryKey(
     throw error
   }
   return withClient(connectionName, async (client) => {
+    await assertMutableRelation(client, schema, table)
     const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
     if (primaryKeyColumns.length === 0) {
       const error = new Error('table has no primary key') as Error & { statusCode?: number }
