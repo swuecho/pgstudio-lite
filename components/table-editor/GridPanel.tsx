@@ -5,6 +5,14 @@ import { ColumnsSelector } from './ColumnsSelector'
 import { JsonbCellEditor } from './JsonbCellEditor'
 import { InsertRowModal } from './InsertRowModal'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
+import { getColumnKind } from '../../lib/table-column-kind'
+import {
+  defaultFilterModeForColumnKind,
+  filterModeNeedsValue,
+  getFilterModeOptionsForColumnKind,
+  hasActiveTableFilter,
+  type TableFilterMode,
+} from '../../lib/table-filter'
 import styles from './TableEditorStyles.module.css'
 
 type TableGridPanelProps = {
@@ -14,7 +22,7 @@ type TableGridPanelProps = {
   sortBy: string
   sortOrder: 'asc' | 'desc'
   filterColumn: string
-  filterMode: 'contains' | 'equals'
+  filterMode: TableFilterMode
   filterValue: string
   filterValueInputRef: RefObject<HTMLInputElement | null>
   pageSize: number
@@ -25,7 +33,7 @@ type TableGridPanelProps = {
   onChangeSortBy: (value: string) => void
   onChangeSortOrder: (value: 'asc' | 'desc') => void
   onChangeFilterColumn: (value: string) => void
-  onChangeFilterMode: (value: 'contains' | 'equals') => void
+  onChangeFilterMode: (value: TableFilterMode) => void
   onChangeFilterValue: (value: string) => void
   onClearFilters: () => void
   onChangePageSize: (value: number) => void
@@ -267,7 +275,12 @@ export function TableGridPanel({
     return 'pending' as const
   }
 
-  const hasFilters = Boolean(filterColumn || filterValue.trim())
+  const filterColumnMeta = columns.find((column) => column.name === filterColumn)
+  const filterColumnKind = getColumnKind(filterColumnMeta?.dataType ?? 'text')
+  const filterModeOptions = getFilterModeOptionsForColumnKind(filterColumnKind)
+  const filterValueRequired = filterModeNeedsValue(filterMode)
+  const hasFilters = hasActiveTableFilter(filterColumn, filterMode, filterValue)
+  const showBooleanFilterValue = filterColumnKind === 'boolean' && filterValueRequired
 
   // Filter columns based on visibleColumns selection
   // If no columns are selected, show all columns (backward compatible)
@@ -286,11 +299,16 @@ export function TableGridPanel({
             onShowAll={onShowAllColumns}
             onHideAll={onHideAllColumns}
           />
-          <select value={sortBy} onChange={(e) => onChangeSortBy(e.target.value)}>
-            <option value="">Default order</option>
+          <select
+            className={styles.toolbarSortBy}
+            value={sortBy}
+            onChange={(e) => onChangeSortBy(e.target.value)}
+            title={sortBy ? `Sort: ${sortBy}` : 'Order'}
+          >
+            <option value="">Order</option>
             {columns.map((col) => (
               <option key={`sort-${col.name}`} value={col.name}>
-                Sort: {col.name}
+                {col.name}
               </option>
             ))}
           </select>
@@ -298,7 +316,17 @@ export function TableGridPanel({
             <option value="asc">ASC</option>
             <option value="desc">DESC</option>
           </select>
-          <select value={filterColumn} onChange={(e) => onChangeFilterColumn(e.target.value)}>
+          <select
+            value={filterColumn}
+            onChange={(e) => {
+              const nextColumn = e.target.value
+              onChangeFilterColumn(nextColumn)
+              const nextKind = getColumnKind(
+                columns.find((column) => column.name === nextColumn)?.dataType ?? 'text'
+              )
+              onChangeFilterMode(defaultFilterModeForColumnKind(nextKind))
+            }}
+          >
             <option value="">Filter column</option>
             {columns.map((col) => (
               <option key={`filter-${col.name}`} value={col.name}>
@@ -309,18 +337,45 @@ export function TableGridPanel({
           <select
             className={styles.toolbarFilterMode}
             value={filterMode}
-            onChange={(e) => onChangeFilterMode(e.target.value as 'contains' | 'equals')}
+            onChange={(e) => onChangeFilterMode(e.target.value as TableFilterMode)}
+            disabled={!filterColumn}
           >
-            <option value="contains">contains</option>
-            <option value="equals">equals</option>
+            {filterModeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
-          <input
-            ref={filterValueInputRef}
-            className={styles.cellInput}
-            placeholder="Filter value"
-            value={filterValue}
-            onChange={(e) => onChangeFilterValue(e.target.value)}
-          />
+          {showBooleanFilterValue ? (
+            <select
+              className={`${styles.cellInput} ${styles.toolbarFilterValue}`}
+              value={filterValue}
+              onChange={(e) => onChangeFilterValue(e.target.value)}
+            >
+              <option value="">Value</option>
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          ) : (
+            <input
+              ref={filterValueInputRef}
+              className={`${styles.cellInput} ${styles.toolbarFilterValue}`}
+              type={
+                filterColumnKind === 'numeric'
+                  ? 'number'
+                  : filterColumnKind === 'date'
+                    ? 'date'
+                    : filterColumnKind === 'datetime'
+                      ? 'datetime-local'
+                      : 'text'
+              }
+              step={filterColumnKind === 'numeric' ? 'any' : undefined}
+              placeholder={filterValueRequired ? 'Filter value' : 'No value needed'}
+              value={filterValue}
+              onChange={(e) => onChangeFilterValue(e.target.value)}
+              disabled={!filterValueRequired}
+            />
+          )}
           <select value={String(pageSize)} onChange={(e) => onChangePageSize(Number(e.target.value) || 50)}>
             <option value="25">25</option>
             <option value="50">50</option>

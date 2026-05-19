@@ -55,12 +55,24 @@ describe('tableEditorContracts', () => {
 
   it('drops sort and filter options that do not exist on the target relation', () => {
     expect(
-      sanitizeRowsQueryOptions(['id', 'name'], {
-        sortBy: 'missing',
-        filterColumn: 'other_missing',
-        filterValue: 'x',
-      })
-    ).toEqual({ sortBy: '', filterColumn: '', filterValue: '' })
+      sanitizeRowsQueryOptions(
+        [
+          { name: 'id', dataType: 'int4' },
+          { name: 'name', dataType: 'text' },
+        ],
+        {
+          sortBy: 'missing',
+          filterColumn: 'other_missing',
+          filterValue: 'x',
+        }
+      )
+    ).toEqual({
+      sortBy: '',
+      filterColumn: '',
+      filterValue: '',
+      filterMode: 'contains',
+      columnDataType: 'text',
+    })
   })
 
   it('resets invalid sort and filter columns', () => {

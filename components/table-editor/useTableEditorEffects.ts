@@ -1,4 +1,10 @@
 import { useEffect } from 'react'
+import {
+  defaultFilterModeForColumnKind,
+  isFilterModeAllowedForColumnKind,
+  type TableFilterMode,
+} from '../../lib/table-filter'
+import { getColumnKind } from '../../lib/table-column-kind'
 import { resolveNextActiveTable, resolveSortAndFilter } from './tableEditorContracts'
 import type { ColumnInfo, TableInfo } from './types'
 
@@ -13,7 +19,8 @@ type UseTableEditorEffectsParams = {
   setFilterColumn: (value: string) => void
   filterValue: string
   setFilterValue: (value: string) => void
-  filterMode: 'contains' | 'equals'
+  filterMode: TableFilterMode
+  setFilterMode: (value: TableFilterMode) => void
   setPage: (value: number | ((prev: number) => number)) => void
   setVisibleColumns: (value: string[]) => void
   tables: TableInfo[]
@@ -33,6 +40,7 @@ export function useTableEditorEffects({
   filterValue,
   setFilterValue,
   filterMode,
+  setFilterMode,
   setPage,
   setVisibleColumns,
   tables,
@@ -66,4 +74,13 @@ export function useTableEditorEffects({
     if (nextSortBy !== sortBy) setSortBy(nextSortBy)
     if (nextFilterColumn !== filterColumn) setFilterColumn(nextFilterColumn)
   }, [columns, filterColumn, sortBy, setFilterColumn, setSortBy])
+
+  useEffect(() => {
+    if (!filterColumn || columns.length === 0) return
+    const columnMeta = columns.find((column) => column.name === filterColumn)
+    const kind = getColumnKind(columnMeta?.dataType ?? 'text')
+    if (!isFilterModeAllowedForColumnKind(filterMode, kind)) {
+      setFilterMode(defaultFilterModeForColumnKind(kind))
+    }
+  }, [columns, filterColumn, filterMode, setFilterMode])
 }

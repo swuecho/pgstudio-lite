@@ -9,6 +9,7 @@ import {
 } from '../../features/table/table.service'
 import { useActiveConnection } from '../shared/hooks/useActiveConnection'
 import { isMutableRelationKind } from '../../lib/relation-kind'
+import type { TableFilterMode } from '../../lib/table-filter'
 import { parseActiveTableKey } from './tableEditorContracts'
 import type { RowKey } from './types'
 
@@ -25,7 +26,7 @@ type TableEditorState = {
   sortOrder: 'asc' | 'desc'
   filterColumn: string
   filterValue: string
-  filterMode: 'contains' | 'equals'
+  filterMode: TableFilterMode
 }
 
 export function useTableEditorQueries(state: TableEditorState) {

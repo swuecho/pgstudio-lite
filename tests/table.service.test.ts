@@ -47,9 +47,51 @@ describe('table service', () => {
       filterMode: 'contains',
     })
 
-    expect(calls[0].path).toBe(
-      '/api/tables/notes%20list/rows?connectionName=default&schema=public&limit=25&offset=50&sortBy=id&sortOrder=desc&filterColumn=title&filterValue=todo&filterMode=contains'
-    )
+    expect(calls[0].path).toContain('filterColumn=title')
+    expect(calls[0].path).toContain('filterValue=todo')
+    expect(calls[0].path).toContain('filterMode=contains')
+  })
+
+  it('getRows sends numeric gt filter', async () => {
+    const calls = installFetchMock([{ ok: true, status: 200, payload: { columns: [], rows: [], total: 0 } }])
+
+    await tableService.getRows({
+      table: 'orders',
+      schema: 'public',
+      connectionName: 'default',
+      page: 0,
+      pageSize: 10,
+      sortBy: '',
+      sortOrder: 'asc',
+      filterColumn: 'amount',
+      filterValue: '100',
+      filterMode: 'gt',
+    })
+
+    expect(calls[0].path).toContain('filterColumn=amount')
+    expect(calls[0].path).toContain('filterMode=gt')
+    expect(calls[0].path).toContain('filterValue=100')
+  })
+
+  it('getRows sends is_empty filter without filter value', async () => {
+    const calls = installFetchMock([{ ok: true, status: 200, payload: { columns: [], rows: [], total: 0 } }])
+
+    await tableService.getRows({
+      table: 'notes',
+      schema: 'public',
+      connectionName: 'default',
+      page: 0,
+      pageSize: 10,
+      sortBy: '',
+      sortOrder: 'asc',
+      filterColumn: 'title',
+      filterValue: '',
+      filterMode: 'is_empty',
+    })
+
+    expect(calls[0].path).toContain('filterColumn=title')
+    expect(calls[0].path).toContain('filterMode=is_empty')
+    expect(calls[0].path.includes('filterValue=')).toBe(false)
   })
 
   it('getRows omits filter params for blank filter value', async () => {

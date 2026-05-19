@@ -1,3 +1,4 @@
+import type { TableFilterMode } from '../../lib/table-filter'
 import { useTableEditorEffects } from './useTableEditorEffects'
 import { useTableEditorQueries } from './useTableEditorQueries'
 
@@ -17,7 +18,8 @@ type TableEditorState = {
   setFilterColumn: (value: string) => void
   filterValue: string
   setFilterValue: (value: string) => void
-  filterMode: 'contains' | 'equals'
+  filterMode: TableFilterMode
+  setFilterMode: (value: TableFilterMode) => void
   setVisibleColumns: (value: string[]) => void
 }
 
@@ -36,6 +38,7 @@ export function useTableEditorData(state: TableEditorState) {
     filterValue: state.filterValue,
     setFilterValue: state.setFilterValue,
     filterMode: state.filterMode,
+    setFilterMode: state.setFilterMode,
     setPage: state.setPage,
     setVisibleColumns: state.setVisibleColumns,
     tables: queries.tables,
