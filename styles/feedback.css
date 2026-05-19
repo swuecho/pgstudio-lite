@@ -1,0 +1,101 @@
+.error-boundary {
+  border: 1px solid #f2b8bf;
+  background: #fff3f5;
+  color: #9f1f36;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.error-boundary-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.error-boundary-message {
+  margin: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow: auto;
+}
+
+[data-theme='dark'] .error-boundary {
+  border-color: #5f2e36;
+  background: #2a171c;
+  color: #ff9bab;
+}
+
+.cell-error {
+  border: 1px solid #f2b8bf;
+  background: #fff3f5;
+  color: #9f1f36;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.cell-error-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cell-error-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cell-error-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.cell-error-message {
+  margin: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+
+[data-theme='dark'] .cell-error {
+  border-color: #5f2e36;
+  background: #2a171c;
+  color: #ff9bab;
+}
+
+.copyable-cell {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 3px;
+  margin: -1px -3px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.copyable-cell:hover {
+  background: var(--control-bg-hover, rgba(99, 102, 241, 0.12));
+}
+
+.copyable-cell:focus-visible {
+  outline: 2px solid var(--accent, #4f46e5);
+  outline-offset: 1px;
+}
+
+.copyable-cell-copied,
+.copyable-cell-copied:hover {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+[data-theme='dark'] .copyable-cell-copied,
+[data-theme='dark'] .copyable-cell-copied:hover {
+  background: #064e3b;
+  color: #a7f3d0;
+}
