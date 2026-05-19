@@ -6,7 +6,7 @@ import {
   patchRow,
   removeRow,
 } from '../../features/table/table.service'
-import { useConnections } from '../shared/hooks/useConnections'
+import { useActiveConnection } from '../shared/hooks/useActiveConnection'
 import { parseActiveTableKey } from './tableEditorContracts'
 import type { RowKey } from './types'
 
@@ -29,8 +29,7 @@ type TableEditorState = {
 export function useTableEditorQueries(state: TableEditorState) {
   const selectedTarget = parseActiveTableKey(state.activeTable)
   const queryClient = useQueryClient()
-  const connectionsQuery = useConnections()
-  const connections = connectionsQuery.connections
+  const { connections, connectionReadOnly } = useActiveConnection()
 
   const tablesQuery = useQuery({
     queryKey: ['table', 'tables', state.connectionName],
@@ -38,8 +37,6 @@ export function useTableEditorQueries(state: TableEditorState) {
     enabled: Boolean(state.connectionName),
   })
   const tables = tablesQuery.data?.tables || []
-  const activeConnection = connections.find((connection) => connection.name === state.connectionName)
-  const connectionReadOnly = activeConnection?.readOnly === true
 
   const rowsQuery = useQuery({
     queryKey: [
@@ -149,7 +146,6 @@ export function useTableEditorQueries(state: TableEditorState) {
 
   return {
     connections,
-    connectionsQuery,
     tables,
     tablesQuery,
     columns,
