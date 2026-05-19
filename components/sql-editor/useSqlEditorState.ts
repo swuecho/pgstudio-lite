@@ -7,8 +7,7 @@ import { useSqlEditorExplorer } from './useSqlEditorExplorer'
 import { useSqlEditorHistory } from './useSqlEditorHistory'
 import { useSqlEditorSnippets } from './useSqlEditorSnippets'
 import { useSqlEditorTabs } from './useSqlEditorTabs'
-import { useConnections } from '../shared/hooks/useConnections'
-import { useActiveConnectionStore } from '../shared/stores/activeConnectionStore'
+import { useActiveConnection } from '../shared/hooks/useActiveConnection'
 
 export function useSqlEditorState() {
   const [editorRef, setEditorRef] = useState<MonacoEditorNs.IStandaloneCodeEditor | null>(null)
@@ -18,8 +17,9 @@ export function useSqlEditorState() {
   const [running, setRunning] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
   const [result, setResult] = useState<QueryResult | null>(null)
-  const connectionName = useActiveConnectionStore((s) => s.connectionName)
-  const setConnectionName = useActiveConnectionStore((s) => s.setConnectionName)
+  const { connections, connectionName, setConnectionName } = useActiveConnection({
+    onUnconfigured: () => setStatus({ text: 'Set PG_CONNECTION_STRING to start', tone: 'warning' }),
+  })
 
   const tabs = useSqlEditorTabs()
   const explorer = useSqlEditorExplorer(connectionName, historySearch)
@@ -31,8 +31,6 @@ export function useSqlEditorState() {
     setStatus,
     setActiveNavTab,
   })
-  const connectionsQuery = useConnections()
-  const connections = connectionsQuery.connections
 
   const [isMac, setIsMac] = useState(false)
   useEffect(() => {
@@ -98,27 +96,6 @@ export function useSqlEditorState() {
     }
   }
 
-
-  useEffect(() => {
-    if (connectionsQuery.isLoading) return
-    if (!connectionsQuery.configured) {
-      setStatus({ text: 'Set PG_CONNECTION_STRING to start', tone: 'warning' })
-      return
-    }
-    if (connections.length === 0) return
-    const currentExists = connections.some((connection) => connection.name === connectionName)
-    if (!currentExists) {
-      const preferred = connectionsQuery.defaultConnectionName || connections[0].name
-      setConnectionName(preferred)
-    }
-  }, [
-    connections,
-    connectionsQuery.configured,
-    connectionsQuery.defaultConnectionName,
-    connectionsQuery.isLoading,
-    connectionName,
-    setConnectionName,
-  ])
 
   return {
     editorRef,
