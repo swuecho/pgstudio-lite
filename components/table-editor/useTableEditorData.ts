@@ -23,8 +23,17 @@ export function useTableEditorData(state: TableEditorState) {
   const queries = useTableEditorQueries(state)
 
   useTableEditorEffects({
-    state,
-    configuredConnections: queries.connectionsQuery.data?.connections,
+    activeTable: state.activeTable,
+    setActiveTable: state.setActiveTable,
+    pageSize: state.pageSize,
+    sortBy: state.sortBy,
+    setSortBy: state.setSortBy,
+    sortOrder: state.sortOrder,
+    filterColumn: state.filterColumn,
+    setFilterColumn: state.setFilterColumn,
+    filterValue: state.filterValue,
+    filterMode: state.filterMode,
+    setPage: state.setPage,
     tables: queries.tables,
     loadingTables: queries.loadingTables,
     columns: queries.columns,
