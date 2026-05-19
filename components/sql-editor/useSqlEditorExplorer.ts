@@ -5,10 +5,14 @@ import { useSqlEditorExplorerStore } from './stores/sqlEditorExplorerStore'
 
 export function useSqlEditorExplorer(connectionName: string, historySearch: string) {
   const queryClient = useQueryClient()
-  const expandedSchemas = useSqlEditorExplorerStore((s) => s.expandedSchemas)
-  const setExpandedSchemas = useSqlEditorExplorerStore((s) => s.setExpandedSchemas)
-  const expandedTables = useSqlEditorExplorerStore((s) => s.expandedTables)
-  const setExpandedTables = useSqlEditorExplorerStore((s) => s.setExpandedTables)
+  const expandedSchemas = useSqlEditorExplorerStore(
+    (s) => s.expandedSchemasByConnection[connectionName] ?? {}
+  )
+  const setExpandedSchemasForConnection = useSqlEditorExplorerStore((s) => s.setExpandedSchemasForConnection)
+  const expandedTables = useSqlEditorExplorerStore(
+    (s) => s.expandedTablesByConnection[connectionName] ?? {}
+  )
+  const setExpandedTablesForConnection = useSqlEditorExplorerStore((s) => s.setExpandedTablesForConnection)
   const [loadingColumnsByKey, setLoadingColumnsByKey] = useState<Record<string, boolean>>({})
 
   const schemaQuery = useQuery({
@@ -74,13 +78,18 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
   }
 
   function toggleSchema(schema: string) {
-    setExpandedSchemas((prev) => ({ ...prev, [schema]: !(prev[schema] ?? true) }))
+    if (!connectionName) return
+    setExpandedSchemasForConnection(connectionName, (prev) => ({
+      ...prev,
+      [schema]: !(prev[schema] ?? true),
+    }))
   }
 
   function toggleTable(schema: string, table: string) {
+    if (!connectionName) return
     const key = `${schema}.${table}`
     const nextExpanded = !(expandedTables[key] ?? false)
-    setExpandedTables((prev) => ({ ...prev, [key]: nextExpanded }))
+    setExpandedTablesForConnection(connectionName, (prev) => ({ ...prev, [key]: nextExpanded }))
     if (nextExpanded) void loadColumnsForTable(schema, table)
   }
 
@@ -98,19 +107,29 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
 
   useEffect(() => {
     setLoadingColumnsByKey({})
-    setExpandedTables({})
-  }, [connectionName, setExpandedTables])
+  }, [connectionName])
 
   useEffect(() => {
-    if (schemaGroups.length === 0) return
-    setExpandedSchemas((prev) => {
+    if (!connectionName || schemaGroups.length === 0) return
+    setExpandedSchemasForConnection(connectionName, (prev) => {
       const next = { ...prev }
       for (const [schema] of schemaGroups) {
         if (!(schema in next)) next[schema] = true
       }
       return next
     })
-  }, [schemaGroups, setExpandedSchemas])
+  }, [connectionName, schemaGroups, setExpandedSchemasForConnection])
+
+  useEffect(() => {
+    if (!connectionName || schemaTables.length === 0) return
+    for (const [tableKey, isExpanded] of Object.entries(expandedTables)) {
+      if (!isExpanded) continue
+      const [schema, table] = tableKey.split('.')
+      if (!schema || !table) continue
+      const exists = schemaTables.some((item) => item.schema === schema && item.table === table)
+      if (exists) void loadColumnsForTable(schema, table)
+    }
+  }, [connectionName, schemaTables, expandedTables])
 
   return {
     schemaGroups,
