@@ -2,25 +2,33 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSchema, getSchemaColumns } from '../../features/sql/sql.service'
 import { useSqlEditorExplorerStore } from './stores/sqlEditorExplorerStore'
+import type { SchemaTable } from './types'
+
+const EMPTY_EXPANDED: Record<string, boolean> = {}
+const EMPTY_SCHEMA_TABLES: SchemaTable[] = []
 
 export function useSqlEditorExplorer(connectionName: string, historySearch: string) {
   const queryClient = useQueryClient()
   const expandedSchemas = useSqlEditorExplorerStore(
-    (s) => s.expandedSchemasByConnection[connectionName] ?? {}
+    (s) => s.expandedSchemasByConnection[connectionName] ?? EMPTY_EXPANDED
   )
   const setExpandedSchemasForConnection = useSqlEditorExplorerStore((s) => s.setExpandedSchemasForConnection)
   const expandedTables = useSqlEditorExplorerStore(
-    (s) => s.expandedTablesByConnection[connectionName] ?? {}
+    (s) => s.expandedTablesByConnection[connectionName] ?? EMPTY_EXPANDED
   )
   const setExpandedTablesForConnection = useSqlEditorExplorerStore((s) => s.setExpandedTablesForConnection)
   const [loadingColumnsByKey, setLoadingColumnsByKey] = useState<Record<string, boolean>>({})
+  const restoredColumnsForRef = useRef('')
 
   const schemaQuery = useQuery({
     queryKey: ['sql', 'schema', connectionName],
     queryFn: () => getSchema(connectionName),
     enabled: Boolean(connectionName),
   })
-  const schemaTables = useMemo(() => schemaQuery.data?.tables || [], [schemaQuery.data?.tables])
+  const schemaTables = useMemo(
+    () => schemaQuery.data?.tables ?? EMPTY_SCHEMA_TABLES,
+    [schemaQuery.data?.tables]
+  )
 
   const schemaTablesRef = useRef<typeof schemaTables>([])
   const tableColumnsByKeyRef = useRef<Record<string, string[]>>({})
@@ -107,29 +115,47 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
 
   useEffect(() => {
     setLoadingColumnsByKey({})
+    restoredColumnsForRef.current = ''
   }, [connectionName])
 
   useEffect(() => {
     if (!connectionName || schemaGroups.length === 0) return
     setExpandedSchemasForConnection(connectionName, (prev) => {
+      let changed = false
       const next = { ...prev }
       for (const [schema] of schemaGroups) {
-        if (!(schema in next)) next[schema] = true
+        if (!(schema in next)) {
+          next[schema] = true
+          changed = true
+        }
       }
-      return next
+      return changed ? next : prev
     })
   }, [connectionName, schemaGroups, setExpandedSchemasForConnection])
 
+  const expandedTableKeys = useMemo(
+    () =>
+      Object.entries(expandedTables)
+        .filter(([, isExpanded]) => isExpanded)
+        .map(([key]) => key)
+        .sort()
+        .join('\0'),
+    [expandedTables]
+  )
+
   useEffect(() => {
-    if (!connectionName || schemaTables.length === 0) return
-    for (const [tableKey, isExpanded] of Object.entries(expandedTables)) {
-      if (!isExpanded) continue
+    if (!connectionName || schemaTables.length === 0 || !expandedTableKeys) return
+    const restoreKey = `${connectionName}\0${expandedTableKeys}\0${schemaTables.length}`
+    if (restoredColumnsForRef.current === restoreKey) return
+    restoredColumnsForRef.current = restoreKey
+
+    for (const tableKey of expandedTableKeys.split('\0')) {
       const [schema, table] = tableKey.split('.')
       if (!schema || !table) continue
       const exists = schemaTables.some((item) => item.schema === schema && item.table === table)
       if (exists) void loadColumnsForTable(schema, table)
     }
-  }, [connectionName, schemaTables, expandedTables])
+  }, [connectionName, schemaTables, expandedTableKeys])
 
   return {
     schemaGroups,
