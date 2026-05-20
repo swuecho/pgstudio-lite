@@ -8,7 +8,9 @@ import { FilterPopover } from './FilterPopover'
 import { SortPopover } from './SortPopover'
 import { JsonbCellEditor } from './JsonbCellEditor'
 import { InsertRowModal } from './InsertRowModal'
+import { CellContentPanel } from '../shared/CellContentPanel'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
+import { canOpenCellViewer } from '../../lib/format-cell-content'
 import type { TableFilterMode } from '../../lib/table-filter'
 import { ForeignKeyCell } from './ForeignKeyCell'
 import { formatForeignKeyHeaderTitle } from './foreignKeyUtils'
@@ -99,6 +101,7 @@ export function TableGridPanel({
 }: TableGridPanelProps) {
   const [dialog, setDialog] = useState<GridDialogState | null>(null)
   const [jsonbEditCell, setJsonbEditCell] = useState<{ row: RowData; column: string } | null>(null)
+  const [cellView, setCellView] = useState<{ row: RowData; column: ColumnInfo } | null>(null)
   const [showInsertRow, setShowInsertRow] = useState(false)
 
   function wrapFkCell(column: ColumnInfo, row: RowData, content: ReactNode) {
@@ -120,6 +123,15 @@ export function TableGridPanel({
 
   function openJsonbEditor(row: RowData, column: string) {
     setJsonbEditCell({ row, column })
+  }
+
+  function openCellView(row: RowData, column: ColumnInfo) {
+    if (!canOpenCellViewer(column.dataType, row[column.name])) return
+    setCellView({ row, column })
+  }
+
+  function getCellViewKey(row: RowData, column: ColumnInfo) {
+    return `${column.name}:${formatRowKey(row._rowKey)}`
   }
 
   function handleJsonbSave(value: unknown) {
@@ -280,9 +292,16 @@ export function TableGridPanel({
   const matchedVisibleColumns =
     visibleColumns.length > 0 ? columns.filter((col) => visibleColumns.includes(col.name)) : columns
   const displayColumns = matchedVisibleColumns.length > 0 ? matchedVisibleColumns : columns
+  const viewingCellKey = cellView ? getCellViewKey(cellView.row, cellView.column) : null
+  const canEditViewedJson =
+    cellView &&
+    !readOnlyTable &&
+    editableColumns.some((column) => column.name === cellView.column.name) &&
+    isJsonColumn(cellView.column.dataType)
 
   return (
     <>
+      <div className={`${styles.tablePage} ${cellView ? styles.tablePageWithPanel : ''}`.trim()}>
       <div className={styles.tableGridWrap}>
         <div className={styles.tableToolbar}>
           <div className={styles.toolbarGroup}>
@@ -379,8 +398,18 @@ export function TableGridPanel({
                   {displayColumns.map((col) => {
                     const readOnly = readOnlyTable || !editableColumns.some((c) => c.name === col.name)
                     const editorKind = getEditorKind(col.dataType)
+                    const cellValue = row[col.name]
+                    const isViewable = canOpenCellViewer(col.dataType, cellValue)
+                    const isViewing = viewingCellKey === getCellViewKey(row, col)
                     return (
-                      <td key={col.name}>
+                      <td
+                        key={col.name}
+                        className={`${isViewable ? styles.tableCellViewable : ''} ${isViewing ? styles.tableCellViewing : ''}`.trim() || undefined}
+                        title={isViewable ? 'Double-click to view full content' : undefined}
+                        onDoubleClick={() => {
+                          if (isViewable) openCellView(row, col)
+                        }}
+                      >
                         {wrapFkCell(
                           col,
                           row,
@@ -438,9 +467,10 @@ export function TableGridPanel({
                           <div className={styles.tableCellEditor}>
                             <span className={styles.tableCellKind}>JSON</span>
                             <button
+                              type="button"
                               className={styles.jsonbPreviewButton}
-                              onClick={() => openJsonbEditor(row, col.name)}
-                              title="Click to edit JSON"
+                              onClick={() => openCellView(row, col)}
+                              title="Click to view JSON (double-click cell)"
                             >
                               <code className={styles.jsonbPreviewText}>
                                 {truncate(formatJsonbPreview(row[col.name]), 150)}
@@ -507,6 +537,25 @@ export function TableGridPanel({
             </button>
           </div>
         </div>
+      </div>
+
+      {cellView ? (
+        <CellContentPanel
+          columnName={cellView.column.name}
+          dataType={cellView.column.dataType}
+          value={cellView.row[cellView.column.name]}
+          contextLabel={formatRowKey(cellView.row._rowKey)}
+          onClose={() => setCellView(null)}
+          onEdit={
+            canEditViewedJson
+              ? () => {
+                  openJsonbEditor(cellView.row, cellView.column.name)
+                  setCellView(null)
+                }
+              : undefined
+          }
+        />
+      ) : null}
       </div>
 
       {dialog ? (

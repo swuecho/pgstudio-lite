@@ -153,6 +153,11 @@
   flex: 1 1 auto;
   display: grid;
   grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.tablePageWithPanel {
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .tableGridWrap {
@@ -250,6 +255,24 @@
   max-width: 260px;
   white-space: normal;
   overflow: hidden;
+}
+
+.tableCellViewable {
+  cursor: zoom-in;
+}
+
+.tableCellViewing {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.cellViewHint {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.2;
 }
 
 .tableGridTable tbody td:first-child {

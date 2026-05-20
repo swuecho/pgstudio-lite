@@ -90,6 +90,24 @@ describe('TableGridPanel', () => {
     expect(idCells[1]).toHaveTextContent('2')
   })
 
+  it('opens a cell content panel when double-clicking long text', () => {
+    const longText = 'x'.repeat(120)
+    const columns: ColumnInfo[] = [
+      { name: 'id', dataType: 'integer', isNullable: false, isIdentity: true, isPrimaryKey: true },
+      { name: 'bio', dataType: 'text', isNullable: true, isIdentity: false, isPrimaryKey: false },
+    ]
+    renderGrid({
+      columns,
+      rows: [{ _rowKey: { id: 1 }, id: 1, bio: longText }],
+      editableColumns: [columns[1]],
+      visibleColumns: ['id', 'bio'],
+    })
+
+    const bioInput = screen.getByDisplayValue(longText)
+    fireEvent.doubleClick(bioInput.closest('td') as HTMLElement)
+    expect(screen.getByRole('region', { name: 'Cell content viewer' })).toHaveTextContent(longText)
+  })
+
   it('renders uuid columns as shortened click-to-copy cells', () => {
     const uuid = '550e8400-e29b-41d4-a716-446655440000'
     const columns: ColumnInfo[] = [

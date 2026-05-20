@@ -483,7 +483,8 @@ select {
   background: var(--surface-editor-footer);
 }
 
-body.resizing-sql-split {
+body.resizing-sql-split,
+body.resizing-cell-panel {
   cursor: row-resize;
   user-select: none;
 }
