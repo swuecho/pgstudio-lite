@@ -2,6 +2,7 @@ import type { RefObject } from 'react'
 import { formatTableFilterSummary } from '../../lib/table-filter'
 import { useTableEditorData } from './useTableEditorData'
 import { useTableEditorLocalState } from './useTableEditorLocalState'
+import { parseActiveTableKey } from './tableEditorContracts'
 import type { RowKey } from './types'
 
 export function useTableEditorState() {
@@ -22,7 +23,11 @@ export function useTableEditorState() {
   }
 
   function getGridProps(filterValueInputRef: RefObject<HTMLInputElement | null>) {
+    const selectedTarget = parseActiveTableKey(state.activeTable)
     return {
+      connectionName: state.connectionName,
+      schema: selectedTarget.schema,
+      table: selectedTarget.table,
       columns: actions.columns,
       rows: actions.rows,
       editableColumns: actions.editableColumns,

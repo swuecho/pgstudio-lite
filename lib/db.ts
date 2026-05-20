@@ -56,12 +56,30 @@ export type TableInfo = {
   kind: RelationKind
 }
 
+export type ColumnForeignKey = {
+  constraintName: string
+  referencedSchema: string
+  referencedTable: string
+  referencedColumn: string
+  constraintColumns: string[]
+  constraintReferencedColumns: string[]
+}
+
+export type ForeignKeyConstraint = {
+  name: string
+  columns: string[]
+  referencedSchema: string
+  referencedTable: string
+  referencedColumns: string[]
+}
+
 export type TableColumn = {
   name: string
   dataType: string
   isNullable: boolean
   isIdentity: boolean
   isPrimaryKey: boolean
+  foreignKey?: ColumnForeignKey
 }
 
 export type SchemaTable = {
@@ -219,6 +237,63 @@ async function withClient<T>(connectionName: string | undefined, fn: (client: Po
   } finally {
     // Pools are intentionally reused across requests.
   }
+}
+
+async function getTableForeignKeysForClient(
+  client: PoolClient,
+  schema: string,
+  table: string
+): Promise<ForeignKeyConstraint[]> {
+  const sql = `
+    select
+      c.conname as constraint_name,
+      array_agg(a.attname order by u.ord) as columns,
+      nf.nspname as referenced_schema,
+      cf.relname as referenced_table,
+      array_agg(af.attname order by u.ord) as referenced_columns
+    from pg_constraint c
+    join pg_class cl on cl.oid = c.conrelid
+    join pg_namespace n on n.oid = cl.relnamespace
+    join pg_class cf on cf.oid = c.confrelid
+    join pg_namespace nf on nf.oid = cf.relnamespace
+    join unnest(c.conkey, c.confkey) with ordinality as u(attnum, refattnum, ord) on true
+    join pg_attribute a on a.attrelid = c.conrelid and a.attnum = u.attnum and not a.attisdropped
+    join pg_attribute af on af.attrelid = c.confrelid and af.attnum = u.refattnum and not af.attisdropped
+    where c.contype = 'f'
+      and n.nspname = $1
+      and cl.relname = $2
+    group by c.conname, nf.nspname, cf.relname
+    order by c.conname
+  `
+  const { rows } = await client.query(sql, [schema, table])
+  return rows.map((row: Record<string, unknown>) => ({
+    name: String(row.constraint_name),
+    columns: (row.columns as string[]).map(String),
+    referencedSchema: String(row.referenced_schema),
+    referencedTable: String(row.referenced_table),
+    referencedColumns: (row.referenced_columns as string[]).map(String),
+  }))
+}
+
+function buildColumnForeignKeyMap(
+  constraints: ForeignKeyConstraint[]
+): Map<string, ColumnForeignKey> {
+  const byColumn = new Map<string, ColumnForeignKey>()
+  for (const constraint of constraints) {
+    for (let index = 0; index < constraint.columns.length; index += 1) {
+      const columnName = constraint.columns[index]
+      if (byColumn.has(columnName)) continue
+      byColumn.set(columnName, {
+        constraintName: constraint.name,
+        referencedSchema: constraint.referencedSchema,
+        referencedTable: constraint.referencedTable,
+        referencedColumn: constraint.referencedColumns[index] || '',
+        constraintColumns: constraint.columns,
+        constraintReferencedColumns: constraint.referencedColumns,
+      })
+    }
+  }
+  return byColumn
 }
 
 async function getPrimaryKeyColumns(client: PoolClient, schema: string, table: string): Promise<string[]> {
@@ -903,15 +978,24 @@ export async function listTables(connectionName?: string): Promise<TableInfo[]> 
   return listRelations(connectionName, 500)
 }
 
-export async function getTableColumns(
+export async function getTableForeignKeys(
   connectionName: string | undefined,
-  table: string,
-  schema = 'public'
+  schema: string,
+  table: string
+): Promise<ForeignKeyConstraint[]> {
+  return withClient(connectionName, async (client) => getTableForeignKeysForClient(client, schema, table))
+}
+
+async function getTableColumnsWithClient(
+  client: PoolClient,
+  schema: string,
+  table: string
 ): Promise<TableColumn[]> {
-  return withClient(connectionName, async (client) => {
-    const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
-    const primaryKeySet = new Set(primaryKeyColumns)
-    const informationSchemaSql = `
+  const primaryKeyColumns = await getPrimaryKeyColumns(client, schema, table)
+  const primaryKeySet = new Set(primaryKeyColumns)
+  const foreignKeys = await getTableForeignKeysForClient(client, schema, table)
+  const foreignKeyByColumn = buildColumnForeignKeyMap(foreignKeys)
+  const informationSchemaSql = `
       select
         column_name,
         data_type,
@@ -943,13 +1027,58 @@ export async function getTableColumns(
       const catalogResult = await client.query(catalogSql, [schema, table])
       rows = catalogResult.rows
     }
-    return rows.map((r: Record<string, unknown>) => ({
-      name: String(r.column_name),
-      dataType: String(r.data_type),
-      isNullable: r.is_nullable === true || r.is_nullable === 'YES',
-      isIdentity: r.is_identity === true || r.is_identity === 'YES',
-      isPrimaryKey: primaryKeySet.has(String(r.column_name)),
-    }))
+    return rows.map((r: Record<string, unknown>) => {
+      const name = String(r.column_name)
+      const foreignKey = foreignKeyByColumn.get(name)
+      return {
+        name,
+        dataType: String(r.data_type),
+        isNullable: r.is_nullable === true || r.is_nullable === 'YES',
+        isIdentity: r.is_identity === true || r.is_identity === 'YES',
+        isPrimaryKey: primaryKeySet.has(name),
+        ...(foreignKey ? { foreignKey } : {}),
+      }
+    })
+}
+
+export async function getTableColumns(
+  connectionName: string | undefined,
+  table: string,
+  schema = 'public'
+): Promise<TableColumn[]> {
+  return withClient(connectionName, async (client) => getTableColumnsWithClient(client, schema, table))
+}
+
+export async function lookupTableRow(
+  connectionName: string | undefined,
+  schema: string,
+  table: string,
+  match: Record<string, unknown>
+): Promise<{ row: Record<string, unknown> | null; columns: TableColumn[] }> {
+  const matchKeys = Object.keys(match)
+  if (matchKeys.length === 0) {
+    const error = new Error('match must include at least one column') as Error & { statusCode?: number }
+    error.statusCode = 400
+    throw error
+  }
+
+  return withClient(connectionName, async (client) => {
+    const columns = await getTableColumnsWithClient(client, schema, table)
+    const columnByName = new Map(columns.map((column) => [column.name, column]))
+    const unknownColumn = matchKeys.find((key) => !columnByName.has(key))
+    if (unknownColumn) {
+      const error = new Error(`unknown column '${unknownColumn}'`) as Error & { statusCode?: number }
+      error.statusCode = 400
+      throw error
+    }
+
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
+    const whereParts = matchKeys.map((key, index) => `${sqlIdent(key)} = $${index + 1}`)
+    const params = matchKeys.map((key) => match[key])
+    const sql = `select * from ${qTable} where ${whereParts.join(' and ')} limit 1`
+    const { rows } = await client.query(sql, params)
+    const row = (rows[0] as Record<string, unknown> | undefined) ?? null
+    return { row, columns }
   })
 }
 

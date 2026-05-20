@@ -470,3 +470,39 @@
 :global([data-theme='dark']) .tableActionsCol {
   background: var(--surface-sticky-col);
 }
+
+.fkCell {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fkCellIcon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.fkCell :global(.copyable-cell),
+.fkCell .cellInput,
+.fkCell .jsonbPreviewButton {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  text-underline-offset: 2px;
+}
+
+.columnFkIcon {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--accent);
+  opacity: 0.9;
+  vertical-align: middle;
+}
