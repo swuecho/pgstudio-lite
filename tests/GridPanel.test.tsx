@@ -2,6 +2,7 @@
 import { createRef } from 'react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
 import type { ColumnInfo, RowData } from '../components/table-editor/types'
 
@@ -15,6 +16,9 @@ function makeProps(overrides: Partial<React.ComponentProps<typeof TableGridPanel
     { _rowKey: { id: 2 }, id: 2, name: 'bob' },
   ]
   return {
+    connectionName: 'default',
+    schema: 'public',
+    table: 'users',
     columns,
     rows,
     editableColumns: [columns[1]],
@@ -50,6 +54,15 @@ function makeProps(overrides: Partial<React.ComponentProps<typeof TableGridPanel
   }
 }
 
+function renderGrid(overrides: Partial<React.ComponentProps<typeof TableGridPanel>> = {}) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <TableGridPanel {...makeProps(overrides)} />
+    </QueryClientProvider>
+  )
+}
+
 beforeEach(() => {
   Object.defineProperty(globalThis.navigator, 'clipboard', {
     configurable: true,
@@ -59,7 +72,7 @@ beforeEach(() => {
 
 describe('TableGridPanel', () => {
   it('renders columns and rows', () => {
-    render(<TableGridPanel {...makeProps()} />)
+    renderGrid()
     // editable column renders as input with defaultValue
     expect(screen.getByDisplayValue('alice')).toBeInTheDocument()
     expect(screen.getByDisplayValue('bob')).toBeInTheDocument()
@@ -69,7 +82,7 @@ describe('TableGridPanel', () => {
   })
 
   it('renders read-only identity columns as click-to-copy cells', () => {
-    render(<TableGridPanel {...makeProps()} />)
+    renderGrid()
     // id column is identity (read-only) -> uses CopyableCellValue
     const idCells = screen.getAllByRole('button').filter((el) => el.classList.contains('copyable-cell'))
     expect(idCells.length).toBe(2)
@@ -78,25 +91,25 @@ describe('TableGridPanel', () => {
   })
 
   it('renders editable columns as inputs, not copyable cells', () => {
-    render(<TableGridPanel {...makeProps()} />)
+    renderGrid()
     const inputs = screen.getAllByDisplayValue(/alice|bob/)
     expect(inputs).toHaveLength(2)
     expect(inputs[0].tagName).toBe('INPUT')
   })
 
   it('shows total rows and current page in pagination summary', () => {
-    render(<TableGridPanel {...makeProps({ totalRows: 137, page: 2, pageSize: 50 })} />)
+    renderGrid({ totalRows: 137, page: 2, pageSize: 50 })
     expect(screen.getByText(/137 rows total/)).toHaveTextContent('page 3 / 3')
   })
 
   it('disables Prev on first page, enables Next when more rows remain', () => {
-    render(<TableGridPanel {...makeProps({ totalRows: 200, page: 0, pageSize: 50 })} />)
+    renderGrid({ totalRows: 200, page: 0, pageSize: 50 })
     expect(screen.getByRole('button', { name: /^prev$/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /^next$/i })).not.toBeDisabled()
   })
 
   it('disables Next on last page', () => {
-    render(<TableGridPanel {...makeProps({ totalRows: 100, page: 1, pageSize: 50 })} />)
+    renderGrid({ totalRows: 100, page: 1, pageSize: 50 })
     expect(screen.getByRole('button', { name: /^next$/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /^prev$/i })).not.toBeDisabled()
   })
@@ -104,9 +117,7 @@ describe('TableGridPanel', () => {
   it('fires pagination callbacks', () => {
     const onNextPage = vi.fn()
     const onPrevPage = vi.fn()
-    render(
-      <TableGridPanel {...makeProps({ totalRows: 200, page: 1, pageSize: 50, onNextPage, onPrevPage })} />
-    )
+    renderGrid({ totalRows: 200, page: 1, pageSize: 50, onNextPage, onPrevPage })
     fireEvent.click(screen.getByRole('button', { name: /^prev$/i }))
     fireEvent.click(screen.getByRole('button', { name: /^next$/i }))
     expect(onPrevPage).toHaveBeenCalledTimes(1)
@@ -114,14 +125,14 @@ describe('TableGridPanel', () => {
   })
 
   it('exposes page-size options including 250 and 500', () => {
-    render(<TableGridPanel {...makeProps()} />)
+    renderGrid()
     const select = screen.getByDisplayValue('50') as HTMLSelectElement
     const values = Array.from(select.options).map((o) => o.value)
     expect(values).toEqual(['25', '50', '100', '250', '500'])
   })
 
   it('renders all cells as read-only when readOnlyTable is true', () => {
-    render(<TableGridPanel {...makeProps({ readOnlyTable: true })} />)
+    renderGrid({ readOnlyTable: true })
     expect(screen.queryAllByDisplayValue(/alice|bob/)).toHaveLength(0)
     const copyables = screen.getAllByRole('button').filter((el) => el.classList.contains('copyable-cell'))
     // 2 rows × 2 columns = 4 copyable cells
@@ -129,7 +140,7 @@ describe('TableGridPanel', () => {
   })
 
   it('triggers delete confirmation dialog when Delete row is clicked', () => {
-    render(<TableGridPanel {...makeProps()} />)
+    renderGrid()
     const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i })
     expect(deleteButtons.length).toBeGreaterThan(0)
     fireEvent.click(deleteButtons[0])
@@ -137,9 +148,38 @@ describe('TableGridPanel', () => {
     expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument()
   })
 
+  it('shows FK indicator on column header when column has foreignKey', () => {
+    const columns: ColumnInfo[] = [
+      { name: 'id', dataType: 'integer', isNullable: false, isIdentity: true, isPrimaryKey: true },
+      {
+        name: 'user_id',
+        dataType: 'integer',
+        isNullable: false,
+        isIdentity: false,
+        isPrimaryKey: false,
+        foreignKey: {
+          constraintName: 'orders_user_id_fkey',
+          referencedSchema: 'public',
+          referencedTable: 'users',
+          referencedColumn: 'id',
+          constraintColumns: ['user_id'],
+          constraintReferencedColumns: ['id'],
+        },
+      },
+    ]
+    const rows: RowData[] = [{ _rowKey: { id: 1 }, id: 1, user_id: 42 }]
+    renderGrid({
+      columns,
+      rows,
+      editableColumns: [columns[1]],
+      visibleColumns: ['id', 'user_id'],
+    })
+    expect(screen.getByTitle('References users (id)')).toBeInTheDocument()
+  })
+
   it('calls onDeleteRow with the row key when confirmed', () => {
     const onDeleteRow = vi.fn()
-    render(<TableGridPanel {...makeProps({ onDeleteRow })} />)
+    renderGrid({ onDeleteRow })
     const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i })
     fireEvent.click(deleteButtons[0])
     // dialog confirm button label is "Delete row"

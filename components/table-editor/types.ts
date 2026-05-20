@@ -9,12 +9,22 @@ export type TableInfo = {
   kind: RelationKind
 }
 
+export type ColumnForeignKey = {
+  constraintName: string
+  referencedSchema: string
+  referencedTable: string
+  referencedColumn: string
+  constraintColumns: string[]
+  constraintReferencedColumns: string[]
+}
+
 export type ColumnInfo = {
   name: string
   dataType: string
   isNullable: boolean
   isIdentity: boolean
   isPrimaryKey: boolean
+  foreignKey?: ColumnForeignKey
 }
 
 export type RowKey = Record<string, unknown>

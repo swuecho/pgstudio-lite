@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { RefObject } from 'react'
 import { ColumnInfo, RowData, RowKey } from './types'
 import { isBooleanColumn, isDateColumn, isDateTimeColumn, isJsonColumn } from '../../lib/table-column-kind'
@@ -9,9 +9,14 @@ import { JsonbCellEditor } from './JsonbCellEditor'
 import { InsertRowModal } from './InsertRowModal'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import type { TableFilterMode } from '../../lib/table-filter'
+import { ForeignKeyCell } from './ForeignKeyCell'
+import { formatForeignKeyHeaderTitle } from './foreignKeyUtils'
 import styles from './TableEditorStyles.module.css'
 
 type TableGridPanelProps = {
+  connectionName: string
+  schema: string
+  table: string
   columns: ColumnInfo[]
   rows: RowData[]
   editableColumns: ColumnInfo[]
@@ -56,6 +61,9 @@ type GridDialogState = {
 }
 
 export function TableGridPanel({
+  connectionName,
+  schema,
+  table,
   columns,
   rows,
   editableColumns,
@@ -91,6 +99,15 @@ export function TableGridPanel({
   const [dialog, setDialog] = useState<GridDialogState | null>(null)
   const [jsonbEditCell, setJsonbEditCell] = useState<{ row: RowData; column: string } | null>(null)
   const [showInsertRow, setShowInsertRow] = useState(false)
+
+  function wrapFkCell(column: ColumnInfo, row: RowData, content: ReactNode) {
+    if (!column.foreignKey || !connectionName) return content
+    return (
+      <ForeignKeyCell connectionName={connectionName} column={column} row={row}>
+        {content}
+      </ForeignKeyCell>
+    )
+  }
 
   function closeDialog() {
     setDialog(null)
@@ -339,7 +356,18 @@ export function TableGridPanel({
             <thead>
               <tr>
                 {displayColumns.map((col) => (
-                  <th key={col.name}>{col.name}</th>
+                  <th key={col.name}>
+                    {col.name}
+                    {col.foreignKey ? (
+                      <span
+                        className={styles.columnFkIcon}
+                        title={formatForeignKeyHeaderTitle(col.foreignKey)}
+                        aria-hidden
+                      >
+                        ↗
+                      </span>
+                    ) : null}
+                  </th>
                 ))}
                 {!readOnlyTable ? <th className={styles.tableActionsCol}>actions</th> : null}
               </tr>
@@ -352,7 +380,10 @@ export function TableGridPanel({
                     const editorKind = getEditorKind(col.dataType)
                     return (
                       <td key={col.name}>
-                        {readOnly ? (
+                        {wrapFkCell(
+                          col,
+                          row,
+                          readOnly ? (
                           <CopyableCellValue text={String(row[col.name] ?? '')} />
                         ) : isBooleanColumn(col.dataType) ? (
                           <div className={styles.tableCellEditor}>
@@ -431,6 +462,7 @@ export function TableGridPanel({
                               }}
                             />
                           </div>
+                        )
                         )}
                       </td>
                     )
