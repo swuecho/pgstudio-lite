@@ -1,6 +1,12 @@
 import { fetchJson } from '../../lib/http'
 import { hasActiveTableFilter, type TableFilterMode } from '../../lib/table-filter'
-import type { ColumnInfo, Connection, RowData, RowKey, TableInfo } from '../../components/table-editor/types'
+import type {
+  ColumnInfo,
+  Connection,
+  RowData,
+  RowKey,
+  TableInfo,
+} from '../../components/table-editor/types'
 
 export async function getConnections() {
   return fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
@@ -69,6 +75,26 @@ export async function patchRow(
     method: 'PATCH',
     body: JSON.stringify(body),
   })
+}
+
+export async function lookupReferencedRow(args: {
+  connectionName: string
+  schema?: string
+  table: string
+  match: Record<string, unknown>
+}) {
+  const body = {
+    connectionName: args.connectionName,
+    schema: args.schema || 'public',
+    match: args.match,
+  }
+  return fetchJson<{ row: Record<string, unknown> | null; columns: ColumnInfo[] }>(
+    `/api/tables/${encodeURIComponent(args.table)}/lookup-row`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }
+  )
 }
 
 export async function removeRow(
