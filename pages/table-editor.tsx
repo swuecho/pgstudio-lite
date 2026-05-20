@@ -185,11 +185,9 @@ export default function TableEditorPage() {
           </div>
         </div>
 
-        <div className={tableStyles.tablePage}>
-          <ErrorBoundary fallbackTitle="Failed to render table grid">
-            <TableGridPanel {...gridProps} />
-          </ErrorBoundary>
-        </div>
+        <ErrorBoundary fallbackTitle="Failed to render table grid">
+          <TableGridPanel {...gridProps} />
+        </ErrorBoundary>
       </main>
     </div>
   )

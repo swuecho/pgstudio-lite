@@ -6,6 +6,10 @@
   grid-template-rows: 38px 1fr 34px;
 }
 
+.resultsWrapWithPanel {
+  grid-template-rows: 38px minmax(0, 1fr) auto;
+}
+
 .resultsHead,
 .resultsFoot {
   display: flex;
@@ -111,6 +115,16 @@
 
 .tableWrap {
   overflow: auto;
+}
+
+.resultCellViewable {
+  cursor: zoom-in;
+}
+
+.resultCellViewable[data-viewing='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .emptyState {
