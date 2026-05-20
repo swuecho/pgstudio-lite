@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 type CopyableCellValueProps = {
   text: string
+  /** Shown in the grid; full `text` is still copied on click. */
+  displayText?: string
   className?: string
   title?: string
   maxDisplayLength?: number
@@ -11,6 +13,7 @@ const DEFAULT_MAX_DISPLAY_LENGTH = 500
 
 export function CopyableCellValue({
   text,
+  displayText,
   className,
   title,
   maxDisplayLength = DEFAULT_MAX_DISPLAY_LENGTH,
@@ -36,11 +39,19 @@ export function CopyableCellValue({
       .catch(() => {})
   }, [text])
 
-  const truncated = text.length > maxDisplayLength
-  const displayText = truncated ? `${text.slice(0, maxDisplayLength)}…` : text
+  const baseDisplay = displayText ?? text
+  const truncated = baseDisplay.length > maxDisplayLength
+  const renderedText = truncated ? `${baseDisplay.slice(0, maxDisplayLength)}…` : baseDisplay
+  const shortenedUuid = displayText !== undefined && displayText !== text
   const computedTitle =
     title ||
-    (copied ? 'Copied!' : truncated ? `Click to copy (full value is ${text.length} chars)` : 'Click to copy')
+    (copied
+      ? 'Copied!'
+      : shortenedUuid
+        ? 'Click to copy full UUID'
+        : truncated
+          ? `Click to copy (full value is ${text.length} chars)`
+          : 'Click to copy')
 
   return (
     <code
@@ -56,7 +67,7 @@ export function CopyableCellValue({
         }
       }}
     >
-      {displayText}
+      {renderedText}
     </code>
   )
 }

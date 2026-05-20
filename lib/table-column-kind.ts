@@ -47,6 +47,10 @@ export function isJsonColumn(dataType: string) {
   return getColumnKind(dataType) === 'json'
 }
 
+export function isUuidColumn(dataType: string) {
+  return getColumnKind(dataType) === 'uuid'
+}
+
 /** datetime-local input is browser-local; SQL uses timestamptz for comparisons. */
 export const DATETIME_FILTER_TIMEZONE_HINT =
   'Times use your browser timezone and are compared as timestamptz in PostgreSQL.'

@@ -1,3 +1,4 @@
+import { formatUuidDisplay, looksLikeUuid } from '../../lib/format-uuid-display'
 import type { ColumnForeignKey } from './types'
 
 export function buildForeignKeyMatch(
@@ -30,6 +31,7 @@ export function formatForeignKeyHeaderTitle(foreignKey: ColumnForeignKey) {
 export function formatCellDisplayValue(value: unknown, maxLength = 80) {
   if (value === null || value === undefined) return ''
   const text = typeof value === 'object' ? JSON.stringify(value) : String(value)
-  if (text.length <= maxLength) return text
-  return `${text.slice(0, maxLength - 1)}…`
+  const display = looksLikeUuid(text) ? formatUuidDisplay(text) : text
+  if (display.length <= maxLength) return display
+  return `${display.slice(0, maxLength - 1)}…`
 }

@@ -3,6 +3,7 @@ import styles from './ResultsPanel.module.css'
 import type { CSSProperties } from 'react'
 import { QueryResult } from './types'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
+import { copyableCellDisplayProps } from '../../lib/format-uuid-display'
 import {
   buildResultExportFilename,
   downloadText,
@@ -140,7 +141,9 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                           <tr key={rowIndex}>
                             {statement.fields.map((field) => (
                               <td key={`${rowIndex}-${field}`}>
-                                <CopyableCellValue text={formatCell(row[field])} />
+                                <CopyableCellValue
+                                  {...copyableCellDisplayProps(formatCell(row[field]))}
+                                />
                               </td>
                             ))}
                           </tr>

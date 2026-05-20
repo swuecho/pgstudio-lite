@@ -90,6 +90,22 @@ describe('TableGridPanel', () => {
     expect(idCells[1]).toHaveTextContent('2')
   })
 
+  it('renders uuid columns as shortened click-to-copy cells', () => {
+    const uuid = '550e8400-e29b-41d4-a716-446655440000'
+    const columns: ColumnInfo[] = [
+      { name: 'id', dataType: 'uuid', isNullable: false, isIdentity: true, isPrimaryKey: true },
+      { name: 'name', dataType: 'text', isNullable: false, isIdentity: false, isPrimaryKey: false },
+    ]
+    renderGrid({
+      columns,
+      rows: [{ _rowKey: { id: uuid }, id: uuid, name: 'alice' }],
+      editableColumns: [columns[1]],
+      visibleColumns: ['id', 'name'],
+    })
+    const idCell = screen.getAllByRole('button').find((el) => el.classList.contains('copyable-cell'))
+    expect(idCell).toHaveTextContent('550e8400')
+  })
+
   it('renders editable columns as inputs, not copyable cells', () => {
     renderGrid()
     const inputs = screen.getAllByDisplayValue(/alice|bob/)
