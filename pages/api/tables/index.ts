@@ -10,8 +10,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const connectionName = getRequestConnectionName(req)
-    const tables = await listTables(connectionName)
-    return res.status(200).json({ tables })
+    const { tables, truncated } = await listTables(connectionName)
+    return res.status(200).json({ tables, truncated })
   } catch (error) {
     return sendApiError(res, error)
   }

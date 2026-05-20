@@ -977,8 +977,17 @@ async function listRelations(connectionName: string | undefined, limit: number):
   })
 }
 
-export async function listTables(connectionName?: string): Promise<TableInfo[]> {
-  return listRelations(connectionName, 500)
+const TABLE_LIST_LIMIT = 500
+
+export async function listTables(connectionName?: string): Promise<{
+  tables: TableInfo[]
+  truncated: boolean
+}> {
+  const relations = await listRelations(connectionName, TABLE_LIST_LIMIT + 1)
+  return {
+    tables: relations.slice(0, TABLE_LIST_LIMIT),
+    truncated: relations.length > TABLE_LIST_LIMIT,
+  }
 }
 
 export async function getTableForeignKeys(
