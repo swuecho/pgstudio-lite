@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, desc, eq } from 'drizzle-orm'
 import pg from 'pg'
+import Parser from '@pgsql/parser'
 import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 import { isMutableRelationKind, mapPgRelkind, type RelationKind } from './relation-kind'
@@ -438,176 +439,97 @@ export function deleteConnection(id: string) {
   return true
 }
 
-function splitStatements(sql: string): string[] {
-  const out: string[] = []
-  let current = ''
-  let quote: "'" | '"' | null = null
-  let dollarTag: string | null = null
-  let blockCommentDepth = 0
-  let lineComment = false
+let sqlParser: Parser | undefined
 
-  for (let i = 0; i < sql.length; i += 1) {
-    const ch = sql[i]
-    const next = sql[i + 1]
-
-    if (lineComment) {
-      current += ch
-      if (ch === '\n') lineComment = false
-      continue
-    }
-
-    if (blockCommentDepth > 0) {
-      current += ch
-      if (ch === '/' && next === '*') {
-        current += next
-        blockCommentDepth += 1
-        i += 1
-        continue
-      }
-      if (ch === '*' && next === '/') {
-        current += next
-        blockCommentDepth -= 1
-        i += 1
-      }
-      continue
-    }
-
-    if (quote) {
-      current += ch
-      if (quote === "'" && ch === "'" && next === "'") {
-        current += next
-        i += 1
-        continue
-      }
-      if (ch === quote) quote = null
-      continue
-    }
-
-    if (dollarTag) {
-      current += ch
-      if (ch === '$') {
-        const candidate = sql.slice(i - dollarTag.length + 1, i + 1)
-        if (candidate === dollarTag) dollarTag = null
-      }
-      continue
-    }
-
-    if (ch === '-' && next === '-') {
-      current += ch + next
-      lineComment = true
-      i += 1
-      continue
-    }
-
-    if (ch === '/' && next === '*') {
-      current += ch + next
-      blockCommentDepth = 1
-      i += 1
-      continue
-    }
-
-    if (ch === "'" || ch === '"') {
-      quote = ch
-      current += ch
-      continue
-    }
-
-    if (ch === '$') {
-      const rest = sql.slice(i)
-      const match = rest.match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)
-      if (match) {
-        dollarTag = match[0]
-        current += dollarTag
-        i += dollarTag.length - 1
-        continue
-      }
-    }
-
-    if (ch === ';') {
-      if (current.trim()) out.push(current.trim())
-      current = ''
-      continue
-    }
-
-    current += ch
-  }
-  if (current.trim()) out.push(current.trim())
-  return out
+function getSqlParser(): Parser {
+  if (!sqlParser) sqlParser = new Parser()
+  return sqlParser
 }
 
-function stripLeadingCommentsAndWhitespace(sql: string) {
-  let out = sql.trimStart()
-  while (out.startsWith('--') || out.startsWith('/*')) {
-    if (out.startsWith('--')) {
-      const idx = out.indexOf('\n')
-      if (idx < 0) return ''
-      out = out.slice(idx + 1).trimStart()
-      continue
-    }
-    const end = out.indexOf('*/')
-    if (end < 0) return ''
-    out = out.slice(end + 2).trimStart()
-  }
-  return out
+export async function splitStatements(sql: string): Promise<string[]> {
+  const trimmed = sql.trim()
+  if (!trimmed) return []
+  const parser = getSqlParser()
+  const { stmts } = await parser.parse(trimmed)
+  if (!stmts || stmts.length === 0) return []
+  return stmts.map((s) => {
+    const start = s.stmt_location ?? 0
+    const end = s.stmt_len != null ? start + s.stmt_len : trimmed.length
+    return trimmed.slice(start, end).trim().replace(/;+$/, '')
+  })
 }
 
-function isWriteStatement(sql: string) {
-  const normalized = stripLeadingCommentsAndWhitespace(sql).toLowerCase()
-  if (!normalized) return false
-  if (
-    /^(insert|update|delete|merge|create|alter|drop|truncate|grant|revoke|comment|vacuum|reindex|cluster|refresh|call|do|copy)\b/.test(
-      normalized
-    )
-  ) {
-    return true
-  }
-  if (normalized.startsWith('with ')) {
-    return /\b(insert|update|delete|merge)\b/.test(normalized)
-  }
-  return false
+const WRITE_STMT_TYPES = new Set([
+  'InsertStmt', 'UpdateStmt', 'DeleteStmt', 'MergeStmt',
+  'CreateStmt', 'CreateSchemaStmt', 'CreateFunctionStmt', 'CreatePLangStmt',
+  'CreateTableAsStmt', 'CreateSeqStmt', 'CreateRoleStmt', 'CreateTrigStmt',
+  'CreateCastStmt', 'CreateOpClassStmt', 'CreateOpFamilyStmt',
+  'CreateConversionStmt', 'CreateDomainStmt', 'CreateExtensionStmt',
+  'CreateFdwStmt', 'CreateForeignServerStmt', 'CreateForeignTableStmt',
+  'CreatePolicyStmt', 'CreatePublicationStmt', 'CreateStatsStmt',
+  'CreateSubStmt', 'CreateTransformStmt', 'CreateAmStmt',
+  'CreateUserMappingStmt', 'IndexStmt', 'ViewStmt', 'RuleStmt',
+  'AlterTableStmt', 'AlterDomainStmt', 'AlterFunctionStmt',
+  'AlterObjectDependsStmt', 'AlterObjectSchemaStmt', 'AlterOwnerStmt',
+  'AlterOperatorStmt', 'AlterTypeStmt', 'AlterPolicyStmt', 'AlterSeqStmt',
+  'AlterSystemStmt', 'AlterTSConfigStmt', 'AlterTSDictStmt',
+  'AlterCollationStmt', 'AlterFdwStmt', 'AlterForeignServerStmt',
+  'AlterDefaultPrivilegesStmt', 'AlterExtensionStmt',
+  'AlterExtensionContentsStmt', 'AlterPublicationStmt', 'AlterSubStmt',
+  'AlterRoleStmt', 'AlterStatsStmt', 'AlterOpFamilyStmt', 'RenameStmt',
+  'DropStmt', 'TruncateStmt',
+  'GrantStmt', 'CommentStmt', 'VacuumStmt', 'ReindexStmt', 'ClusterStmt',
+  'RefreshMatViewStmt', 'CallStmt', 'DoStmt', 'CopyStmt',
+  'ListenStmt', 'NotifyStmt', 'UnlistenStmt',
+  'DiscardStmt', 'DefineStmt', 'CompositeTypeStmt', 'SecLabelStmt',
+  'ImportForeignSchemaStmt', 'CheckPointStmt',
+])
+
+async function isWriteStatement(sql: string): Promise<boolean> {
+  const parser = getSqlParser()
+  const { stmts } = await parser.parse(sql)
+  if (!stmts || stmts.length === 0) return false
+  const nodeType = Object.keys(stmts[0].stmt as Record<string, unknown>)[0]
+  return WRITE_STMT_TYPES.has(nodeType)
 }
 
-function parseSqlIdent(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed) return ''
-  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-    return trimmed.slice(1, -1).replaceAll('""', '"')
-  }
-  return trimmed
-}
+async function extractPrimaryTableTarget(sql: string): Promise<QueryTableTarget | null> {
+  const parser = getSqlParser()
+  const { stmts } = await parser.parse(sql)
+  if (!stmts || stmts.length === 0) return null
 
-function parseQualifiedTable(value: string): QueryTableTarget | null {
-  const parts = value
-    .split('.')
-    .map((part) => parseSqlIdent(part))
-    .filter(Boolean)
-  if (parts.length === 1) return { schema: 'public', table: parts[0] }
-  if (parts.length === 2) return { schema: parts[0], table: parts[1] }
-  return null
-}
+  const root = stmts[0].stmt as Record<string, unknown>
+  let node: Record<string, unknown> | undefined
+  let type = Object.keys(root)[0]
 
-function extractPrimaryTableTarget(sql: string): QueryTableTarget | null {
-  const normalized = stripLeadingCommentsAndWhitespace(sql)
-  if (!normalized) return null
-
-  const ident = `(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_$]*)`
-  const qualified = `(${ident}(?:\\s*\\.\\s*${ident})?)`
-  const firstWord = normalized.toLowerCase().split(/\s+/, 1)[0]
-  if (!firstWord) return null
-
-  let match: RegExpMatchArray | null = null
-  if (firstWord === 'update') {
-    match = normalized.match(new RegExp(`^update\\s+${qualified}`, 'i'))
-  } else if (firstWord === 'insert') {
-    match = normalized.match(new RegExp(`^insert\\s+into\\s+${qualified}`, 'i'))
-  } else if (firstWord === 'delete') {
-    match = normalized.match(new RegExp(`^delete\\s+from\\s+${qualified}`, 'i'))
+  // Unwrap EXPLAIN to the inner statement
+  if (type === 'ExplainStmt') {
+    const inner = (root.ExplainStmt as { query?: Record<string, unknown> })?.query
+    if (!inner) return null
+    type = Object.keys(inner)[0]
+    node = inner[type] as Record<string, unknown> | undefined
   } else {
-    match = normalized.match(new RegExp(`\\bfrom\\s+${qualified}`, 'i'))
+    node = root[type] as Record<string, unknown> | undefined
   }
-  if (!match?.[1]) return null
 
-  return parseQualifiedTable(match[1].replace(/\s+/g, ''))
+  if (!node) return null
+
+  let rangeVar: { schemaname?: string; relname?: string } | null = null
+
+  if (type === 'InsertStmt' || type === 'UpdateStmt' || type === 'DeleteStmt' || type === 'MergeStmt') {
+    rangeVar = node.relation as { schemaname?: string; relname?: string } | null
+  } else if (type === 'SelectStmt') {
+    const fromClause = node.fromClause as Array<{ RangeVar?: { schemaname?: string; relname?: string } }> | undefined
+    if (fromClause?.[0]?.RangeVar) {
+      rangeVar = fromClause[0].RangeVar
+    }
+  }
+
+  if (!rangeVar?.relname) return null
+  return {
+    schema: rangeVar.schemaname || 'public',
+    table: rangeVar.relname,
+  }
 }
 
 function parseHistoryRow(row: QueryHistoryRow) {
@@ -786,7 +708,7 @@ export async function executeQuery({
       if (connection.readOnly) {
         await client.query('set default_transaction_read_only = on')
       }
-      const statements = splitStatements(query)
+      const statements = await splitStatements(query)
       if (values && statements.length !== 1) {
         const error = new Error('Parameterized execution supports exactly one SQL statement') as Error & {
           statusCode?: number
@@ -794,12 +716,21 @@ export async function executeQuery({
         error.statusCode = 400
         throw error
       }
-      if (connection.readOnly && statements.some((statement) => isWriteStatement(statement))) {
-        const error = new Error(`Connection '${connection.name}' is read-only`) as Error & {
-          statusCode?: number
+      if (connection.readOnly) {
+        let hasWrite = false
+        for (const statement of statements) {
+          if (await isWriteStatement(statement)) {
+            hasWrite = true
+            break
+          }
         }
-        error.statusCode = 403
-        throw error
+        if (hasWrite) {
+          const error = new Error(`Connection '${connection.name}' is read-only`) as Error & {
+            statusCode?: number
+          }
+          error.statusCode = 403
+          throw error
+        }
       }
       const results: Array<{
         command: string
@@ -826,7 +757,7 @@ export async function executeQuery({
           truncated: result.rows.length > MAX_RESULT_ROWS,
           fields: result.fields.map((f: { name: string }) => f.name),
           rows,
-          tableTarget: extractPrimaryTableTarget(statement),
+          tableTarget: await extractPrimaryTableTarget(statement),
         })
       }
 
