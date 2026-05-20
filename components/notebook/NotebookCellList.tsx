@@ -8,6 +8,7 @@ import { WidgetCellEditor } from './WidgetCellEditor'
 import { ErrorBoundary } from '../shared/ErrorBoundary'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import type { NotebookPageController } from './useNotebookPageState'
+import { copyableCellDisplayProps } from '../../lib/format-uuid-display'
 import { formatCell } from '../sql-editor/utils'
 import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell } from './types'
@@ -670,7 +671,9 @@ const CellResult = memo(function CellResult({ result }: { result: QueryResult })
                     <tr key={rowIndex}>
                       {statement.fields.map((field) => (
                         <td key={`${rowIndex}-${field}`}>
-                          <CopyableCellValue text={formatCell(row[field])} />
+                          <CopyableCellValue
+                            {...copyableCellDisplayProps(formatCell(row[field]))}
+                          />
                         </td>
                       ))}
                     </tr>

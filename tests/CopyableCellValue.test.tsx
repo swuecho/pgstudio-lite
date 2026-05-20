@@ -51,6 +51,19 @@ describe('CopyableCellValue', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('kbd'))
   })
 
+  it('shows displayText but copies the full text value', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    installClipboard(writeText)
+    const uuid = '550e8400-e29b-41d4-a716-446655440000'
+    render(<CopyableCellValue text={uuid} displayText="550e8400" />)
+    const cell = screen.getByRole('button')
+    expect(cell).toHaveTextContent('550e8400')
+    expect(cell).toHaveAttribute('title', 'Click to copy full UUID')
+
+    fireEvent.click(cell)
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(uuid))
+  })
+
   it('truncates display text past maxDisplayLength but copies the full value', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     installClipboard(writeText)

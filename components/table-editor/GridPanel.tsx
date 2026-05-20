@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type { RefObject } from 'react'
 import { ColumnInfo, RowData, RowKey } from './types'
+import { copyableCellDisplayProps } from '../../lib/format-uuid-display'
 import { isBooleanColumn, isDateColumn, isDateTimeColumn, isJsonColumn } from '../../lib/table-column-kind'
 import { ColumnsSelector } from './ColumnsSelector'
 import { FilterPopover } from './FilterPopover'
@@ -384,7 +385,9 @@ export function TableGridPanel({
                           col,
                           row,
                           readOnly ? (
-                          <CopyableCellValue text={String(row[col.name] ?? '')} />
+                          <CopyableCellValue
+                            {...copyableCellDisplayProps(row[col.name], { dataType: col.dataType })}
+                          />
                         ) : isBooleanColumn(col.dataType) ? (
                           <div className={styles.tableCellEditor}>
                             <button
