@@ -62,8 +62,25 @@ export function normalizeApiError(error: unknown): ApiHttpError {
   return new ApiHttpError(500, 'Internal server error', 'INTERNAL_ERROR')
 }
 
+export function logApiErrorIfInternal(error: unknown, normalized: ApiHttpError) {
+  if (normalized.statusCode !== 500) return
+
+  const prefix = '[api] 500'
+  if (error instanceof Error) {
+    console.error(`${prefix}:`, error.message)
+    if (error.stack) console.error(error.stack)
+    if (error !== normalized && normalized.message !== error.message) {
+      console.error(`${prefix} client message:`, normalized.message)
+    }
+    return
+  }
+
+  console.error(prefix, error)
+}
+
 export function sendApiError(res: NextApiResponse, error: unknown) {
   const normalized = normalizeApiError(error)
+  logApiErrorIfInternal(error, normalized)
   return res.status(normalized.statusCode).json({
     error: normalized.message,
     code: normalized.code,

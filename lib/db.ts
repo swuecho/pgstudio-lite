@@ -6,6 +6,7 @@ import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzl
 import { metaDb } from './meta-db'
 import { isMutableRelationKind, mapPgRelkind, type RelationKind } from './relation-kind'
 import { buildTableRowFilter, hasActiveTableFilter, type TableFilterMode } from './table-filter'
+import { parsePgStringArray } from './pg-array'
 import { sanitizeRowsQueryOptions } from './table-query-options'
 
 const { Pool } = pg
@@ -247,10 +248,10 @@ async function getTableForeignKeysForClient(
   const sql = `
     select
       c.conname as constraint_name,
-      array_agg(a.attname order by u.ord) as columns,
+      json_agg(a.attname order by u.ord) as columns,
       nf.nspname as referenced_schema,
       cf.relname as referenced_table,
-      array_agg(af.attname order by u.ord) as referenced_columns
+      json_agg(af.attname order by u.ord) as referenced_columns
     from pg_constraint c
     join pg_class cl on cl.oid = c.conrelid
     join pg_namespace n on n.oid = cl.relnamespace
@@ -268,10 +269,10 @@ async function getTableForeignKeysForClient(
   const { rows } = await client.query(sql, [schema, table])
   return rows.map((row: Record<string, unknown>) => ({
     name: String(row.constraint_name),
-    columns: (row.columns as string[]).map(String),
+    columns: parsePgStringArray(row.columns),
     referencedSchema: String(row.referenced_schema),
     referencedTable: String(row.referenced_table),
-    referencedColumns: (row.referenced_columns as string[]).map(String),
+    referencedColumns: parsePgStringArray(row.referenced_columns),
   }))
 }
 
