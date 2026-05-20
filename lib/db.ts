@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, desc, eq } from 'drizzle-orm'
 import pg from 'pg'
-import Parser from '@pgsql/parser'
+import { parseSql } from './pg-parser'
 import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 import { isMutableRelationKind, mapPgRelkind, type RelationKind } from './relation-kind'
@@ -515,18 +515,20 @@ export function deleteConnection(id: string) {
   return true
 }
 
-let sqlParser: Parser | undefined
+let sqlParserReady: Promise<void> | undefined
 
-function getSqlParser(): Parser {
-  if (!sqlParser) sqlParser = new Parser()
-  return sqlParser
+function getSqlParser(): Promise<void> {
+  if (!sqlParserReady) {
+    sqlParserReady = parseSql('select 1').then(() => undefined)
+  }
+  return sqlParserReady
 }
 
 export async function splitStatements(sql: string): Promise<string[]> {
   const trimmed = sql.trim()
   if (!trimmed) return []
-  const parser = getSqlParser()
-  const { stmts } = await parser.parse(trimmed)
+  await getSqlParser()
+  const { stmts } = await parseSql(trimmed)
   if (!stmts || stmts.length === 0) return []
   return stmts.map((s) => {
     const start = s.stmt_location ?? 0
@@ -562,16 +564,16 @@ const WRITE_STMT_TYPES = new Set([
 ])
 
 async function isWriteStatement(sql: string): Promise<boolean> {
-  const parser = getSqlParser()
-  const { stmts } = await parser.parse(sql)
+  await getSqlParser()
+  const { stmts } = await parseSql(sql)
   if (!stmts || stmts.length === 0) return false
   const nodeType = Object.keys(stmts[0].stmt as Record<string, unknown>)[0]
   return WRITE_STMT_TYPES.has(nodeType)
 }
 
 async function extractPrimaryTableTarget(sql: string): Promise<QueryTableTarget | null> {
-  const parser = getSqlParser()
-  const { stmts } = await parser.parse(sql)
+  await getSqlParser()
+  const { stmts } = await parseSql(sql)
   if (!stmts || stmts.length === 0) return null
 
   const root = stmts[0].stmt as Record<string, unknown>
