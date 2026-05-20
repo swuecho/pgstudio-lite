@@ -24,9 +24,7 @@ function hasTable(name: string) {
 
 function hasColumn(table: string, column: string) {
   return Boolean(
-    sqlite
-      .prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ? LIMIT 1`)
-      .get(table, column)
+    sqlite.prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ? LIMIT 1`).get(table, column)
   )
 }
 
@@ -74,7 +72,9 @@ export function ensureMetaDbReady() {
 
   if (hasTable('notebooks') && !hasColumn('notebooks', 'metadata_json')) {
     sqlite.exec(`ALTER TABLE notebooks ADD COLUMN metadata_json text NOT NULL DEFAULT '{}';`)
-    sqlite.exec(`UPDATE notebooks SET metadata_json = '{}' WHERE metadata_json IS NULL OR trim(metadata_json) = '';`)
+    sqlite.exec(
+      `UPDATE notebooks SET metadata_json = '{}' WHERE metadata_json IS NULL OR trim(metadata_json) = '';`
+    )
   }
 
   if (hasTable('query_snippets')) {

@@ -23,7 +23,11 @@ export function useSqlEditorTabs() {
               dirty,
               snippetId: snippetId === undefined ? tab.snippetId : snippetId || undefined,
               snippetConnectionName:
-                snippetId === undefined ? tab.snippetConnectionName : snippetId ? tab.snippetConnectionName : undefined,
+                snippetId === undefined
+                  ? tab.snippetConnectionName
+                  : snippetId
+                    ? tab.snippetConnectionName
+                    : undefined,
             }
           : tab
       )

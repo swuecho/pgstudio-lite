@@ -155,6 +155,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
       const exists = schemaTables.some((item) => item.schema === schema && item.table === table)
       if (exists) void loadColumnsForTable(schema, table)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionName, schemaTables, expandedTableKeys])
 
   return {

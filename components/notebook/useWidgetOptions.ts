@@ -12,7 +12,9 @@ export function useWidgetOptions(params: {
 }) {
   const { activeNotebookId, activeConnectionName, sortedCells, widgetDraftByCell, inputValues } = params
 
-  const [resolvedOptionsByCell, setResolvedOptionsByCell] = useState<Record<string, NotebookResolvedOptionsState>>({})
+  const [resolvedOptionsByCell, setResolvedOptionsByCell] = useState<
+    Record<string, NotebookResolvedOptionsState>
+  >({})
   const [optionsRefreshTickByCell, setOptionsRefreshTickByCell] = useState<Record<string, number>>({})
 
   const optionsTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -27,14 +29,24 @@ export function useWidgetOptions(params: {
       if (cell.type !== 'widget') continue
       const metadata = widgetDraftByCell[cell.id]
       if (!metadata) continue
-      if ((metadata.widgetType !== 'select' && metadata.widgetType !== 'multiselect') || metadata.config?.optionSource !== 'sql') continue
+      if (
+        (metadata.widgetType !== 'select' && metadata.widgetType !== 'multiselect') ||
+        metadata.config?.optionSource !== 'sql'
+      )
+        continue
 
       const query = metadata.config?.optionsQuery?.trim() || ''
       if (!activeNotebookId || !query) continue
 
       nextTrackedCellIds.add(cell.id)
       const refreshTick = optionsRefreshTickByCell[cell.id] || 0
-      const signature = JSON.stringify({ notebookId: activeNotebookId, connectionName: activeConnectionName, query, inputValues: serializedInputValues, refreshTick })
+      const signature = JSON.stringify({
+        notebookId: activeNotebookId,
+        connectionName: activeConnectionName,
+        query,
+        inputValues: serializedInputValues,
+        refreshTick,
+      })
       if (optionRequestSignatureRef.current[cell.id] === signature) continue
       optionRequestSignatureRef.current[cell.id] = signature
 
@@ -91,7 +103,14 @@ export function useWidgetOptions(params: {
     setResolvedOptionsByCell((prev) =>
       Object.fromEntries(Object.entries(prev).filter(([cellId]) => nextTrackedCellIds.has(cellId)))
     )
-  }, [activeNotebookId, activeConnectionName, inputValues, optionsRefreshTickByCell, sortedCells, widgetDraftByCell])
+  }, [
+    activeNotebookId,
+    activeConnectionName,
+    inputValues,
+    optionsRefreshTickByCell,
+    sortedCells,
+    widgetDraftByCell,
+  ])
 
   useEffect(() => {
     const timers = optionsTimersRef.current

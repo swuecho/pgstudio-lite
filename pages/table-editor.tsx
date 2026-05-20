@@ -63,6 +63,7 @@ export default function TableEditorPage() {
       state.setFilterMode(parseFilterMode(nextFilterMode, getColumnKind('text')))
     }
     didInitUrlSyncRef.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     router.isReady,
     router.query.connectionName,
@@ -144,7 +145,10 @@ export default function TableEditorPage() {
   ])
 
   return (
-    <div className={pageStyles.layoutRoot} style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
+    <div
+      className={pageStyles.layoutRoot}
+      style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
+    >
       <TableSidebar {...sidebarProps} onWidthResizerMouseDown={handleWidthResizerMouseDown} />
 
       <SettingsPanel />
@@ -162,7 +166,9 @@ export default function TableEditorPage() {
             {state.activeRelation ? <RelationKindBadge kind={state.activeRelation.kind} /> : null}
           </div>
           <div className={pageStyles.editorHeaderRight}>
-            {state.connectionReadOnly ? <span className={pageStyles.readonlyPill}>Read-only connection</span> : null}
+            {state.connectionReadOnly ? (
+              <span className={pageStyles.readonlyPill}>Read-only connection</span>
+            ) : null}
             {state.rowMutationsReadOnly && state.activeRelation && state.activeRelation.kind !== 'table' ? (
               <span className={pageStyles.readonlyPill}>View (read-only)</span>
             ) : null}

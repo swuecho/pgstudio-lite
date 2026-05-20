@@ -11,14 +11,20 @@ export type ReactiveNotebookState = {
   widgetDraftByCell: Record<string, NotebookWidgetMetadata>
 }
 
-export function getWidgetMetadata(cell: NotebookCell, widgetDraftByCell?: Record<string, NotebookWidgetMetadata>) {
+export function getWidgetMetadata(
+  cell: NotebookCell,
+  widgetDraftByCell?: Record<string, NotebookWidgetMetadata>
+) {
   if (cell.type !== 'widget') return null
   const metadata = widgetDraftByCell?.[cell.id] || cell.metadata_json
   if (!metadata || !isWidgetMetadata(metadata)) return null
   return metadata as NotebookWidgetMetadata
 }
 
-export function buildInputValues(cells: NotebookCell[], widgetDraftByCell: Record<string, NotebookWidgetMetadata> = {}) {
+export function buildInputValues(
+  cells: NotebookCell[],
+  widgetDraftByCell: Record<string, NotebookWidgetMetadata> = {}
+) {
   const out: NotebookInputValues = {}
   for (const cell of cells) {
     const widgetMetadata = getWidgetMetadata(cell, widgetDraftByCell)
@@ -44,9 +50,13 @@ export function getDependentSqlTargetsForInputKeys(
   inputCellId: string,
   inputKeys: string[]
 ) {
-  return [...new Map(
-    inputKeys.flatMap((key) => getDependentSqlTargets(state, inputCellId, key)).map((cell) => [cell.id, cell])
-  ).values()].sort((a, b) => a.position - b.position)
+  return [
+    ...new Map(
+      inputKeys
+        .flatMap((key) => getDependentSqlTargets(state, inputCellId, key))
+        .map((cell) => [cell.id, cell])
+    ).values(),
+  ].sort((a, b) => a.position - b.position)
 }
 
 export async function runReactiveSqlCells({
@@ -58,7 +68,12 @@ export async function runReactiveSqlCells({
   inputCellId: string
   inputKey: string
   getState: () => ReactiveNotebookState
-  runCell: (args: { notebookId: string; cellId: string; query: string; inputValues: NotebookInputValues }) => Promise<void>
+  runCell: (args: {
+    notebookId: string
+    cellId: string
+    query: string
+    inputValues: NotebookInputValues
+  }) => Promise<void>
 }) {
   const initialState = getState()
   if (!initialState.activeNotebookId || initialState.runningAll || initialState.runningCellId) {

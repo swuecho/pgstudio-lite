@@ -47,7 +47,10 @@ export const querySnippets = sqliteTable(
     updatedAt: text('updated_at').notNull(),
   },
   (table) => ({
-    connectionUpdatedAtIdx: index('idx_query_snippets_connection_updated_at').on(table.connectionName, table.updatedAt),
+    connectionUpdatedAtIdx: index('idx_query_snippets_connection_updated_at').on(
+      table.connectionName,
+      table.updatedAt
+    ),
     updatedAtIdx: index('idx_query_snippets_updated_at').on(table.updatedAt),
   })
 )
@@ -73,7 +76,9 @@ export const notebookCells = sqliteTable(
   'notebook_cells',
   {
     id: text('id').primaryKey(),
-    notebookId: text('notebook_id').notNull().references(() => notebooks.id, { onDelete: 'cascade' }),
+    notebookId: text('notebook_id')
+      .notNull()
+      .references(() => notebooks.id, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
     type: text('type').notNull(),
     content: text('content').notNull(),
@@ -88,7 +93,10 @@ export const notebookCells = sqliteTable(
     updatedAt: text('updated_at').notNull(),
   },
   (table) => ({
-    notebookPositionIdx: uniqueIndex('idx_notebook_cells_notebook_position').on(table.notebookId, table.position),
+    notebookPositionIdx: uniqueIndex('idx_notebook_cells_notebook_position').on(
+      table.notebookId,
+      table.position
+    ),
     notebookUpdatedAtIdx: index('idx_notebook_cells_updated_at').on(table.updatedAt),
   })
 )

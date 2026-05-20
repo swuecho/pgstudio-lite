@@ -1,5 +1,11 @@
 import { fetchJson } from '../../lib/http'
-import type { Connection, HistoryItem, QueryResult, SchemaTable, SnippetItem } from '../../components/sql-editor/types'
+import type {
+  Connection,
+  HistoryItem,
+  QueryResult,
+  SchemaTable,
+  SnippetItem,
+} from '../../components/sql-editor/types'
 
 export async function getConnections() {
   return fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')

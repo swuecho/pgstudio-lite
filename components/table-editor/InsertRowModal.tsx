@@ -59,7 +59,9 @@ export function InsertRowModal({ columns, onClose, onSubmit }: InsertRowModalPro
           </button>
         </div>
         <div className="modal-body">
-          <p className={styles.insertRowHint}>Leave fields blank to omit them. Identity columns are filled by the database.</p>
+          <p className={styles.insertRowHint}>
+            Leave fields blank to omit them. Identity columns are filled by the database.
+          </p>
           <div className={styles.insertRowFields}>
             {insertableColumns.map((column) => (
               <label key={column.name} className={styles.insertRowField}>
@@ -68,7 +70,10 @@ export function InsertRowModal({ columns, onClose, onSubmit }: InsertRowModalPro
                   {!column.isNullable ? ' *' : ''}
                 </span>
                 {isBooleanColumn(column.dataType) ? (
-                  <select value={draft[column.name] || ''} onChange={(event) => updateField(column.name, event.target.value)}>
+                  <select
+                    value={draft[column.name] || ''}
+                    onChange={(event) => updateField(column.name, event.target.value)}
+                  >
                     <option value="">(omit)</option>
                     <option value="true">true</option>
                     <option value="false">false</option>
@@ -100,4 +105,3 @@ export function InsertRowModal({ columns, onClose, onSubmit }: InsertRowModalPro
     </div>
   )
 }
-

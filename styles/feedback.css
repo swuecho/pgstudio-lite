@@ -76,7 +76,9 @@
   border-radius: 4px;
   padding: 1px 3px;
   margin: -1px -3px;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .copyable-cell:hover {

@@ -321,7 +321,6 @@ select {
   outline-offset: 1px;
 }
 
-
 .history-meta {
   display: flex;
   gap: 8px;
@@ -412,7 +411,6 @@ select {
   flex-direction: column;
 }
 
-
 .editor-wrap {
   flex: 1 1 auto;
   min-height: 0;
@@ -425,7 +423,6 @@ select {
   height: 100% !important;
   min-height: 0;
 }
-
 
 .editor-splitter {
   height: 12px;
@@ -478,7 +475,6 @@ select {
   overflow: auto;
   padding: 10px;
 }
-
 
 .editor-footer {
   height: var(--header-h);
@@ -656,7 +652,6 @@ pre {
   background: linear-gradient(180deg, var(--surface-active-start), var(--surface-active-end));
 }
 
-
 [data-theme='dark'] .layout-nav-controls input,
 [data-theme='dark'] .layout-nav-controls select,
 [data-theme='dark'] .snippet-title-input {
@@ -685,7 +680,6 @@ pre {
   background: linear-gradient(180deg, var(--surface-history-start), var(--surface-history-end));
 }
 
-
 [data-theme='dark'] .pill.ok,
 [data-theme='dark'] .status-pill.ok {
   color: #6ce5a9;
@@ -710,7 +704,6 @@ pre {
   background: var(--surface-editor-footer);
 }
 
-
 [data-theme='dark'] .active-item {
   border-color: var(--border-active);
   background: linear-gradient(180deg, var(--surface-active-start), var(--surface-active-end));
@@ -721,5 +714,3 @@ pre {
   --vscode-editor-background: #111827 !important;
   --vscode-editorGutter-background: #111827 !important;
 }
-
-

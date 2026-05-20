@@ -71,16 +71,28 @@ export function NotebookHelpPanel(props: NotebookHelpPanelProps) {
         <button className={`btn small ${styles.copyButton}`} onClick={props.copyPatchPromptPrefilled}>
           Copy Patch Prompt (Prefilled)
         </button>
-        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('curl-import')}>
+        <button
+          className={`btn small ${styles.copyButton}`}
+          onClick={() => props.copyHelpApiSnippet('curl-import')}
+        >
           Copy import cURL
         </button>
-        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('curl-export')}>
+        <button
+          className={`btn small ${styles.copyButton}`}
+          onClick={() => props.copyHelpApiSnippet('curl-export')}
+        >
           Copy export cURL
         </button>
-        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('curl-patch')}>
+        <button
+          className={`btn small ${styles.copyButton}`}
+          onClick={() => props.copyHelpApiSnippet('curl-patch')}
+        >
           Copy patch cURL
         </button>
-        <button className={`btn small ${styles.copyButton}`} onClick={() => props.copyHelpApiSnippet('fetch-import')}>
+        <button
+          className={`btn small ${styles.copyButton}`}
+          onClick={() => props.copyHelpApiSnippet('fetch-import')}
+        >
           Copy import fetch
         </button>
       </div>

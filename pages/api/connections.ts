@@ -58,7 +58,10 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === 'POST') {
-      const { name, connectionString, isDefault, readOnly } = parseWithSchema(createConnectionSchema, req.body || {})
+      const { name, connectionString, isDefault, readOnly } = parseWithSchema(
+        createConnectionSchema,
+        req.body || {}
+      )
       const item = createConnection({ name, connectionString, isDefault, readOnly })
       return res.status(200).json({
         item: { id: item.id, name: item.name, isDefault: item.isDefault, readOnly: item.readOnly },

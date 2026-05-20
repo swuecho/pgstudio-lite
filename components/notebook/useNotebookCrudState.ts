@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useConnections } from '../shared/hooks/useConnections'
 import type { Notebook } from './types'
-import { createNotebook, deleteNotebook, getNotebook, getNotebooks, updateNotebook } from '../../features/notebook/notebook.service'
+import {
+  createNotebook,
+  deleteNotebook,
+  getNotebook,
+  getNotebooks,
+  updateNotebook,
+} from '../../features/notebook/notebook.service'
 
 export const NOTEBOOKS_QUERY_KEY = ['notebooks']
 
@@ -45,7 +51,8 @@ export function useNotebookCrudState(params: { setStatus: (value: string) => voi
   })
 
   const renameNotebookMutation = useMutation({
-    mutationFn: (payload: { id: string; title: string }) => updateNotebook(payload.id, { title: payload.title }),
+    mutationFn: (payload: { id: string; title: string }) =>
+      updateNotebook(payload.id, { title: payload.title }),
     onSuccess: () => {
       setStatus('Notebook renamed')
       void queryClient.invalidateQueries({ queryKey: NOTEBOOKS_QUERY_KEY })

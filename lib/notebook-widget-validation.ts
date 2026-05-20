@@ -5,18 +5,27 @@ export type WidgetValidationMessages = Partial<
   Record<'key' | 'label' | 'options' | 'optionsQuery' | 'startKey' | 'endKey' | 'general', string[]>
 >
 
-export function getWidgetValidationMessages(metadata: NotebookWidgetMetadata, extraMessages: Partial<WidgetValidationMessages> = {}) {
+export function getWidgetValidationMessages(
+  metadata: NotebookWidgetMetadata,
+  extraMessages: Partial<WidgetValidationMessages> = {}
+) {
   const messages: WidgetValidationMessages = {}
   const parsed = notebookWidgetMetadataSchema.safeParse(metadata)
 
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
-      const target = mapIssuePathToField(issue.path.filter((part): part is string | number => typeof part === 'string' || typeof part === 'number'))
+      const target = mapIssuePathToField(
+        issue.path.filter(
+          (part): part is string | number => typeof part === 'string' || typeof part === 'number'
+        )
+      )
       appendMessage(messages, target, issue.message)
     }
   }
 
-  for (const [field, fieldMessages] of Object.entries(extraMessages) as Array<[keyof WidgetValidationMessages, string[] | undefined]>) {
+  for (const [field, fieldMessages] of Object.entries(extraMessages) as Array<
+    [keyof WidgetValidationMessages, string[] | undefined]
+  >) {
     for (const message of fieldMessages || []) appendMessage(messages, field, message)
   }
 
@@ -27,7 +36,11 @@ export function countWidgetValidationMessages(messages: WidgetValidationMessages
   return Object.values(messages).reduce((sum, current) => sum + (current?.length || 0), 0)
 }
 
-function appendMessage(target: WidgetValidationMessages, field: keyof WidgetValidationMessages, message: string) {
+function appendMessage(
+  target: WidgetValidationMessages,
+  field: keyof WidgetValidationMessages,
+  message: string
+) {
   if (!target[field]) target[field] = []
   target[field]!.push(message)
 }

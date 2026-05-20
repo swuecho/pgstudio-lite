@@ -9,7 +9,10 @@ export function getMetaDbPath() {
   }
 
   if (process.env.VITEST || process.env.NODE_ENV === 'test') {
-    const workerId = process.env.VITEST_POOL_ID?.trim() || process.env.VITEST_WORKER_ID?.trim() || (isMainThread ? 'main' : `thread-${threadId}`)
+    const workerId =
+      process.env.VITEST_POOL_ID?.trim() ||
+      process.env.VITEST_WORKER_ID?.trim() ||
+      (isMainThread ? 'main' : `thread-${threadId}`)
     return join(tmpdir(), 'pgstudio-lite-vitest', `history-${process.pid}-${workerId}.db`)
   }
 

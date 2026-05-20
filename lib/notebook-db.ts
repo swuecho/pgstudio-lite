@@ -32,7 +32,6 @@ export type NotebookCell = {
   updated_at: string
 }
 
-
 function toNotebook(row: typeof notebooks.$inferSelect): Notebook {
   let parsedMetadata: Record<string, unknown> = {}
   if (row.metadataJson) {
@@ -97,7 +96,9 @@ function getDefaultConnectionName() {
   if (defaultConnection) return defaultConnection.name
   const first = getConnections()[0]
   if (!first) {
-    const error = new Error('No database connection configured. Use Manage Connections to add one.') as Error & {
+    const error = new Error(
+      'No database connection configured. Use Manage Connections to add one.'
+    ) as Error & {
       statusCode?: number
     }
     error.statusCode = 400
@@ -125,17 +126,20 @@ function applyCellOrder(tx: any, notebookId: string, orderedCellIds: string[], n
       .run()
   }
   for (const [index, id] of orderedCellIds.entries()) {
-    tx.update(notebookCells)
-      .set({ position: index, updatedAt: now })
-      .where(eq(notebookCells.id, id))
-      .run()
+    tx.update(notebookCells).set({ position: index, updatedAt: now }).where(eq(notebookCells.id, id)).run()
   }
   tx.update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, notebookId)).run()
 }
 
 export function listNotebooks(limit = 200) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 200))
-  return metaDb.select().from(notebooks).orderBy(desc(notebooks.updatedAt)).limit(safeLimit).all().map(toNotebook)
+  return metaDb
+    .select()
+    .from(notebooks)
+    .orderBy(desc(notebooks.updatedAt))
+    .limit(safeLimit)
+    .all()
+    .map(toNotebook)
 }
 
 export function createNotebook(input: { title: string; connectionName?: string }) {
@@ -199,12 +203,15 @@ export function importNotebookSpecV1(input: {
   const spec = input.notebook
   const warnings: string[] = []
   const description = (spec.description || '').trim()
-  const metadata = spec.metadata && typeof spec.metadata === 'object' && !Array.isArray(spec.metadata) ? spec.metadata : {}
+  const metadata =
+    spec.metadata && typeof spec.metadata === 'object' && !Array.isArray(spec.metadata) ? spec.metadata : {}
   const connectionName = spec.connection_name?.trim() || getDefaultConnectionName()
   const existingByTarget = input.targetNotebookId
     ? metaDb.select().from(notebooks).where(eq(notebooks.id, input.targetNotebookId)).get()
     : null
-  const existingBySpecId = spec.id ? metaDb.select().from(notebooks).where(eq(notebooks.id, spec.id)).get() : null
+  const existingBySpecId = spec.id
+    ? metaDb.select().from(notebooks).where(eq(notebooks.id, spec.id)).get()
+    : null
 
   let notebookId: string
   if (mode === 'create') {
@@ -298,10 +305,14 @@ export function importNotebookSpecV1(input: {
       const metadata =
         cell.type === 'widget'
           ? JSON.stringify(
-              normalizeWidgetMetadata(cell.metadata && isWidgetMetadata(cell.metadata) ? cell.metadata : {
-                widgetType: 'callout',
-                config: { tone: 'info', title: 'Note', body: '' },
-              })
+              normalizeWidgetMetadata(
+                cell.metadata && isWidgetMetadata(cell.metadata)
+                  ? cell.metadata
+                  : {
+                      widgetType: 'callout',
+                      config: { tone: 'info', title: 'Note', body: '' },
+                    }
+              )
             )
           : null
       tx.insert(notebookCells)
@@ -380,7 +391,7 @@ export function exportNotebookSpecV1ById(id: string): NotebookSpecV1 {
       position: cell.position,
       collapsed: cell.collapsed,
       content: cell.content,
-      metadata: cell.type === 'widget' ? cell.metadata_json ?? undefined : undefined,
+      metadata: cell.type === 'widget' ? (cell.metadata_json ?? undefined) : undefined,
     })),
   }
 }
@@ -434,10 +445,14 @@ export function createNotebookCell(input: {
   const id = randomUUID()
   const metadata =
     input.type === 'widget'
-      ? normalizeWidgetMetadata(input.metadata && isWidgetMetadata(input.metadata) ? input.metadata : {
-          widgetType: 'callout',
-          config: { tone: 'info', title: 'Note', body: '' },
-        })
+      ? normalizeWidgetMetadata(
+          input.metadata && isWidgetMetadata(input.metadata)
+            ? input.metadata
+            : {
+                widgetType: 'callout',
+                config: { tone: 'info', title: 'Note', body: '' },
+              }
+        )
       : null
   metaDb.transaction((tx) => {
     tx.insert(notebookCells)
@@ -506,12 +521,12 @@ export function updateNotebookCell(
     if (input.collapsed !== undefined) values.collapsed = input.collapsed
     if (input.metadata !== undefined) {
       values.metadataJson =
-        input.metadata === null
-          ? null
-          : JSON.stringify(normalizeWidgetMetadata(input.metadata))
+        input.metadata === null ? null : JSON.stringify(normalizeWidgetMetadata(input.metadata))
     }
     if (input.type === 'widget' && input.metadata === undefined && !existing.metadataJson) {
-      values.metadataJson = JSON.stringify(normalizeWidgetMetadata({ widgetType: 'callout', config: { tone: 'info', title: 'Note', body: '' } }))
+      values.metadataJson = JSON.stringify(
+        normalizeWidgetMetadata({ widgetType: 'callout', config: { tone: 'info', title: 'Note', body: '' } })
+      )
     }
     tx.update(notebookCells).set(values).where(eq(notebookCells.id, cellId)).run()
     tx.update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, notebookId)).run()

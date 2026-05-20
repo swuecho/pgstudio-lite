@@ -41,10 +41,7 @@ export function sanitizeRowsQueryOptions(
     }
   }
 
-  if (
-    filterColumn &&
-    !hasActiveTableFilter(filterColumn, filterMode, filterValue, filterValueEnd)
-  ) {
+  if (filterColumn && !hasActiveTableFilter(filterColumn, filterMode, filterValue, filterValueEnd)) {
     filterValue = ''
     filterValueEnd = ''
   }

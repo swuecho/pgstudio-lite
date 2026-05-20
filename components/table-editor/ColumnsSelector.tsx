@@ -89,7 +89,12 @@ export function ColumnsSelector({
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        Columns {someSelected && !allSelected ? `(${selectedCount}/${columns.length})` : allSelected ? '(All)' : '(None)'}
+        Columns{' '}
+        {someSelected && !allSelected
+          ? `(${selectedCount}/${columns.length})`
+          : allSelected
+            ? '(All)'
+            : '(None)'}
       </button>
       {dropdown && portalReady ? createPortal(dropdown, document.body) : null}
     </div>

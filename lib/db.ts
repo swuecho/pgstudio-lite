@@ -177,7 +177,9 @@ function getResolvedConnectionName(connectionName?: string) {
   if (defaultConnection) return defaultConnection.name
   const first = all[0]?.name
   if (!first) {
-    const error = new Error('No database connection configured. Use Manage Connections to add one.') as Error & {
+    const error = new Error(
+      'No database connection configured. Use Manage Connections to add one.'
+    ) as Error & {
       statusCode?: number
     }
     error.statusCode = 400
@@ -216,35 +218,6 @@ async function withClient<T>(connectionName: string | undefined, fn: (client: Po
   } finally {
     // Pools are intentionally reused across requests.
   }
-}
-
-async function getRelationColumnNames(client: PoolClient, schema: string, table: string): Promise<string[]> {
-  const informationSchemaSql = `
-    select column_name
-    from information_schema.columns
-    where table_schema = $1
-      and table_name = $2
-    order by ordinal_position
-  `
-  const { rows } = await client.query(informationSchemaSql, [schema, table])
-  if (rows.length > 0) {
-    return rows.map((row: { column_name: string }) => String(row.column_name))
-  }
-
-  const catalogSql = `
-    select a.attname as column_name
-    from pg_attribute a
-    join pg_class c on c.oid = a.attrelid
-    join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = $1
-      and c.relname = $2
-      and c.relkind in ('r', 'v', 'm')
-      and a.attnum > 0
-      and not a.attisdropped
-    order by a.attnum
-  `
-  const catalogRows = await client.query(catalogSql, [schema, table])
-  return catalogRows.rows.map((row: { column_name: string }) => String(row.column_name))
 }
 
 async function getPrimaryKeyColumns(client: PoolClient, schema: string, table: string): Promise<string[]> {
@@ -288,7 +261,12 @@ function closePoolIfUnused(connectionString: string) {
 }
 
 export function getConnections(): DbConnection[] {
-  return metaDb.select().from(dbConnections).orderBy(desc(dbConnections.isDefault), dbConnections.name).all().map(mapConnection)
+  return metaDb
+    .select()
+    .from(dbConnections)
+    .orderBy(desc(dbConnections.isDefault), dbConnections.name)
+    .all()
+    .map(mapConnection)
 }
 
 export function getPublicConnections() {
@@ -358,7 +336,9 @@ export function updateConnection(
   if (!nextName) throw new Error('name cannot be empty')
   if (!nextConnectionString) throw new Error('connectionString cannot be empty')
 
-  const duplicate = getConnections().find((connection) => connection.name === nextName && connection.id !== id)
+  const duplicate = getConnections().find(
+    (connection) => connection.name === nextName && connection.id !== id
+  )
   if (duplicate) {
     const error = new Error(`Connection '${nextName}' already exists`) as Error & { statusCode?: number }
     error.statusCode = 409
@@ -393,7 +373,11 @@ export function updateConnection(
         .where(eq(queryHistory.connectionName, existing.name))
         .run()
     }
-    const hasDefault = tx.select({ id: dbConnections.id }).from(dbConnections).where(eq(dbConnections.isDefault, true)).get()
+    const hasDefault = tx
+      .select({ id: dbConnections.id })
+      .from(dbConnections)
+      .where(eq(dbConnections.isDefault, true))
+      .get()
     if (!hasDefault) {
       tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, id)).run()
     }
@@ -431,10 +415,23 @@ export function deleteConnection(id: string) {
   const now = new Date().toISOString()
   metaDb.transaction((tx) => {
     tx.delete(dbConnections).where(eq(dbConnections.id, id)).run()
-    const hasDefault = tx.select({ id: dbConnections.id }).from(dbConnections).where(eq(dbConnections.isDefault, true)).get()
+    const hasDefault = tx
+      .select({ id: dbConnections.id })
+      .from(dbConnections)
+      .where(eq(dbConnections.isDefault, true))
+      .get()
     if (!hasDefault) {
-      const first = tx.select({ id: dbConnections.id }).from(dbConnections).orderBy(dbConnections.name).limit(1).get()
-      if (first) tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, first.id)).run()
+      const first = tx
+        .select({ id: dbConnections.id })
+        .from(dbConnections)
+        .orderBy(dbConnections.name)
+        .limit(1)
+        .get()
+      if (first)
+        tx.update(dbConnections)
+          .set({ isDefault: true, updatedAt: now })
+          .where(eq(dbConnections.id, first.id))
+          .run()
     }
   })
   closePoolIfUnused(existing.connectionString)
@@ -652,12 +649,12 @@ export function getHistory(limit = 100, connectionName?: string) {
   const resolved = connectionName?.trim()
   const rows = resolved
     ? metaDb
-      .select()
-      .from(queryHistory)
-      .where(eq(queryHistory.connectionName, resolved))
-      .orderBy(desc(queryHistory.executedAt))
-      .limit(safeLimit)
-      .all()
+        .select()
+        .from(queryHistory)
+        .where(eq(queryHistory.connectionName, resolved))
+        .orderBy(desc(queryHistory.executedAt))
+        .limit(safeLimit)
+        .all()
     : metaDb.select().from(queryHistory).orderBy(desc(queryHistory.executedAt)).limit(safeLimit).all()
   return rows.map((row) => parseHistoryRow(toHistoryRow(row)))
 }
@@ -936,7 +933,9 @@ async function getRelationKind(client: PoolClient, schema: string, table: string
 async function assertMutableRelation(client: PoolClient, schema: string, table: string) {
   const kind = await getRelationKind(client, schema, table)
   if (!isMutableRelationKind(kind)) {
-    const error = new Error(`relation '${schema}.${table}' is a ${kind}; row edits are not supported`) as Error & {
+    const error = new Error(
+      `relation '${schema}.${table}' is a ${kind}; row edits are not supported`
+    ) as Error & {
       statusCode?: number
     }
     error.statusCode = 409
@@ -1128,7 +1127,9 @@ export async function updateTableRowByPrimaryKey(
     }
     const missingPrimaryKey = primaryKeyColumns.find((column) => !(column in rowKey))
     if (missingPrimaryKey) {
-      const error = new Error(`rowKey missing primary key column '${missingPrimaryKey}'`) as Error & { statusCode?: number }
+      const error = new Error(`rowKey missing primary key column '${missingPrimaryKey}'`) as Error & {
+        statusCode?: number
+      }
       error.statusCode = 400
       throw error
     }
@@ -1182,7 +1183,9 @@ export async function insertTableRow(
 
     const identityColumn = keys.find((key) => columnByName.get(key)?.isIdentity)
     if (identityColumn) {
-      const error = new Error(`cannot set identity column '${identityColumn}'`) as Error & { statusCode?: number }
+      const error = new Error(`cannot set identity column '${identityColumn}'`) as Error & {
+        statusCode?: number
+      }
       error.statusCode = 400
       throw error
     }
@@ -1192,7 +1195,10 @@ export async function insertTableRow(
     const columnList = keys.map((key) => sqlIdent(key)).join(', ')
     const placeholders = keys.map((_, index) => `$${index + 1}`).join(', ')
     const sql = `insert into ${qTable} (${columnList}) values (${placeholders}) returning *`
-    const { rows } = await client.query(sql, keys.map((key) => values[key]))
+    const { rows } = await client.query(
+      sql,
+      keys.map((key) => values[key])
+    )
     const row = rows[0] as Record<string, unknown> | undefined
     if (!row) {
       const error = new Error('insert did not return a row') as Error & { statusCode?: number }
@@ -1232,7 +1238,9 @@ export async function deleteTableRowByPrimaryKey(
     }
     const missingPrimaryKey = primaryKeyColumns.find((column) => !(column in rowKey))
     if (missingPrimaryKey) {
-      const error = new Error(`rowKey missing primary key column '${missingPrimaryKey}'`) as Error & { statusCode?: number }
+      const error = new Error(`rowKey missing primary key column '${missingPrimaryKey}'`) as Error & {
+        statusCode?: number
+      }
       error.statusCode = 400
       throw error
     }

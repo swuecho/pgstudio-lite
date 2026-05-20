@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { QueryResult } from '../sql-editor/types'
-import type {
-  NotebookCell,
-  NotebookCellType,
-  NotebookDetail,
-  NotebookWidgetMetadata,
-} from './types'
+import type { NotebookCell, NotebookCellType, NotebookDetail, NotebookWidgetMetadata } from './types'
 import { buildInputValues } from '../../lib/notebook-reactive'
 import { createCell, deleteCell, updateCell } from '../../features/notebook/notebook.service'
 import { extractTemplateKeys } from '../../lib/notebook-params'
@@ -16,7 +11,11 @@ import {
   normalizeWidgetMetadata,
   type NotebookWidgetPresetId,
 } from '../../lib/notebook-widgets'
-import { countWidgetValidationMessages, getWidgetValidationMessages, type WidgetValidationMessages } from '../../lib/notebook-widget-validation'
+import {
+  countWidgetValidationMessages,
+  getWidgetValidationMessages,
+  type WidgetValidationMessages,
+} from '../../lib/notebook-widget-validation'
 import {
   getPendingSaveCount,
   getStaleResultByCell,
@@ -45,7 +44,10 @@ export function useNotebookCellState(params: {
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
-  const [pendingCellAction, setPendingCellAction] = useState<{ cellId: string; target: 'control' | 'editor' } | null>(null)
+  const [pendingCellAction, setPendingCellAction] = useState<{
+    cellId: string
+    target: 'control' | 'editor'
+  } | null>(null)
   const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
   const [widgetDraftByCell, setWidgetDraftByCell] = useState<Record<string, NotebookWidgetMetadata>>({})
 
@@ -82,7 +84,10 @@ export function useNotebookCellState(params: {
     executeQueuedSqlRun: execution.executeQueuedSqlRun,
   })
 
-  const inputValues = useMemo(() => buildInputValues(sortedCells, widgetDraftByCell), [sortedCells, widgetDraftByCell])
+  const inputValues = useMemo(
+    () => buildInputValues(sortedCells, widgetDraftByCell),
+    [sortedCells, widgetDraftByCell]
+  )
 
   const widgetOptions = useWidgetOptions({
     activeNotebookId,
@@ -94,19 +99,35 @@ export function useNotebookCellState(params: {
 
   // --- Ref sync effects ---
 
-  useEffect(() => { draftByCellRef.current = draftByCell }, [draftByCell])
-  useEffect(() => { widgetDraftByCellRef.current = widgetDraftByCell }, [widgetDraftByCell])
-  useEffect(() => { execution.sortedCellsRef.current = sortedCells }, [sortedCells])
-  useEffect(() => { execution.activeNotebookIdRef.current = activeNotebookId }, [activeNotebookId])
-  useEffect(() => { execution.draftByCellRef.current = draftByCell }, [draftByCell])
-  useEffect(() => { execution.widgetDraftByCellRef.current = widgetDraftByCell }, [widgetDraftByCell])
+  // Ref sync effects — refs are stable by design, no need to list them in deps
+  useEffect(() => {
+    draftByCellRef.current = draftByCell
+  }, [draftByCell])
+  useEffect(() => {
+    widgetDraftByCellRef.current = widgetDraftByCell
+  }, [widgetDraftByCell])
+  useEffect(() => {
+    execution.sortedCellsRef.current = sortedCells
+  }, [sortedCells]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    execution.activeNotebookIdRef.current = activeNotebookId
+  }, [activeNotebookId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    execution.draftByCellRef.current = draftByCell
+  }, [draftByCell]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    execution.widgetDraftByCellRef.current = widgetDraftByCell
+  }, [widgetDraftByCell]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { setSelectedCellId('') }, [activeNotebookId])
+  useEffect(() => {
+    setSelectedCellId('')
+  }, [activeNotebookId])
   useEffect(() => {
     autoSave.setPendingSaveByCell({})
     autoSave.setSaveErrorByCell({})
     execution.setQueuedRunByCell({})
     setPendingCellAction(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNotebookId])
 
   // --- Draft sync effects ---
@@ -122,6 +143,7 @@ export function useNotebookCellState(params: {
       autoSave.lastSyncedContentByCellRef.current = synced.serverContentByCell
       return synced.drafts
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cells])
 
   useEffect(() => {
@@ -135,6 +157,7 @@ export function useNotebookCellState(params: {
       autoSave.lastSyncedWidgetByCellRef.current = synced.serverMetadataByCell
       return synced.drafts
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cells])
 
   useEffect(() => {
@@ -147,6 +170,7 @@ export function useNotebookCellState(params: {
       lastSyncedResultByCellRef.current = synced.serverResultsByCell
       return synced.results
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cells])
 
   useEffect(() => {
@@ -159,12 +183,14 @@ export function useNotebookCellState(params: {
       lastSyncedExecutedQueryByCellRef.current = synced.serverExecutedQueryByCell
       return synced.executedQueryByCell
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cells])
 
   useEffect(() => {
     return () => {
       reactive.cleanupReactiveTimers()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -183,67 +209,64 @@ export function useNotebookCellState(params: {
 
   const inputKeys = useMemo(() => new Set(Object.keys(inputValues)), [inputValues])
 
-  const notebookInputs = useMemo(
-    () => {
-      const params: Array<{ key: string; label: string; inputType: string }> = []
+  const notebookInputs = useMemo(() => {
+    const params: Array<{ key: string; label: string; inputType: string }> = []
 
-      for (const cell of sortedCells) {
-        if (cell.type !== 'widget') continue
-        const metadata = widgetDraftByCell[cell.id]
-        if (!metadata) continue
+    for (const cell of sortedCells) {
+      if (cell.type !== 'widget') continue
+      const metadata = widgetDraftByCell[cell.id]
+      if (!metadata) continue
 
-        if (
-          metadata.widgetType === 'text' ||
-          metadata.widgetType === 'number' ||
-          metadata.widgetType === 'date' ||
-          metadata.widgetType === 'datetime-local' ||
-          metadata.widgetType === 'checkbox' ||
-          metadata.widgetType === 'select' ||
-          metadata.widgetType === 'range' ||
-          metadata.widgetType === 'multiselect'
-        ) {
-          if (!metadata.key) continue
-          params.push({
-            key: metadata.key,
-            label: metadata.label || metadata.key,
-            inputType: metadata.widgetType,
-          })
-          continue
-        }
-
-        if (metadata.widgetType === 'radio-group' && metadata.key) {
-          params.push({
-            key: metadata.key,
-            label: metadata.label || metadata.key,
-            inputType: 'widget-radio',
-          })
-          continue
-        }
-
-        if (metadata.widgetType === 'date-range') {
-          const startKey = metadata.config?.startKey?.trim()
-          const endKey = metadata.config?.endKey?.trim()
-          if (startKey) {
-            params.push({
-              key: startKey,
-              label: `${metadata.label || 'Date Range'} Start`,
-              inputType: 'widget-date',
-            })
-          }
-          if (endKey) {
-            params.push({
-              key: endKey,
-              label: `${metadata.label || 'Date Range'} End`,
-              inputType: 'widget-date',
-            })
-          }
-        }
+      if (
+        metadata.widgetType === 'text' ||
+        metadata.widgetType === 'number' ||
+        metadata.widgetType === 'date' ||
+        metadata.widgetType === 'datetime-local' ||
+        metadata.widgetType === 'checkbox' ||
+        metadata.widgetType === 'select' ||
+        metadata.widgetType === 'range' ||
+        metadata.widgetType === 'multiselect'
+      ) {
+        if (!metadata.key) continue
+        params.push({
+          key: metadata.key,
+          label: metadata.label || metadata.key,
+          inputType: metadata.widgetType,
+        })
+        continue
       }
 
-      return params
-    },
-    [sortedCells, widgetDraftByCell]
-  )
+      if (metadata.widgetType === 'radio-group' && metadata.key) {
+        params.push({
+          key: metadata.key,
+          label: metadata.label || metadata.key,
+          inputType: 'widget-radio',
+        })
+        continue
+      }
+
+      if (metadata.widgetType === 'date-range') {
+        const startKey = metadata.config?.startKey?.trim()
+        const endKey = metadata.config?.endKey?.trim()
+        if (startKey) {
+          params.push({
+            key: startKey,
+            label: `${metadata.label || 'Date Range'} Start`,
+            inputType: 'widget-date',
+          })
+        }
+        if (endKey) {
+          params.push({
+            key: endKey,
+            label: `${metadata.label || 'Date Range'} End`,
+            inputType: 'widget-date',
+          })
+        }
+      }
+    }
+
+    return params
+  }, [sortedCells, widgetDraftByCell])
 
   const inputCellIdByKey = useMemo(() => {
     const out: Record<string, string> = {}
@@ -287,10 +310,24 @@ export function useNotebookCellState(params: {
         const owners = duplicateKeys.get(key) || []
         if (owners.length < 2) continue
         if (metadata.widgetType === 'date-range') {
-          if (metadata.config?.startKey === key) pushValidationMessage(extraMessages, 'startKey', `Parameter key '${key}' is already used by another widget`)
-          if (metadata.config?.endKey === key) pushValidationMessage(extraMessages, 'endKey', `Parameter key '${key}' is already used by another widget`)
+          if (metadata.config?.startKey === key)
+            pushValidationMessage(
+              extraMessages,
+              'startKey',
+              `Parameter key '${key}' is already used by another widget`
+            )
+          if (metadata.config?.endKey === key)
+            pushValidationMessage(
+              extraMessages,
+              'endKey',
+              `Parameter key '${key}' is already used by another widget`
+            )
         } else {
-          pushValidationMessage(extraMessages, 'key', `Parameter key '${key}' is already used by another widget`)
+          pushValidationMessage(
+            extraMessages,
+            'key',
+            `Parameter key '${key}' is already used by another widget`
+          )
         }
       }
 
@@ -317,16 +354,18 @@ export function useNotebookCellState(params: {
         })
         .map((item) => item.id)
 
-      return [{
-        cell,
-        metadata,
-        parameterKeys: paramKeys,
-        primaryKey: paramKeys[0],
-        source: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
-        validationMessages: validationMessagesByCell[cell.id] || {},
-        validationCount: countWidgetValidationMessages(validationMessagesByCell[cell.id] || {}),
-        usedByCellIds,
-      }]
+      return [
+        {
+          cell,
+          metadata,
+          parameterKeys: paramKeys,
+          primaryKey: paramKeys[0],
+          source: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
+          validationMessages: validationMessagesByCell[cell.id] || {},
+          validationCount: countWidgetValidationMessages(validationMessagesByCell[cell.id] || {}),
+          usedByCellIds,
+        },
+      ]
     })
   }, [draftByCell, sortedCells, validationMessagesByCell, widgetDraftByCell])
 
@@ -530,14 +569,18 @@ export function useNotebookCellState(params: {
 
   // --- Final derived state ---
 
-  const pendingSaveCount = useMemo(() => getPendingSaveCount(autoSave.pendingSaveByCell), [autoSave.pendingSaveByCell])
+  const pendingSaveCount = useMemo(
+    () => getPendingSaveCount(autoSave.pendingSaveByCell),
+    [autoSave.pendingSaveByCell]
+  )
   const staleResultByCell = useMemo(
-    () => getStaleResultByCell({
-      sortedCells,
-      draftByCell,
-      resultsByCell: execution.resultsByCell,
-      lastExecutedQueryByCell: execution.lastExecutedQueryByCell,
-    }),
+    () =>
+      getStaleResultByCell({
+        sortedCells,
+        draftByCell,
+        resultsByCell: execution.resultsByCell,
+        lastExecutedQueryByCell: execution.lastExecutedQueryByCell,
+      }),
     [sortedCells, draftByCell, execution.resultsByCell, execution.lastExecutedQueryByCell]
   )
   const cellUiStateByCell = useMemo(
@@ -550,7 +593,14 @@ export function useNotebookCellState(params: {
         runningCellId: execution.runningCellId,
         staleResultByCell,
       }),
-    [sortedCells, autoSave.pendingSaveByCell, autoSave.saveErrorByCell, execution.queuedRunByCell, execution.runningCellId, staleResultByCell]
+    [
+      sortedCells,
+      autoSave.pendingSaveByCell,
+      autoSave.saveErrorByCell,
+      execution.queuedRunByCell,
+      execution.runningCellId,
+      staleResultByCell,
+    ]
   )
 
   return {

@@ -7,10 +7,7 @@ import {
 } from '../../lib/table-filter'
 import { getColumnKind } from '../../lib/table-column-kind'
 import { resolveNextActiveTable, resolveSortAndFilter } from './tableEditorContracts'
-import {
-  tableEditorFilterKey,
-  useTableEditorFilterStore,
-} from './stores/tableEditorFilterStore'
+import { tableEditorFilterKey, useTableEditorFilterStore } from './stores/tableEditorFilterStore'
 import type { ColumnInfo, TableInfo } from './types'
 
 type UseTableEditorEffectsParams = {
@@ -79,7 +76,8 @@ export function useTableEditorEffects({
     setSortBy('')
     setVisibleColumns([])
 
-    const saved = useTableEditorFilterStore.getState().filtersByKey[tableEditorFilterKey(connectionName, activeTable)]
+    const saved =
+      useTableEditorFilterStore.getState().filtersByKey[tableEditorFilterKey(connectionName, activeTable)]
     if (saved) {
       setFilterColumn(saved.filterColumn)
       setFilterMode(saved.filterMode)

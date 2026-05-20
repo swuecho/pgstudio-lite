@@ -46,7 +46,11 @@ export function NotebookImportModal(props: NotebookImportModalProps) {
             <option value="replace">replace (active notebook)</option>
             <option value="upsert">upsert (id-aware)</option>
           </select>
-          <button className="btn small" onClick={props.onPaste} disabled={props.isImporting || props.isValidating}>
+          <button
+            className="btn small"
+            onClick={props.onPaste}
+            disabled={props.isImporting || props.isValidating}
+          >
             Paste
           </button>
           <button
@@ -102,8 +106,11 @@ export function NotebookImportModal(props: NotebookImportModalProps) {
         ) : null}
         {props.importValidationSnapshot ? (
           <div className={styles.modalPanel}>
-            Validation snapshot: <strong>{props.importValidationSnapshot.title}</strong> · {props.importValidationSnapshot.cells.length} cells
-            {props.importValidationWarnings.length ? ` · ${props.importValidationWarnings.length} warning(s)` : ''}
+            Validation snapshot: <strong>{props.importValidationSnapshot.title}</strong> ·{' '}
+            {props.importValidationSnapshot.cells.length} cells
+            {props.importValidationWarnings.length
+              ? ` · ${props.importValidationWarnings.length} warning(s)`
+              : ''}
           </div>
         ) : null}
         {props.importDiffSummary ? (

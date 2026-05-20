@@ -80,7 +80,8 @@ export function ConnectionsSection() {
       setConnectionName(item.name)
       setErrorText('')
     },
-    onError: (error) => setErrorText(error instanceof Error ? error.message : 'Failed to set default connection'),
+    onError: (error) =>
+      setErrorText(error instanceof Error ? error.message : 'Failed to set default connection'),
   })
 
   const deleteMutation = useMutation({
@@ -98,7 +99,8 @@ export function ConnectionsSection() {
     onError: (error) => setErrorText(error instanceof Error ? error.message : 'Failed to delete connection'),
   })
 
-  const pendingDeleteConnection = sortedConnections.find((connection) => connection.id === pendingDeleteId) || null
+  const pendingDeleteConnection =
+    sortedConnections.find((connection) => connection.id === pendingDeleteId) || null
 
   const busy =
     createMutation.isPending ||

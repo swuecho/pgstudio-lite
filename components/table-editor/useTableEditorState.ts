@@ -63,7 +63,7 @@ export function useTableEditorState() {
       onNextPage: () => state.setPage((p) => p + 1),
       onToggleVisibleColumn: state.toggleVisibleColumn,
       onShowAllColumns: () => {
-        state.setVisibleColumns(actions.columns.map(c => c.name))
+        state.setVisibleColumns(actions.columns.map((c) => c.name))
       },
       onHideAllColumns: () => {
         state.setVisibleColumns([])

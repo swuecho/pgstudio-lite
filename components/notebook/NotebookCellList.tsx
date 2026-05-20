@@ -20,13 +20,7 @@ type NotebookCellListProps = {
 }
 
 export function NotebookCellList({ controller }: NotebookCellListProps) {
-  const {
-    activeNotebookId,
-    clearPendingCellAction,
-    detailQuery,
-    pendingCellAction,
-    sortedCells,
-  } = controller
+  const { activeNotebookId, clearPendingCellAction, detailQuery, pendingCellAction, sortedCells } = controller
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -90,10 +84,7 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
               }}
             >
               <ErrorBoundary fallbackTitle={`Cell "${cell.id}" failed to render`}>
-                <MemoizedNotebookCellRow
-                  cell={cell}
-                  controller={controller}
-                />
+                <MemoizedNotebookCellRow cell={cell} controller={controller} />
               </ErrorBoundary>
             </div>
           )
@@ -165,42 +156,72 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
 
   const handleMouseDown = useCallback(() => setSelectedCellId(cell.id), [cell.id, setSelectedCellId])
   const handleFocusCapture = useCallback(() => setSelectedCellId(cell.id), [cell.id, setSelectedCellId])
-  const handleRef = useCallback((element: HTMLElement | null) => {
-    cellSectionRefs.current[cell.id] = element
-  }, [cell.id, cellSectionRefs])
+  const handleRef = useCallback(
+    (element: HTMLElement | null) => {
+      cellSectionRefs.current[cell.id] = element
+    },
+    [cell.id, cellSectionRefs]
+  )
   const handleChange = useCallback((next: string) => onChangeCell(cell, next), [cell, onChangeCell])
-  const handleRun = useCallback(() => { void runSqlCellWithShortcuts(cell, false) }, [cell, runSqlCellWithShortcuts])
-  const handleRunAndFocusNext = useCallback(() => { void runSqlCellWithShortcuts(cell, true) }, [cell, runSqlCellWithShortcuts])
-  const handleMountEditorAndFocus = useCallback((editor: any) => {
-    sqlEditorRefs.current[cell.id] = editor
-    if (pendingCellAction?.cellId === cell.id && pendingCellAction.target === 'editor') {
-      editor.focus()
-      clearPendingCellAction(cell.id)
-    }
-  }, [cell.id, clearPendingCellAction, pendingCellAction, sqlEditorRefs])
-  const handleUnmountEditor = useCallback(() => { delete sqlEditorRefs.current[cell.id] }, [cell.id, sqlEditorRefs])
+  const handleRun = useCallback(() => {
+    void runSqlCellWithShortcuts(cell, false)
+  }, [cell, runSqlCellWithShortcuts])
+  const handleRunAndFocusNext = useCallback(() => {
+    void runSqlCellWithShortcuts(cell, true)
+  }, [cell, runSqlCellWithShortcuts])
+  const handleMountEditorAndFocus = useCallback(
+    (editor: any) => {
+      sqlEditorRefs.current[cell.id] = editor
+      if (pendingCellAction?.cellId === cell.id && pendingCellAction.target === 'editor') {
+        editor.focus()
+        clearPendingCellAction(cell.id)
+      }
+    },
+    [cell.id, clearPendingCellAction, pendingCellAction, sqlEditorRefs]
+  )
+  const handleUnmountEditor = useCallback(() => {
+    delete sqlEditorRefs.current[cell.id]
+  }, [cell.id, sqlEditorRefs])
   const handleToggleCollapsed = useCallback(() => toggleCellCollapsed(cell), [cell, toggleCellCollapsed])
-  const handleDuplicate = useCallback(() => duplicateWidgetCellById(cell.id), [cell.id, duplicateWidgetCellById])
+  const handleDuplicate = useCallback(
+    () => duplicateWidgetCellById(cell.id),
+    [cell.id, duplicateWidgetCellById]
+  )
   const handleMoveUp = useCallback(() => moveCell(cell, 'up'), [cell, moveCell])
   const handleMoveDown = useCallback(() => moveCell(cell, 'down'), [cell, moveCell])
   const handleDelete = useCallback(() => deleteCellById(cell.id), [cell.id, deleteCellById])
-  const handleWidgetChange = useCallback((next: NotebookWidgetMetadata) => onWidgetMetadataChange(cell, next as any), [cell, onWidgetMetadataChange])
-  const handleInsertParam = useCallback(() => insertParamIntoSqlCell(cell, selectedInsertParam), [cell, insertParamIntoSqlCell, selectedInsertParam])
-  const handleRefreshSqlOptions = useCallback(() => controller.refreshSqlOptions(cell.id), [controller, cell.id])
+  const handleWidgetChange = useCallback(
+    (next: NotebookWidgetMetadata) => onWidgetMetadataChange(cell, next as any),
+    [cell, onWidgetMetadataChange]
+  )
+  const handleInsertParam = useCallback(
+    () => insertParamIntoSqlCell(cell, selectedInsertParam),
+    [cell, insertParamIntoSqlCell, selectedInsertParam]
+  )
+  const handleRefreshSqlOptions = useCallback(
+    () => controller.refreshSqlOptions(cell.id),
+    [controller, cell.id]
+  )
 
-  const handleTriggerAction = useCallback((metadata: NotebookWidgetMetadata) => {
-    const action = metadata.config?.action || 'run-all'
-    if (action === 'run-targets') {
-      const ids = (metadata.config?.targetCellIds || []) as string[]
-      void runTargetSqlCells(ids)
-      return
-    }
-    void controller.runAllSqlCells()
-  }, [controller, runTargetSqlCells])
+  const handleTriggerAction = useCallback(
+    (metadata: NotebookWidgetMetadata) => {
+      const action = metadata.config?.action || 'run-all'
+      if (action === 'run-targets') {
+        const ids = (metadata.config?.targetCellIds || []) as string[]
+        void runTargetSqlCells(ids)
+        return
+      }
+      void controller.runAllSqlCells()
+    },
+    [controller, runTargetSqlCells]
+  )
 
-  const handleSelectInsertParam = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedInsertParamByCell((prev) => ({ ...prev, [cell.id]: event.target.value }))
-  }, [cell.id, setSelectedInsertParamByCell])
+  const handleSelectInsertParam = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setSelectedInsertParamByCell((prev) => ({ ...prev, [cell.id]: event.target.value }))
+    },
+    [cell.id, setSelectedInsertParamByCell]
+  )
 
   const handleToggleMarkdownPreview = useCallback(() => {
     setPreviewMarkdown((prev) => ({
@@ -209,9 +230,12 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
     }))
   }, [cell.id, setPreviewMarkdown])
 
-  const handleMarkdownChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChangeCell(cell, event.target.value)
-  }, [cell, onChangeCell])
+  const handleMarkdownChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onChangeCell(cell, event.target.value)
+    },
+    [cell, onChangeCell]
+  )
 
   useEffect(() => {
     if (pendingCellAction?.cellId !== cell.id) return
@@ -245,12 +269,16 @@ const MemoizedNotebookCellRow = memo(function NotebookCellRow({ cell, controller
         .filter(Boolean)
         .join(' ')}
     >
-      <div className={[styles.cellHead, cell.collapsed ? styles.cellHeadCompact : ''].filter(Boolean).join(' ')}>
+      <div
+        className={[styles.cellHead, cell.collapsed ? styles.cellHeadCompact : ''].filter(Boolean).join(' ')}
+      >
         <span className="pill">
           {cell.type === 'markdown' ? 'MD' : cell.type === 'widget' ? 'WGT' : 'SQL'}
         </span>
         <span className="history-meta">#{cell.position + 1}</span>
-        {cell.last_run_at ? <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span> : null}
+        {cell.last_run_at ? (
+          <span className="history-meta">Last run: {new Date(cell.last_run_at).toLocaleString()}</span>
+        ) : null}
         <span className="history-meta">{formatCellUiState(cellUiState)}</span>
         <div className={styles.cellActions}>
           <button
@@ -445,11 +473,7 @@ const SqlCellBody = memo(function SqlCellBody({
         />
         {notebookInputs.length ? (
           <div className={styles.paramControls}>
-            <select
-              className={styles.paramSelect}
-              value={selectedInsertParam}
-              onChange={onSelectInsertParam}
-            >
+            <select className={styles.paramSelect} value={selectedInsertParam} onChange={onSelectInsertParam}>
               {notebookInputs.map((item) => (
                 <option key={item.key} value={item.key}>
                   {item.key} ({item.inputType})
@@ -503,7 +527,9 @@ const SqlCellBody = memo(function SqlCellBody({
         {cell.last_error ? (
           <CellErrorPanel message={cell.last_error} busy={running || runningAll} onRetry={onRun} />
         ) : null}
-        {staleResult ? <div className="empty-state">Current SQL differs from the last executed query.</div> : null}
+        {staleResult ? (
+          <div className="empty-state">Current SQL differs from the last executed query.</div>
+        ) : null}
         {lastResult ? <CellResult result={lastResult} /> : null}
       </>
     )
@@ -568,20 +594,10 @@ const WidgetCellBody = memo(function WidgetCellBody({
   }
 
   if (!collapsed) {
-    return (
-      <WidgetCellEditor
-        {...sharedProps}
-        onTriggerAction={onTriggerAction}
-      />
-    )
+    return <WidgetCellEditor {...sharedProps} onTriggerAction={onTriggerAction} />
   }
 
-  return (
-    <WidgetCellEditor
-      {...sharedProps}
-      collapsed
-    />
-  )
+  return <WidgetCellEditor {...sharedProps} collapsed />
 })
 
 // --- Markdown cell body ---
@@ -619,11 +635,7 @@ const MarkdownCellBody = memo(function MarkdownCellBody({
           <MarkdownPreview source={draft} />
         </div>
       ) : (
-        <textarea
-          className={styles.markdownTextarea}
-          value={draft}
-          onChange={onChange}
-        />
+        <textarea className={styles.markdownTextarea} value={draft} onChange={onChange} />
       )}
     </>
   )

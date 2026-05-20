@@ -32,15 +32,22 @@ export function useCellExecution(params: {
   const sortedCellsRef = useRef<NotebookCell[]>([])
   const activeNotebookIdRef = useRef('')
 
-  useEffect(() => { runningCellIdRef.current = runningCellId }, [runningCellId])
-  useEffect(() => { runningAllRef.current = runningAll }, [runningAll])
+  useEffect(() => {
+    runningCellIdRef.current = runningCellId
+  }, [runningCellId])
+  useEffect(() => {
+    runningAllRef.current = runningAll
+  }, [runningAll])
 
   function enqueueExecution<T>(label: string, execute: () => Promise<T>) {
     if (runningAllRef.current || Boolean(runningCellIdRef.current)) {
       setStatus(`${label} queued`)
     }
     const queued = executionQueueRef.current.catch(() => undefined).then(execute)
-    executionQueueRef.current = queued.then(() => undefined, () => undefined)
+    executionQueueRef.current = queued.then(
+      () => undefined,
+      () => undefined
+    )
     return queued
   }
 
@@ -51,16 +58,27 @@ export function useCellExecution(params: {
     mode: 'single' | 'sequence'
     reactiveGeneration?: number
   }) {
-    if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+    if (
+      input.reactiveGeneration !== undefined &&
+      reactiveRunGenerationRef.current !== input.reactiveGeneration
+    ) {
       return 0
     }
-    setQueuedRunByCell((prev) => clearQueuedCells(prev, input.cells.map((cell) => cell.id)))
+    setQueuedRunByCell((prev) =>
+      clearQueuedCells(
+        prev,
+        input.cells.map((cell) => cell.id)
+      )
+    )
     const notebookId = activeNotebookIdRef.current
     if (!notebookId) return 0
     if (!(await flushPendingSaves(notebookId, input.flushReason))) {
       return 0
     }
-    if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+    if (
+      input.reactiveGeneration !== undefined &&
+      reactiveRunGenerationRef.current !== input.reactiveGeneration
+    ) {
       return 0
     }
 
@@ -73,7 +91,10 @@ export function useCellExecution(params: {
 
     try {
       for (const cell of input.cells) {
-        if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+        if (
+          input.reactiveGeneration !== undefined &&
+          reactiveRunGenerationRef.current !== input.reactiveGeneration
+        ) {
           return successCount
         }
 
@@ -84,7 +105,11 @@ export function useCellExecution(params: {
         if (!query) continue
 
         setRunningCellId(cell.id)
-        setStatus(total === 1 ? `Running cell #${cell.position + 1}...` : `Running ${input.label} cell #${cell.position + 1}...`)
+        setStatus(
+          total === 1
+            ? `Running cell #${cell.position + 1}...`
+            : `Running ${input.label} cell #${cell.position + 1}...`
+        )
 
         const result = await runCell(
           currentNotebookId,
@@ -93,7 +118,10 @@ export function useCellExecution(params: {
           buildInputValues(sortedCellsRef.current, widgetDraftByCellRef.current)
         )
 
-        if (input.reactiveGeneration !== undefined && reactiveRunGenerationRef.current !== input.reactiveGeneration) {
+        if (
+          input.reactiveGeneration !== undefined &&
+          reactiveRunGenerationRef.current !== input.reactiveGeneration
+        ) {
           return successCount
         }
 
@@ -104,7 +132,9 @@ export function useCellExecution(params: {
 
       setStatus(
         input.mode === 'single'
-          ? successCount ? 'Cell executed' : 'No runnable SQL cell'
+          ? successCount
+            ? 'Cell executed'
+            : 'No runnable SQL cell'
           : `${input.label} completed (${successCount}/${total})`
       )
       return successCount
@@ -148,7 +178,12 @@ export function useCellExecution(params: {
       setStatus('No SQL cells to run')
       return
     }
-    setQueuedRunByCell((prev) => markQueuedCells(prev, sqlCells.map((cell) => cell.id)))
+    setQueuedRunByCell((prev) =>
+      markQueuedCells(
+        prev,
+        sqlCells.map((cell) => cell.id)
+      )
+    )
     await enqueueExecution('Run all', () =>
       executeQueuedSqlRun({
         label: 'Run all',
@@ -166,7 +201,12 @@ export function useCellExecution(params: {
       setStatus('No target SQL cells found')
       return
     }
-    setQueuedRunByCell((prev) => markQueuedCells(prev, targets.map((cell) => cell.id)))
+    setQueuedRunByCell((prev) =>
+      markQueuedCells(
+        prev,
+        targets.map((cell) => cell.id)
+      )
+    )
     await enqueueExecution('Target run', () =>
       executeQueuedSqlRun({
         label: 'Target run',

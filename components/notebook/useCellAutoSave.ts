@@ -2,16 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { NotebookCell, NotebookWidgetMetadata } from './types'
 import { updateCell } from '../../features/notebook/notebook.service'
-import {
-  clearPendingSaveCell,
-  clearSaveError,
-  getPendingSaveEntries,
-} from './cellSyncHelpers'
+import { clearPendingSaveCell, clearSaveError, getPendingSaveEntries } from './cellSyncHelpers'
 
-export function useCellAutoSave(params: {
-  activeNotebookId: string
-  setStatus: (value: string) => void
-}) {
+export function useCellAutoSave(params: { activeNotebookId: string; setStatus: (value: string) => void }) {
   const { activeNotebookId, setStatus } = params
   const queryClient = useQueryClient()
 
@@ -19,7 +12,9 @@ export function useCellAutoSave(params: {
   const [saveErrorByCell, setSaveErrorByCell] = useState<Record<string, string>>({})
 
   const saveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  const pendingSavePayloadRef = useRef<Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>>({})
+  const pendingSavePayloadRef = useRef<
+    Record<string, { content?: string; metadata?: NotebookWidgetMetadata | null }>
+  >({})
   const lastSyncedContentByCellRef = useRef<Record<string, string>>({})
   const lastSyncedWidgetByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
 
@@ -30,7 +25,11 @@ export function useCellAutoSave(params: {
     }
   }, [])
 
-  function scheduleCellSave(cell: NotebookCell, patch: { content?: string; metadata?: NotebookWidgetMetadata | null }, scheduledNotebookId?: string) {
+  function scheduleCellSave(
+    cell: NotebookCell,
+    patch: { content?: string; metadata?: NotebookWidgetMetadata | null },
+    scheduledNotebookId?: string
+  ) {
     const targetNotebookId = scheduledNotebookId || activeNotebookId
     if (!targetNotebookId) return
     const existing = saveTimersRef.current[cell.id]
@@ -80,7 +79,11 @@ export function useCellAutoSave(params: {
     pendingSavePayloadRef.current = {}
     setPendingSaveByCell({})
 
-    const failedEntries: Array<{ cellId: string; payload: { content?: string; metadata?: NotebookWidgetMetadata | null }; error: unknown }> = []
+    const failedEntries: Array<{
+      cellId: string
+      payload: { content?: string; metadata?: NotebookWidgetMetadata | null }
+      error: unknown
+    }> = []
 
     await Promise.all(
       entries.map(async (entry) => {
@@ -93,11 +96,16 @@ export function useCellAutoSave(params: {
     )
 
     if (failedEntries.length) {
-      pendingSavePayloadRef.current = Object.fromEntries(failedEntries.map((entry) => [entry.cellId, entry.payload]))
+      pendingSavePayloadRef.current = Object.fromEntries(
+        failedEntries.map((entry) => [entry.cellId, entry.payload])
+      )
       setPendingSaveByCell(Object.fromEntries(failedEntries.map((entry) => [entry.cellId, true])))
       setSaveErrorByCell(
         Object.fromEntries(
-          failedEntries.map((entry) => [entry.cellId, entry.error instanceof Error ? entry.error.message : String(entry.error)])
+          failedEntries.map((entry) => [
+            entry.cellId,
+            entry.error instanceof Error ? entry.error.message : String(entry.error),
+          ])
         )
       )
       const firstError = failedEntries[0]?.error

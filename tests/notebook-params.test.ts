@@ -3,7 +3,9 @@ import { compileSqlTemplate, extractTemplateKeys } from '../lib/notebook-params'
 
 describe('notebook SQL params', () => {
   it('extracts unique template keys', () => {
-    const keys = extractTemplateKeys('select * from t where d >= {{start_date}} and d <= {{ end_date }} and d >= {{start_date}}')
+    const keys = extractTemplateKeys(
+      'select * from t where d >= {{start_date}} and d <= {{ end_date }} and d >= {{start_date}}'
+    )
     expect(keys).toEqual(['start_date', 'end_date'])
   })
 
@@ -25,6 +27,8 @@ describe('notebook SQL params', () => {
   })
 
   it('throws when a key is missing', () => {
-    expect(() => compileSqlTemplate('select {{missing}}', {})).toThrow("Missing input value for '{{missing}}'")
+    expect(() => compileSqlTemplate('select {{missing}}', {})).toThrow(
+      "Missing input value for '{{missing}}'"
+    )
   })
 })

@@ -38,7 +38,10 @@ function DialogShell({ open, title, onClose, children, footer, widthClassName }:
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className={`modal-card ${widthClassName || ''}`.trim()} onMouseDown={(event) => event.stopPropagation()}>
+      <div
+        className={`modal-card ${widthClassName || ''}`.trim()}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="modal-head">
           <div className="nav-title" id={titleId}>
             {title}
@@ -76,7 +79,11 @@ export function ConfirmDialog({
   onClose,
 }: ConfirmDialogProps) {
   const confirmClassName =
-    confirmTone === 'danger' ? 'btn small danger' : confirmTone === 'primary' ? 'btn small primary' : 'btn small'
+    confirmTone === 'danger'
+      ? 'btn small danger'
+      : confirmTone === 'primary'
+        ? 'btn small primary'
+        : 'btn small'
 
   return (
     <DialogShell
@@ -195,7 +202,12 @@ type QuickActionsDialogProps = {
 
 export function QuickActionsDialog({ open, items, onClose }: QuickActionsDialogProps) {
   return (
-    <DialogShell open={open} title="Quick Actions" onClose={onClose} widthClassName="dialog-quick-actions-card">
+    <DialogShell
+      open={open}
+      title="Quick Actions"
+      onClose={onClose}
+      widthClassName="dialog-quick-actions-card"
+    >
       <div className="dialog-action-list">
         {items.map((item) => (
           <button

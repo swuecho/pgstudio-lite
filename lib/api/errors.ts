@@ -20,9 +20,9 @@ export class ApiHttpError extends Error {
 function hasStatusCode(error: unknown): error is { statusCode: number; message?: string; code?: string } {
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      'statusCode' in error &&
-      typeof (error as { statusCode?: unknown }).statusCode === 'number'
+    typeof error === 'object' &&
+    'statusCode' in error &&
+    typeof (error as { statusCode?: unknown }).statusCode === 'number'
   )
 }
 
@@ -32,7 +32,9 @@ export function badRequest(message: string, code?: string) {
 
 export function methodNotAllowed(res: NextApiResponse, methods: string[]) {
   res.setHeader('Allow', methods.join(', '))
-  return res.status(405).json({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' } satisfies ErrorPayload)
+  return res
+    .status(405)
+    .json({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' } satisfies ErrorPayload)
 }
 
 export function normalizeApiError(error: unknown): ApiHttpError {

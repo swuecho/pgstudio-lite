@@ -50,9 +50,10 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   setFilterValueEnd: (value) => set({ filterValueEnd: value }),
   setFilterMode: (value) => set({ filterMode: value }),
   setVisibleColumns: (value) => set({ visibleColumns: value }),
-  toggleVisibleColumn: (columnName) => set((state) => ({
-    visibleColumns: state.visibleColumns.includes(columnName)
-      ? state.visibleColumns.filter((c) => c !== columnName)
-      : [...state.visibleColumns, columnName],
-  })),
+  toggleVisibleColumn: (columnName) =>
+    set((state) => ({
+      visibleColumns: state.visibleColumns.includes(columnName)
+        ? state.visibleColumns.filter((c) => c !== columnName)
+        : [...state.visibleColumns, columnName],
+    })),
 }))
