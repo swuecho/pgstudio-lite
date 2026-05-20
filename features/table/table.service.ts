@@ -13,7 +13,7 @@ export async function getConnections() {
 }
 
 export async function getTables(connectionName: string) {
-  return fetchJson<{ tables: TableInfo[] }>(
+  return fetchJson<{ tables: TableInfo[]; truncated: boolean }>(
     `/api/tables?connectionName=${encodeURIComponent(connectionName)}`
   )
 }

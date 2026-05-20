@@ -13,6 +13,7 @@ export function useTableEditorState() {
     return {
       connectionName: state.connectionName,
       tables: actions.tables,
+      tablesTruncated: actions.tablesTruncated,
       loadingTables: actions.loadingTables,
       activeTable: state.activeTable,
       onSelectTable: state.setActiveTable,

@@ -41,6 +41,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     enabled: Boolean(state.connectionName),
   })
   const tables = useMemo(() => tablesQuery.data?.tables || [], [tablesQuery.data?.tables])
+  const tablesTruncated = Boolean(tablesQuery.data?.truncated)
 
   const rowsQuery = useQuery({
     queryKey: [
@@ -216,6 +217,7 @@ export function useTableEditorQueries(state: TableEditorState) {
   return {
     connections,
     tables,
+    tablesTruncated,
     tablesQuery,
     columns,
     rows,
