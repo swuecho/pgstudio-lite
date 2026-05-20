@@ -26,7 +26,11 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const pathSegments = Array.isArray(req.query.path) ? req.query.path : []
-  if (pathSegments.some((segment) => typeof segment !== 'string' || segment.length === 0 || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+  if (
+    pathSegments.some(
+      (segment) => typeof segment !== 'string' || segment.length === 0 || !/^[A-Za-z0-9._-]+$/.test(segment)
+    )
+  ) {
     return res.status(400).send('Bad Request')
   }
   const fullPath = resolve(MONACO_VS_DIR, pathSegments.join('/'))

@@ -4,11 +4,7 @@
   "title": "PG Studio Notebook Spec v1",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "spec_version",
-    "title",
-    "cells"
-  ],
+  "required": ["spec_version", "title", "cells"],
   "properties": {
     "spec_version": {
       "type": "string",
@@ -44,11 +40,7 @@
     "cell": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "content"
-      ],
+      "required": ["id", "type", "content"],
       "properties": {
         "id": {
           "type": "string",
@@ -56,11 +48,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "sql",
-            "markdown",
-            "input"
-          ]
+          "enum": ["sql", "markdown", "input"]
         },
         "position": {
           "type": "integer",
@@ -84,14 +72,10 @@
                 "const": "input"
               }
             },
-            "required": [
-              "type"
-            ]
+            "required": ["type"]
           },
           "then": {
-            "required": [
-              "metadata"
-            ],
+            "required": ["metadata"],
             "properties": {
               "metadata": {
                 "$ref": "#/$defs/inputMetadata"
@@ -106,9 +90,7 @@
                 "const": "sql"
               }
             },
-            "required": [
-              "type"
-            ]
+            "required": ["type"]
           },
           "then": {
             "properties": {
@@ -124,12 +106,7 @@
     "inputMetadata": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "key",
-        "label",
-        "inputType",
-        "value"
-      ],
+      "required": ["key", "label", "inputType", "value"],
       "properties": {
         "key": {
           "type": "string",
@@ -141,16 +118,7 @@
         },
         "inputType": {
           "type": "string",
-          "enum": [
-            "text",
-            "number",
-            "date",
-            "datetime-local",
-            "checkbox",
-            "select",
-            "range",
-            "multiselect"
-          ]
+          "enum": ["text", "number", "date", "datetime-local", "checkbox", "select", "range", "multiselect"]
         },
         "value": {
           "oneOf": [
@@ -203,10 +171,7 @@
     "inputOption": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "label",
-        "value"
-      ],
+      "required": ["label", "value"],
       "properties": {
         "label": {
           "type": "string"

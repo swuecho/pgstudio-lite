@@ -561,7 +561,10 @@ describe('notebook API e2e', () => {
         title: 'Validate-only Notebook',
         description: 'Should not persist',
         metadata: { source: 'vitest-validate-only' },
-        cells: [{ id: 'c1', position: 0 }, { id: 'c2', position: 1 }],
+        cells: [
+          { id: 'c1', position: 0 },
+          { id: 'c2', position: 1 },
+        ],
       },
     })
 

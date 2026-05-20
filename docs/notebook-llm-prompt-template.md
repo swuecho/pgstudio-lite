@@ -10,6 +10,7 @@ You are generating a pgstudio-lite notebook document.
 Return only valid JSON. Do not include markdown fences, prose, comments, or explanations.
 
 Requirements:
+
 - Output must follow notebook spec v1.
 - Set `"spec_version"` to `"1.0"`.
 - Include top-level fields: `spec_version`, `title`, `description`, `connection_name`, `metadata`, `cells`.
@@ -45,6 +46,7 @@ You are generating a pgstudio-lite notebook document.
 Return only valid JSON. Do not include markdown fences, prose, comments, or explanations.
 
 Requirements:
+
 - Output must follow notebook spec v1.
 - Set `"spec_version"` to `"1.0"`.
 - Include top-level fields: `spec_version`, `title`, `description`, `connection_name`, `metadata`, `cells`.
@@ -62,11 +64,13 @@ Requirements:
 
 Task:
 Create a sales performance notebook with intro markdown, date range inputs, and two SQL analyses:
-1) monthly revenue trend
-2) top 10 customers by revenue
+
+1. monthly revenue trend
+2. top 10 customers by revenue
 
 Database context (if provided):
 PostgreSQL tables:
+
 - orders(id, customer_id, created_at, amount, status)
 - customers(id, name, segment)
 

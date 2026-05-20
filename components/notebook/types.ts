@@ -2,7 +2,15 @@ import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCellType, Notebook } from '../../lib/notebook-types'
 export type { NotebookCellType, Notebook } from '../../lib/notebook-types'
 
-export type NotebookInputType = 'text' | 'number' | 'date' | 'datetime-local' | 'checkbox' | 'select' | 'range' | 'multiselect'
+export type NotebookInputType =
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'datetime-local'
+  | 'checkbox'
+  | 'select'
+  | 'range'
+  | 'multiselect'
 
 export type NotebookInputOption = {
   label: string

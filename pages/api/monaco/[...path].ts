@@ -28,8 +28,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const pathSegments = Array.isArray(req.query.path) ? req.query.path : []
   if (
     pathSegments.some(
-      (segment) =>
-        typeof segment !== 'string' || segment.length === 0 || !/^[A-Za-z0-9._-]+$/.test(segment)
+      (segment) => typeof segment !== 'string' || segment.length === 0 || !/^[A-Za-z0-9._-]+$/.test(segment)
     )
   ) {
     return res.status(400).send('Bad Request')
@@ -42,10 +41,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   const fullPath = candidates
     .map((item) => resolve(MONACO_MIN_DIR, item))
-    .find(
-      (item) =>
-        (item === MONACO_MIN_DIR || item.startsWith(MONACO_MIN_DIR + sep)) && existsSync(item)
-    )
+    .find((item) => (item === MONACO_MIN_DIR || item.startsWith(MONACO_MIN_DIR + sep)) && existsSync(item))
 
   try {
     if (!fullPath) return res.status(404).send('Not Found')

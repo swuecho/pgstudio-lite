@@ -94,14 +94,25 @@ describe('notebook service', () => {
         ok: true,
         status: 200,
         payload: {
-          statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['value'], rows: [{ value: 'a' }] }],
+          statements: [
+            {
+              command: 'SELECT',
+              rowCount: 1,
+              returnedRowCount: 1,
+              truncated: false,
+              fields: ['value'],
+              rows: [{ value: 'a' }],
+            },
+          ],
           totalRows: 1,
           durationMs: 3,
         },
       },
     ])
 
-    await notebookService.runOptionQuery('nb-1', 'select id as value from tags where kind = {{kind}}', { kind: 'status' })
+    await notebookService.runOptionQuery('nb-1', 'select id as value from tags where kind = {{kind}}', {
+      kind: 'status',
+    })
 
     expect(calls[0].path).toBe('/api/notebooks/nb-1/option-query')
     expect(calls[0].options?.method).toBe('POST')
@@ -160,7 +171,11 @@ describe('notebook service', () => {
           ok: true,
           notebook_id: 'nb-imported',
           warnings: [],
-          notebook: { spec_version: '1.0', title: 'Imported', cells: [{ id: 'c1', type: 'markdown', content: '# title' }] },
+          notebook: {
+            spec_version: '1.0',
+            title: 'Imported',
+            cells: [{ id: 'c1', type: 'markdown', content: '# title' }],
+          },
         },
       },
     ])
@@ -185,7 +200,12 @@ describe('notebook service', () => {
       {
         ok: true,
         status: 200,
-        payload: { spec_version: '1.0', id: 'nb-1', title: 'Exported', cells: [{ id: 'c1', type: 'markdown', content: '# title' }] },
+        payload: {
+          spec_version: '1.0',
+          id: 'nb-1',
+          title: 'Exported',
+          cells: [{ id: 'c1', type: 'markdown', content: '# title' }],
+        },
       },
     ])
 

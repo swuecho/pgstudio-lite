@@ -34,7 +34,7 @@ export function TableSidebar({
 
   const availableSchemas = useMemo(
     () => Array.from(new Set(tables.map((table) => table.schema))).sort((a, b) => a.localeCompare(b)),
-    [tables],
+    [tables]
   )
 
   const selectedSchema = useMemo(() => {
@@ -133,7 +133,11 @@ export function TableSidebar({
         </div>
 
         {onWidthResizerMouseDown && (
-          <div className="width-resizer" onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
+          <div
+            className="width-resizer"
+            onMouseDown={onWidthResizerMouseDown}
+            title="Drag to resize sidebar"
+          />
         )}
       </aside>
     </>

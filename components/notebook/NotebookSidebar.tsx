@@ -86,7 +86,11 @@ export function NotebookSidebar({
         ))}
       </div>
 
-      <div className={styles.widthResizer} onMouseDown={handleWidthResizerMouseDown} title="Drag to resize sidebar" />
+      <div
+        className={styles.widthResizer}
+        onMouseDown={handleWidthResizerMouseDown}
+        title="Drag to resize sidebar"
+      />
     </aside>
   )
 }

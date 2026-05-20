@@ -53,14 +53,24 @@ export function SortPopover({
 
   const dropdown =
     isOpen && portalReady ? (
-      <div ref={dropdownRef} className={styles.sortDropdown} style={dropdownStyle} role="dialog" aria-label="Sort rows">
+      <div
+        ref={dropdownRef}
+        className={styles.sortDropdown}
+        style={dropdownStyle}
+        role="dialog"
+        aria-label="Sort rows"
+      >
         <div className={styles.sortHeader}>
           <span className={styles.sortTitle}>Sort</span>
         </div>
         <div className={styles.sortBody}>
           <label className={styles.sortField}>
             <span className={styles.sortLabel}>Column</span>
-            <select className={styles.sortControl} value={sortBy} onChange={(e) => onChangeSortBy(e.target.value)}>
+            <select
+              className={styles.sortControl}
+              value={sortBy}
+              onChange={(e) => onChangeSortBy(e.target.value)}
+            >
               <option value="">Default order</option>
               {columns.map((column) => (
                 <option key={`sort-${column.name}`} value={column.name}>

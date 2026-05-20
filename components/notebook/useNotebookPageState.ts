@@ -37,7 +37,8 @@ export function useNotebookPageState() {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null
       const tag = target?.tagName?.toLowerCase()
-      const typing = Boolean(target?.isContentEditable) || tag === 'input' || tag === 'textarea' || tag === 'select'
+      const typing =
+        Boolean(target?.isContentEditable) || tag === 'input' || tag === 'textarea' || tag === 'select'
 
       if (event.key === 'Escape') {
         if (notebookImport.showImportModal) {

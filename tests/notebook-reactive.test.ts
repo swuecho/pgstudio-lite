@@ -53,7 +53,13 @@ describe('notebook reactive runner', () => {
       id: 'w-1',
       type: 'widget',
       position: 0,
-      metadata_json: makeWidgetMetadata({ widgetType: 'number', key: 'p', label: 'Param', value: 5, autoRun: true }),
+      metadata_json: makeWidgetMetadata({
+        widgetType: 'number',
+        key: 'p',
+        label: 'Param',
+        value: 5,
+        autoRun: true,
+      }),
     })
     const sql1 = makeCell({ id: 'sql-1', type: 'sql', position: 1, content: 'select {{p}} as v1' })
     const sql2 = makeCell({ id: 'sql-2', type: 'sql', position: 2, content: 'select {{p}} as v2' })
@@ -68,7 +74,13 @@ describe('notebook reactive runner', () => {
         'sql-2': 'select {{p}} as v2',
       },
       widgetDraftByCell: {
-        'w-1': makeWidgetMetadata({ widgetType: 'number', key: 'p', label: 'Param', value: 5, autoRun: true }),
+        'w-1': makeWidgetMetadata({
+          widgetType: 'number',
+          key: 'p',
+          label: 'Param',
+          value: 5,
+          autoRun: true,
+        }),
       },
     }
 
@@ -81,7 +93,13 @@ describe('notebook reactive runner', () => {
       runCell: async ({ cellId, inputValues }) => {
         seenValues.push(Number(inputValues.p))
         if (cellId === 'sql-1') {
-          state.widgetDraftByCell['w-1'] = makeWidgetMetadata({ widgetType: 'number', key: 'p', label: 'Param', value: 6, autoRun: true })
+          state.widgetDraftByCell['w-1'] = makeWidgetMetadata({
+            widgetType: 'number',
+            key: 'p',
+            label: 'Param',
+            value: 6,
+            autoRun: true,
+          })
         }
       },
     })
@@ -94,7 +112,13 @@ describe('notebook reactive runner', () => {
       id: 'w-1',
       type: 'widget',
       position: 2,
-      metadata_json: makeWidgetMetadata({ widgetType: 'number', key: 'p', label: 'Param', value: 1, autoRun: true }),
+      metadata_json: makeWidgetMetadata({
+        widgetType: 'number',
+        key: 'p',
+        label: 'Param',
+        value: 1,
+        autoRun: true,
+      }),
     })
     const sqlAbove = makeCell({ id: 'sql-above', type: 'sql', position: 1, content: 'select {{p}}' })
     const sqlBelow = makeCell({ id: 'sql-below', type: 'sql', position: 3, content: 'select {{p}}' })
@@ -110,7 +134,13 @@ describe('notebook reactive runner', () => {
           'sql-below': 'select {{p}}',
         },
         widgetDraftByCell: {
-          'w-1': makeWidgetMetadata({ widgetType: 'number', key: 'p', label: 'Param', value: 1, autoRun: true }),
+          'w-1': makeWidgetMetadata({
+            widgetType: 'number',
+            key: 'p',
+            label: 'Param',
+            value: 1,
+            autoRun: true,
+          }),
         },
       },
       'w-1',
@@ -125,7 +155,13 @@ describe('notebook reactive runner', () => {
       id: 'w-1',
       type: 'widget',
       position: 0,
-      metadata_json: makeWidgetMetadata({ widgetType: 'number', key: 'p', label: 'Param', value: 5, autoRun: true }),
+      metadata_json: makeWidgetMetadata({
+        widgetType: 'number',
+        key: 'p',
+        label: 'Param',
+        value: 5,
+        autoRun: true,
+      }),
     })
     const sql1 = makeCell({ id: 'sql-1', type: 'sql', position: 1, content: 'select {{p}} as v1' })
 
@@ -141,7 +177,13 @@ describe('notebook reactive runner', () => {
         sortedCells: [widgetCell, sql1],
         draftByCell: { 'sql-1': 'select {{p}} as v1' },
         widgetDraftByCell: {
-          'w-1': makeWidgetMetadata({ widgetType: 'number', key: 'p', label: 'Param', value: 5, autoRun: true }),
+          'w-1': makeWidgetMetadata({
+            widgetType: 'number',
+            key: 'p',
+            label: 'Param',
+            value: 5,
+            autoRun: true,
+          }),
         },
       }),
       runCell: async () => {
@@ -221,7 +263,12 @@ describe('notebook reactive runner', () => {
     const sqlAbove = makeCell({ id: 'sql-above', type: 'sql', position: 0, content: 'select {{start_date}}' })
     const sqlStart = makeCell({ id: 'sql-start', type: 'sql', position: 2, content: 'select {{start_date}}' })
     const sqlEnd = makeCell({ id: 'sql-end', type: 'sql', position: 3, content: 'select {{end_date}}' })
-    const sqlBoth = makeCell({ id: 'sql-both', type: 'sql', position: 4, content: 'select {{start_date}}, {{end_date}}' })
+    const sqlBoth = makeCell({
+      id: 'sql-both',
+      type: 'sql',
+      position: 4,
+      content: 'select {{start_date}}, {{end_date}}',
+    })
 
     const state: ReactiveNotebookState = {
       activeNotebookId: 'nb-1',
@@ -288,7 +335,10 @@ describe('notebook reactive runner', () => {
       })
     ).toEqual([
       { cellId: 'a', payload: { content: 'select 1;' } },
-      { cellId: 'b', payload: { metadata: makeWidgetMetadata({ widgetType: 'text', key: 'q', value: 'abc' }) } },
+      {
+        cellId: 'b',
+        payload: { metadata: makeWidgetMetadata({ widgetType: 'text', key: 'q', value: 'abc' }) },
+      },
     ])
   })
 
@@ -298,7 +348,12 @@ describe('notebook reactive runner', () => {
         makeCell({
           id: 'w-1',
           type: 'widget',
-          metadata_json: makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' }),
+          metadata_json: makeWidgetMetadata({
+            widgetType: 'text',
+            key: 'region',
+            label: 'Region',
+            value: 'eu',
+          }),
         }),
       ],
       previousDrafts: {
@@ -310,18 +365,33 @@ describe('notebook reactive runner', () => {
       pendingSavePayloads: {},
     })
 
-    expect(synced.drafts['w-1']).toMatchObject({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' })
+    expect(synced.drafts['w-1']).toMatchObject({
+      widgetType: 'text',
+      key: 'region',
+      label: 'Region',
+      value: 'eu',
+    })
   })
 
   it('preserves widget drafts when a local metadata edit is still pending save', () => {
-    const localDraft = makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'apac' })
+    const localDraft = makeWidgetMetadata({
+      widgetType: 'text',
+      key: 'region',
+      label: 'Region',
+      value: 'apac',
+    })
 
     const synced = syncWidgetDraftState({
       cells: [
         makeCell({
           id: 'w-1',
           type: 'widget',
-          metadata_json: makeWidgetMetadata({ widgetType: 'text', key: 'region', label: 'Region', value: 'eu' }),
+          metadata_json: makeWidgetMetadata({
+            widgetType: 'text',
+            key: 'region',
+            label: 'Region',
+            value: 'eu',
+          }),
         }),
       ],
       previousDrafts: { 'w-1': localDraft },
@@ -336,12 +406,30 @@ describe('notebook reactive runner', () => {
 
   it('refreshes cached SQL results when server results change and local cache matches the previous server state', () => {
     const previousResult = {
-      statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 1 }] }],
+      statements: [
+        {
+          command: 'SELECT',
+          rowCount: 1,
+          returnedRowCount: 1,
+          truncated: false,
+          fields: ['v'],
+          rows: [{ v: 1 }],
+        },
+      ],
       totalRows: 1,
       durationMs: 5,
     }
     const nextResult = {
-      statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+      statements: [
+        {
+          command: 'SELECT',
+          rowCount: 1,
+          returnedRowCount: 1,
+          truncated: false,
+          fields: ['v'],
+          rows: [{ v: 2 }],
+        },
+      ],
       totalRows: 1,
       durationMs: 6,
     }
@@ -373,7 +461,16 @@ describe('notebook reactive runner', () => {
           type: 'sql',
           content: 'select 2;',
           last_result_json: {
-            statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+            statements: [
+              {
+                command: 'SELECT',
+                rowCount: 1,
+                returnedRowCount: 1,
+                truncated: false,
+                fields: ['v'],
+                rows: [{ v: 2 }],
+              },
+            ],
             totalRows: 1,
             durationMs: 5,
           },
@@ -392,7 +489,16 @@ describe('notebook reactive runner', () => {
       draftByCell: { 'sql-1': 'select 3;' },
       resultsByCell: {
         'sql-1': {
-          statements: [{ command: 'SELECT', rowCount: 1, returnedRowCount: 1, truncated: false, fields: ['v'], rows: [{ v: 2 }] }],
+          statements: [
+            {
+              command: 'SELECT',
+              rowCount: 1,
+              returnedRowCount: 1,
+              truncated: false,
+              fields: ['v'],
+              rows: [{ v: 2 }],
+            },
+          ],
           totalRows: 1,
           durationMs: 5,
         },

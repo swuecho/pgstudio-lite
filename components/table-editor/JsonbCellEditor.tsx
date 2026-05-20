@@ -43,76 +43,77 @@ export function JsonbCellEditor({ value, onSave, onCancel }: JsonbCellEditorProp
     }
   }, [])
 
-  const handleMount = useCallback((editor: MonacoEditorNs.IStandaloneCodeEditor, monaco: any) => {
-    editorRef.current = editor
+  const handleMount = useCallback(
+    (editor: MonacoEditorNs.IStandaloneCodeEditor, monaco: any) => {
+      editorRef.current = editor
 
-    // Define themes (Monaco will handle re-definition gracefully)
-    try {
-      monaco.editor.defineTheme('supabase-light', {
-        base: 'vs',
-        inherit: true,
-        rules: [
-          { token: '', background: 'fcfdff' },
-          { token: '', background: 'fcfdff', foreground: '101827' },
-        ],
-        colors: {
-          'editor.background': '#fcfdff',
-          'editorLineNumber.foreground': '#9ba9bf',
-          'editorLineNumber.activeForeground': '#55657f',
-        },
+      // Define themes (Monaco will handle re-definition gracefully)
+      try {
+        monaco.editor.defineTheme('supabase-light', {
+          base: 'vs',
+          inherit: true,
+          rules: [
+            { token: '', background: 'fcfdff' },
+            { token: '', background: 'fcfdff', foreground: '101827' },
+          ],
+          colors: {
+            'editor.background': '#fcfdff',
+            'editorLineNumber.foreground': '#9ba9bf',
+            'editorLineNumber.activeForeground': '#55657f',
+          },
+        })
+
+        monaco.editor.defineTheme('supabase-dark', {
+          base: 'vs-dark',
+          inherit: true,
+          rules: [{ token: '', background: '111827', foreground: 'e5e7eb' }],
+          colors: {
+            'editor.background': '#111827',
+            'editorLineNumber.foreground': '#667085',
+            'editorLineNumber.activeForeground': '#d0d5dd',
+          },
+        })
+      } catch {
+        // Theme already defined, ignore error
+      }
+
+      const applyEditorTheme = () => {
+        monaco.editor.setTheme(getCurrentTheme() === 'dark' ? 'supabase-dark' : 'supabase-light')
+      }
+
+      applyEditorTheme()
+      window.addEventListener('pgstudio:themechange', applyEditorTheme)
+
+      // Format JSON on mount
+      setTimeout(() => {
+        const action = editor.getAction('editor.action.formatDocument')
+        action?.run()
+      }, 100)
+
+      // Handle blur to save
+      const disposables = [
+        editor.onDidBlurEditorText(() => {
+          try {
+            const raw = editor.getValue()
+            const parsed = raw.trim() === '' ? null : JSON.parse(raw)
+            onSave(parsed)
+          } catch {
+            // Invalid JSON, don't save
+            onCancel()
+          }
+        }),
+      ]
+
+      editor.onDidDispose(() => {
+        window.removeEventListener('pgstudio:themechange', applyEditorTheme)
+        disposables.forEach((d) => d.dispose())
       })
 
-      monaco.editor.defineTheme('supabase-dark', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [
-          { token: '', background: '111827', foreground: 'e5e7eb' },
-        ],
-        colors: {
-          'editor.background': '#111827',
-          'editorLineNumber.foreground': '#667085',
-          'editorLineNumber.activeForeground': '#d0d5dd',
-        },
-      })
-    } catch {
-      // Theme already defined, ignore error
-    }
-
-    const applyEditorTheme = () => {
-      monaco.editor.setTheme(getCurrentTheme() === 'dark' ? 'supabase-dark' : 'supabase-light')
-    }
-
-    applyEditorTheme()
-    window.addEventListener('pgstudio:themechange', applyEditorTheme)
-
-    // Format JSON on mount
-    setTimeout(() => {
-      const action = editor.getAction('editor.action.formatDocument')
-      action?.run()
-    }, 100)
-
-    // Handle blur to save
-    const disposables = [
-      editor.onDidBlurEditorText(() => {
-        try {
-          const raw = editor.getValue()
-          const parsed = raw.trim() === '' ? null : JSON.parse(raw)
-          onSave(parsed)
-        } catch {
-          // Invalid JSON, don't save
-          onCancel()
-        }
-      }),
-    ]
-
-    editor.onDidDispose(() => {
-      window.removeEventListener('pgstudio:themechange', applyEditorTheme)
-      disposables.forEach(d => d.dispose())
-    })
-
-    // Focus the editor
-    editor.focus()
-  }, [onSave, onCancel])
+      // Focus the editor
+      editor.focus()
+    },
+    [onSave, onCancel]
+  )
 
   const handleChange = useCallback((_value: string | undefined) => {
     // Just update the editor value, validation happens on blur

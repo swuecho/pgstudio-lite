@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WidgetValidationMessages } from '../../lib/notebook-widget-validation'
-import type { NotebookInputCellMetadata, NotebookInputOption, NotebookInputType, NotebookOptionSource, NotebookResolvedOptionsState } from './types'
+import type {
+  NotebookInputCellMetadata,
+  NotebookInputOption,
+  NotebookInputType,
+  NotebookOptionSource,
+  NotebookResolvedOptionsState,
+} from './types'
 
 type InputCellEditorProps = {
   metadata: NotebookInputCellMetadata
@@ -76,7 +82,15 @@ export function InputCellEditor({
 
     if (isSameInputValue(nextValue, metadata.value)) return
     onChange({ ...metadata, value: nextValue })
-  }, [effectiveOptions, isOptionWidget, metadata, onChange, optionsSource, sqlOptionState.error, sqlOptionState.loading])
+  }, [
+    effectiveOptions,
+    isOptionWidget,
+    metadata,
+    onChange,
+    optionsSource,
+    sqlOptionState.error,
+    sqlOptionState.loading,
+  ])
 
   function patch(next: Partial<NotebookInputCellMetadata>) {
     onChange({ ...metadata, ...next })
@@ -109,7 +123,13 @@ export function InputCellEditor({
       <div className="min-w-0">
         <div className="grid gap-1.5">
           {showValueLabel ? <label htmlFor={valueId}>{metadata.label || metadata.key}</label> : null}
-          <InputValueControl id={valueId} metadata={metadata} options={effectiveOptions} disabled={disabled} onChange={onChange} />
+          <InputValueControl
+            id={valueId}
+            metadata={metadata}
+            options={effectiveOptions}
+            disabled={disabled}
+            onChange={onChange}
+          />
           {isOptionWidget && optionsSource === 'sql' && sqlOptionState.error ? (
             <div className="history-meta">{sqlOptionState.error}</div>
           ) : null}
@@ -153,13 +173,17 @@ export function InputCellEditor({
               const inputType = event.target.value as NotebookInputType
               const next: Partial<NotebookInputCellMetadata> = { inputType }
               if (inputType === 'checkbox') next.value = Boolean(metadata.value)
-              else if (inputType === 'number' || inputType === 'range') next.value = metadata.value === null ? null : Number(metadata.value)
-              else if (inputType === 'multiselect') next.value = Array.isArray(metadata.value) ? metadata.value : []
+              else if (inputType === 'number' || inputType === 'range')
+                next.value = metadata.value === null ? null : Number(metadata.value)
+              else if (inputType === 'multiselect')
+                next.value = Array.isArray(metadata.value) ? metadata.value : []
               else if (inputType === 'select') {
                 const options = ensureSelectOptions(metadata.options)
                 next.options = options
                 next.value = coerceSelectValue(metadata.value, options, metadata.required === true)
-              } else next.value = metadata.value === null || metadata.value === undefined ? '' : String(metadata.value)
+              } else
+                next.value =
+                  metadata.value === null || metadata.value === undefined ? '' : String(metadata.value)
               patch(next)
             }}
           >
@@ -182,7 +206,9 @@ export function InputCellEditor({
                 type="number"
                 value={metadata.min ?? ''}
                 disabled={disabled}
-                onChange={(event) => patch({ min: event.target.value ? Number(event.target.value) : undefined })}
+                onChange={(event) =>
+                  patch({ min: event.target.value ? Number(event.target.value) : undefined })
+                }
               />
             </label>
             <label className="grid gap-1.5 text-xs text-[var(--muted)]">
@@ -192,7 +218,9 @@ export function InputCellEditor({
                 type="number"
                 value={metadata.max ?? ''}
                 disabled={disabled}
-                onChange={(event) => patch({ max: event.target.value ? Number(event.target.value) : undefined })}
+                onChange={(event) =>
+                  patch({ max: event.target.value ? Number(event.target.value) : undefined })
+                }
               />
             </label>
             <label className="grid gap-1.5 text-xs text-[var(--muted)]">
@@ -202,13 +230,17 @@ export function InputCellEditor({
                 type="number"
                 value={metadata.step ?? ''}
                 disabled={disabled}
-                onChange={(event) => patch({ step: event.target.value ? Number(event.target.value) : undefined })}
+                onChange={(event) =>
+                  patch({ step: event.target.value ? Number(event.target.value) : undefined })
+                }
               />
             </label>
           </>
         )}
 
-        {(metadata.inputType === 'text' || metadata.inputType === 'date' || metadata.inputType === 'datetime-local') && (
+        {(metadata.inputType === 'text' ||
+          metadata.inputType === 'date' ||
+          metadata.inputType === 'datetime-local') && (
           <label className="grid gap-1.5 text-xs text-[var(--muted)]">
             Placeholder
             <input
@@ -256,7 +288,9 @@ export function InputCellEditor({
               }}
             />
           </label>
-          {validationMessages?.options?.length ? <ValidationList messages={validationMessages.options} /> : null}
+          {validationMessages?.options?.length ? (
+            <ValidationList messages={validationMessages.options} />
+          ) : null}
         </>
       )}
 
@@ -268,7 +302,7 @@ export function InputCellEditor({
               className="min-h-[96px] w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 font-mono text-xs text-[var(--text)]"
               value={queryDraft}
               disabled={disabled}
-              placeholder={"select id as value, name as label from my_table order by 2;"}
+              placeholder={'select id as value, name as label from my_table order by 2;'}
               onFocus={() => setQueryEditing(true)}
               onBlur={() => setQueryEditing(false)}
               onChange={(event) => {
@@ -278,16 +312,27 @@ export function InputCellEditor({
               }}
             />
           </label>
-          {validationMessages?.optionsQuery?.length ? <ValidationList messages={validationMessages.optionsQuery} /> : null}
-          <div className="history-meta">Return `value` and `label` columns. If `label` is omitted, the second column or `value` is used.</div>
+          {validationMessages?.optionsQuery?.length ? (
+            <ValidationList messages={validationMessages.optionsQuery} />
+          ) : null}
+          <div className="history-meta">
+            Return `value` and `label` columns. If `label` is omitted, the second column or `value` is used.
+          </div>
           {onRefreshSqlOptions ? (
-            <button className="btn small" type="button" onClick={onRefreshSqlOptions} disabled={disabled || sqlOptionState.loading}>
+            <button
+              className="btn small"
+              type="button"
+              onClick={onRefreshSqlOptions}
+              disabled={disabled || sqlOptionState.loading}
+            >
               {sqlOptionState.loading ? 'Refreshing...' : 'Refresh Options'}
             </button>
           ) : null}
           {sqlOptionState.loading ? <div className="history-meta">Loading options...</div> : null}
           {sqlOptionState.lastLoadedAt ? (
-            <div className="history-meta">Last loaded: {new Date(sqlOptionState.lastLoadedAt).toLocaleString()}</div>
+            <div className="history-meta">
+              Last loaded: {new Date(sqlOptionState.lastLoadedAt).toLocaleString()}
+            </div>
           ) : null}
           {sqlOptionState.error ? <div className="empty-state">{sqlOptionState.error}</div> : null}
           {!sqlOptionState.loading && !sqlOptionState.error ? (
@@ -317,8 +362,16 @@ export function InputCellEditor({
       )}
 
       <div className="grid gap-1.5">
-        <label className="text-xs text-[var(--muted)]" htmlFor={valueId}>Value</label>
-        <InputValueControl id={valueId} metadata={metadata} options={effectiveOptions} disabled={disabled} onChange={onChange} />
+        <label className="text-xs text-[var(--muted)]" htmlFor={valueId}>
+          Value
+        </label>
+        <InputValueControl
+          id={valueId}
+          metadata={metadata}
+          options={effectiveOptions}
+          disabled={disabled}
+          onChange={onChange}
+        />
       </div>
 
       <div className="flex flex-wrap gap-4">
@@ -491,7 +544,11 @@ function ensureSelectOptions(options: NotebookInputOption[] | undefined) {
   return [{ value: 'option_1', label: 'Option 1' }]
 }
 
-function coerceSelectValue(value: NotebookInputCellMetadata['value'], options: NotebookInputOption[], required: boolean) {
+function coerceSelectValue(
+  value: NotebookInputCellMetadata['value'],
+  options: NotebookInputOption[],
+  required: boolean
+) {
   const current = value === null || value === undefined ? '' : String(value)
   if (!options.length) return required ? '' : current
   if (!current && required) return options[0].value
@@ -506,7 +563,10 @@ function coerceMultiselectValue(value: NotebookInputCellMetadata['value'], optio
   return current.filter((item) => allowed.has(item))
 }
 
-function isSameInputValue(left: NotebookInputCellMetadata['value'], right: NotebookInputCellMetadata['value']) {
+function isSameInputValue(
+  left: NotebookInputCellMetadata['value'],
+  right: NotebookInputCellMetadata['value']
+) {
   if (Array.isArray(left) && Array.isArray(right)) {
     if (left.length !== right.length) return false
     return left.every((item, index) => item === right[index])

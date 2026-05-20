@@ -71,7 +71,10 @@ export async function patchRow(
   })
 }
 
-export async function removeRow(table: string, payload: { connectionName: string; schema?: string; rowKey: RowKey }) {
+export async function removeRow(
+  table: string,
+  payload: { connectionName: string; schema?: string; rowKey: RowKey }
+) {
   const body = { ...payload, schema: payload.schema || 'public' }
   return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
     method: 'DELETE',

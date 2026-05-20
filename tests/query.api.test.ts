@@ -12,7 +12,11 @@ type ApiResult = {
   headers: Record<string, string>
 }
 
-async function invokeApi(input: { method: string; query?: Record<string, unknown>; body?: unknown }): Promise<ApiResult> {
+async function invokeApi(input: {
+  method: string
+  query?: Record<string, unknown>
+  body?: unknown
+}): Promise<ApiResult> {
   const headers: Record<string, string> = {}
   let statusCode = 200
   let payload: unknown = null

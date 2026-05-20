@@ -55,12 +55,20 @@ export async function getNotebook(id: string) {
 
 export async function createCell(
   notebookId: string,
-  payload: { type: NotebookCellType; content?: string; metadata?: NotebookWidgetMetadata | null; position?: number }
+  payload: {
+    type: NotebookCellType
+    content?: string
+    metadata?: NotebookWidgetMetadata | null
+    position?: number
+  }
 ) {
-  return fetchJson<{ item: NotebookCell; cells: NotebookCell[] }>(`/api/notebooks/${encodeURIComponent(notebookId)}/cells`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
+  return fetchJson<{ item: NotebookCell; cells: NotebookCell[] }>(
+    `/api/notebooks/${encodeURIComponent(notebookId)}/cells`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  )
 }
 
 export async function updateCell(
@@ -74,20 +82,31 @@ export async function updateCell(
     position?: number
   }
 ) {
-  return fetchJson<{ item: NotebookCell; cells: NotebookCell[] }>(`/api/notebooks/${encodeURIComponent(notebookId)}/cells`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
-  })
+  return fetchJson<{ item: NotebookCell; cells: NotebookCell[] }>(
+    `/api/notebooks/${encodeURIComponent(notebookId)}/cells`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }
+  )
 }
 
 export async function deleteCell(notebookId: string, cellId: string) {
-  return fetchJson<{ ok: boolean; cells: NotebookCell[] }>(`/api/notebooks/${encodeURIComponent(notebookId)}/cells`, {
-    method: 'DELETE',
-    body: JSON.stringify({ cellId }),
-  })
+  return fetchJson<{ ok: boolean; cells: NotebookCell[] }>(
+    `/api/notebooks/${encodeURIComponent(notebookId)}/cells`,
+    {
+      method: 'DELETE',
+      body: JSON.stringify({ cellId }),
+    }
+  )
 }
 
-export async function runCell(notebookId: string, cellId: string, query: string, inputValues?: NotebookInputValues) {
+export async function runCell(
+  notebookId: string,
+  cellId: string,
+  query: string,
+  inputValues?: NotebookInputValues
+) {
   const payload = inputValues ? { cellId, query, inputValues } : { cellId, query }
   return fetchJson<RunCellResponse>(`/api/notebooks/${encodeURIComponent(notebookId)}/run-cell`, {
     method: 'POST',

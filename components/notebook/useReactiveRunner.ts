@@ -38,7 +38,11 @@ export function useReactiveRunner(params: {
 
   const reactiveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  function scheduleWidgetReactiveRuns(cellId: string, previous: NotebookWidgetMetadata, next: NotebookWidgetMetadata) {
+  function scheduleWidgetReactiveRuns(
+    cellId: string,
+    previous: NotebookWidgetMetadata,
+    next: NotebookWidgetMetadata
+  ) {
     const timer = reactiveTimersRef.current[cellId]
     if (timer) clearTimeout(timer)
     if (next.autoRun === false) return
@@ -70,7 +74,12 @@ export function useReactiveRunner(params: {
     const statusLabel = keys.length === 1 ? `'${keys[0]}'` : `${keys.length} widget input(s)`
 
     try {
-      setQueuedRunByCell((prev) => markQueuedCells(prev, targets.map((cell) => cell.id)))
+      setQueuedRunByCell((prev) =>
+        markQueuedCells(
+          prev,
+          targets.map((cell) => cell.id)
+        )
+      )
       setStatus(`Input ${statusLabel} changed. Queuing ${targets.length} SQL cell(s)...`)
       await enqueueExecution('Auto-run', () =>
         executeQueuedSqlRun({

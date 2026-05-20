@@ -1,6 +1,10 @@
 import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell, NotebookWidgetMetadata } from './types'
-import { getWidgetParamValues, normalizeWidgetMetadata, createDefaultWidgetMetadata } from '../../lib/notebook-widgets'
+import {
+  getWidgetParamValues,
+  normalizeWidgetMetadata,
+  createDefaultWidgetMetadata,
+} from '../../lib/notebook-widgets'
 import type { WidgetValidationMessages } from '../../lib/notebook-widget-validation'
 
 export function isSameValue(a: unknown, b: unknown) {
@@ -222,7 +226,10 @@ export function getCellUiStateByCell(input: {
   runningCellId: string
   staleResultByCell: Record<string, boolean>
 }) {
-  const stateByCell: Record<string, 'idle' | 'saving' | 'save_failed' | 'queued' | 'running' | 'stale_result'> = {}
+  const stateByCell: Record<
+    string,
+    'idle' | 'saving' | 'save_failed' | 'queued' | 'running' | 'stale_result'
+  > = {}
 
   for (const cell of input.sortedCells) {
     if (input.runningCellId === cell.id) {
@@ -275,7 +282,9 @@ export function getWidgetParameterKeys(metadata: NotebookWidgetMetadata) {
   }
 
   if (metadata.widgetType === 'date-range') {
-    return [metadata.config?.startKey?.trim(), metadata.config?.endKey?.trim()].filter((item): item is string => Boolean(item))
+    return [metadata.config?.startKey?.trim(), metadata.config?.endKey?.trim()].filter(
+      (item): item is string => Boolean(item)
+    )
   }
 
   return []
@@ -303,7 +312,11 @@ export function getResetWidgetValue(metadata: NotebookWidgetMetadata) {
   return undefined
 }
 
-export function pushValidationMessage(target: WidgetValidationMessages, field: keyof WidgetValidationMessages, message: string) {
+export function pushValidationMessage(
+  target: WidgetValidationMessages,
+  field: keyof WidgetValidationMessages,
+  message: string
+) {
   if (!target[field]) target[field] = []
   target[field]!.push(message)
 }

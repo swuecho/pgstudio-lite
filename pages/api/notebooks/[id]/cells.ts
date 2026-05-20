@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { createNotebookCell, deleteNotebookCell, getNotebookById, updateNotebookCell } from '../../../../lib/notebook-db'
+import {
+  createNotebookCell,
+  deleteNotebookCell,
+  getNotebookById,
+  updateNotebookCell,
+} from '../../../../lib/notebook-db'
 import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
 import { nonEmptyStringSchema, parseWithSchema } from '../../../../lib/api/validation'
 import { notebookWidgetMetadataSchema } from '../../../../lib/notebook-widgets'
@@ -51,7 +56,10 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === 'PATCH') {
-      const { cellId, type, content, metadata, collapsed, position } = parseWithSchema(patchCellSchema, req.body || {})
+      const { cellId, type, content, metadata, collapsed, position } = parseWithSchema(
+        patchCellSchema,
+        req.body || {}
+      )
       const item = updateNotebookCell(id, cellId, { type, content, metadata, collapsed, position })
       if (!item) return res.status(404).json({ error: 'cell not found' })
       const data = getNotebookById(id)

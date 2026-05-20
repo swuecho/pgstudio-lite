@@ -3,14 +3,11 @@ import { badRequest } from './errors'
 
 export const nonEmptyStringSchema = z.string().trim().min(1)
 
-export const optionalSchemaNameSchema = z.preprocess(
-  (value) => {
-    if (typeof value !== 'string') return undefined
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : undefined
-  },
-  z.string().min(1).optional()
-)
+export const optionalSchemaNameSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}, z.string().min(1).optional())
 
 export const optionalConnectionNameSchema = optionalSchemaNameSchema
 

@@ -160,7 +160,10 @@ function removeAtPath(root: unknown, path: string) {
   delete objectContainer[key]
 }
 
-export function applyJsonPatch<T>(input: T, ops: Array<{ op: 'add' | 'remove' | 'replace'; path: string; value?: unknown }>): T {
+export function applyJsonPatch<T>(
+  input: T,
+  ops: Array<{ op: 'add' | 'remove' | 'replace'; path: string; value?: unknown }>
+): T {
   const out = cloneJson(input)
   for (const patch of ops) {
     if (patch.op === 'remove') {

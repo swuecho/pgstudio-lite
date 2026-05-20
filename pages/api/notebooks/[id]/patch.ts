@@ -3,7 +3,12 @@ import { z } from 'zod'
 import { exportNotebookSpecV1ById, importNotebookSpecV1 } from '../../../../lib/notebook-db'
 import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
 import { nonEmptyStringSchema, parseWithSchema } from '../../../../lib/api/validation'
-import { applyJsonPatch, formatZodIssuesAsApiDetails, notebookSpecV1Schema, patchNotebookSchema } from '../../../../lib/notebook-spec'
+import {
+  applyJsonPatch,
+  formatZodIssuesAsApiDetails,
+  notebookSpecV1Schema,
+  patchNotebookSchema,
+} from '../../../../lib/notebook-spec'
 
 const paramsSchema = z.object({
   id: nonEmptyStringSchema,

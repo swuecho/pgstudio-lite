@@ -25,7 +25,10 @@ function toValidationDetails(error: unknown): ValidationDetail[] {
     .map((item) => ({
       path: String((item as Record<string, unknown>).path || ''),
       message: String((item as Record<string, unknown>).message || ''),
-      code: typeof (item as Record<string, unknown>).code === 'string' ? ((item as Record<string, unknown>).code as string) : undefined,
+      code:
+        typeof (item as Record<string, unknown>).code === 'string'
+          ? ((item as Record<string, unknown>).code as string)
+          : undefined,
     }))
 }
 
@@ -45,7 +48,11 @@ export function useNotebookImport(params: {
   const [importErrorDetails, setImportErrorDetails] = useState<ValidationDetail[]>([])
   const [importValidationWarnings, setImportValidationWarnings] = useState<string[]>([])
   const [importValidationSnapshot, setImportValidationSnapshot] = useState<NotebookSpecV1 | null>(null)
-  const [importParseHint, setImportParseHint] = useState<{ message: string; line: number | null; column: number | null } | null>(null)
+  const [importParseHint, setImportParseHint] = useState<{
+    message: string
+    line: number | null
+    column: number | null
+  } | null>(null)
   const [importDiffSummary, setImportDiffSummary] = useState<NotebookDiffSummary | null>(null)
   const [promptTask, setPromptTask] = useState('')
   const [promptDbContext, setPromptDbContext] = useState('')
@@ -61,10 +68,15 @@ export function useNotebookImport(params: {
   }, [importRawJson, importMode])
 
   const importNotebookMutation = useMutation({
-    mutationFn: (payload: { mode: 'create' | 'replace' | 'upsert'; notebook: NotebookSpecV1; target_notebook_id?: string }) =>
-      importNotebook(payload),
+    mutationFn: (payload: {
+      mode: 'create' | 'replace' | 'upsert'
+      notebook: NotebookSpecV1
+      target_notebook_id?: string
+    }) => importNotebook(payload),
     onSuccess: (result) => {
-      setStatus(result.warnings.length ? `Imported with warnings (${result.warnings.length})` : 'Notebook imported')
+      setStatus(
+        result.warnings.length ? `Imported with warnings (${result.warnings.length})` : 'Notebook imported'
+      )
       setActiveNotebookId(result.notebook_id)
       setShowImportModal(false)
       setImportRawJson('')
@@ -83,8 +95,11 @@ export function useNotebookImport(params: {
   })
 
   const validateImportMutation = useMutation({
-    mutationFn: (payload: { mode: 'create' | 'replace' | 'upsert'; notebook: NotebookSpecV1; target_notebook_id?: string }) =>
-      importNotebook({ ...payload, validate_only: true }),
+    mutationFn: (payload: {
+      mode: 'create' | 'replace' | 'upsert'
+      notebook: NotebookSpecV1
+      target_notebook_id?: string
+    }) => importNotebook({ ...payload, validate_only: true }),
     onSuccess: (result) => {
       setImportValidationWarnings(result.warnings)
       setImportValidationSnapshot(result.notebook)
@@ -307,7 +322,10 @@ export function useNotebookImport(params: {
         const blob = new Blob([text], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
-        const safeTitle = (notebook.title || 'notebook').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+        const safeTitle = (notebook.title || 'notebook')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
         link.href = url
         link.download = `${safeTitle || 'notebook'}-${notebook.id || activeNotebookId}.json`
         document.body.appendChild(link)

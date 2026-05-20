@@ -32,7 +32,10 @@ describe('notebook ui helpers', () => {
   })
 
   it('getJsonParseErrorHint returns line and column when position exists', () => {
-    const hint = getJsonParseErrorHint(new Error('Unexpected token } in JSON at position 14'), '{\n  "a": 1,\n}')
+    const hint = getJsonParseErrorHint(
+      new Error('Unexpected token } in JSON at position 14'),
+      '{\n  "a": 1,\n}'
+    )
     expect(hint.line).toBeGreaterThanOrEqual(1)
     expect(hint.column).toBeGreaterThanOrEqual(1)
   })

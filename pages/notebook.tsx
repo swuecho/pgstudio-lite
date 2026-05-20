@@ -54,7 +54,9 @@ export default function NotebookPage() {
 
       <main className={styles.layoutMain}>
         <div className={styles.editorPanelHeader}>
-          <div className={`${styles.editorTitle} truncate`}>Notebook · {controller.activeNotebook?.title || '-'}</div>
+          <div className={`${styles.editorTitle} truncate`}>
+            Notebook · {controller.activeNotebook?.title || '-'}
+          </div>
           <div className={`${styles.editorHeaderRight} ${styles.headerActions}`}>
             <span className={`status-pill ${styles.statusPill}`}>{controller.status}</span>
             <select
@@ -72,7 +74,10 @@ export default function NotebookPage() {
               ))}
             </select>
             <SettingsButton section="connections" label="Settings" />
-            <button className={`btn small ${styles.actionButton}`} onClick={() => controller.notebookImport.setShowImportModal(true)}>
+            <button
+              className={`btn small ${styles.actionButton}`}
+              onClick={() => controller.notebookImport.setShowImportModal(true)}
+            >
               Import
             </button>
             <button
@@ -82,7 +87,10 @@ export default function NotebookPage() {
             >
               Export
             </button>
-            <button className={`btn small ${styles.actionButton}`} onClick={() => controller.notebookImport.setShowHelp((prev) => !prev)}>
+            <button
+              className={`btn small ${styles.actionButton}`}
+              onClick={() => controller.notebookImport.setShowHelp((prev) => !prev)}
+            >
               {controller.notebookImport.showHelp ? 'Hide Help' : 'Help'}
             </button>
           </div>
@@ -116,7 +124,11 @@ export default function NotebookPage() {
               className={styles.presetSelect}
               value={controller.selectedWidgetPreset}
               disabled={!controller.activeNotebookId || controller.runningAll}
-              onChange={(event) => controller.setSelectedWidgetPreset(event.target.value as (typeof controller.selectedWidgetPreset))}
+              onChange={(event) =>
+                controller.setSelectedWidgetPreset(
+                  event.target.value as typeof controller.selectedWidgetPreset
+                )
+              }
               title="Widget preset"
             >
               {NOTEBOOK_WIDGET_PRESETS.map((preset) => (

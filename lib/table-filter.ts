@@ -154,11 +154,7 @@ export function formatTableFilterSummary(
   return `${filterColumn} ${operator} ${filterValue.trim()}`
 }
 
-export function coerceFilterValue(
-  value: string,
-  kind: ColumnKind,
-  mode: TableFilterMode
-): string | null {
+export function coerceFilterValue(value: string, kind: ColumnKind, mode: TableFilterMode): string | null {
   if (!filterModeNeedsValue(mode)) return ''
   if (filterModeNeedsEndValue(mode)) return coerceFilterValue(value, kind, 'equals')
 

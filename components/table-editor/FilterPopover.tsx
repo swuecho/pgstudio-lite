@@ -93,7 +93,13 @@ export function FilterPopover({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableTarget(event.target)) {
+      if (
+        event.key === '/' &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target)
+      ) {
         event.preventDefault()
         setIsOpen(true)
         requestAnimationFrame(() => {

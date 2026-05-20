@@ -23,7 +23,9 @@ export function NotebookParameterPanel({ controller }: NotebookParameterPanelPro
           <article key={item.cell.id} className={styles.parameterCard}>
             <div className={styles.parameterCardHead}>
               <div className={styles.parameterCardTitleRow}>
-                <div className={styles.parameterCardTitle}>{item.metadata.label || item.primaryKey || 'Parameter'}</div>
+                <div className={styles.parameterCardTitle}>
+                  {item.metadata.label || item.primaryKey || 'Parameter'}
+                </div>
                 <div className={styles.parameterCardMeta}>
                   <span className={styles.widgetTag}>{item.metadata.widgetType}</span>
                   <span className={styles.widgetTag}>{item.source}</span>
@@ -32,7 +34,9 @@ export function NotebookParameterPanel({ controller }: NotebookParameterPanelPro
               </div>
               <div className="history-meta">
                 {item.parameterKeys.join(', ')}
-                {item.usedByCellIds.length ? ` · used by ${item.usedByCellIds.length} SQL cell(s)` : ' · not referenced yet'}
+                {item.usedByCellIds.length
+                  ? ` · used by ${item.usedByCellIds.length} SQL cell(s)`
+                  : ' · not referenced yet'}
                 {item.validationCount ? ` · ${item.validationCount} validation issue(s)` : ''}
               </div>
             </div>
@@ -41,8 +45,12 @@ export function NotebookParameterPanel({ controller }: NotebookParameterPanelPro
               <WidgetCellEditor
                 metadata={item.metadata}
                 disabled={controller.runningAll}
-                valueOnly={item.metadata.widgetType !== 'radio-group' && item.metadata.widgetType !== 'date-range'}
-                collapsed={item.metadata.widgetType === 'radio-group' || item.metadata.widgetType === 'date-range'}
+                valueOnly={
+                  item.metadata.widgetType !== 'radio-group' && item.metadata.widgetType !== 'date-range'
+                }
+                collapsed={
+                  item.metadata.widgetType === 'radio-group' || item.metadata.widgetType === 'date-range'
+                }
                 notebookId={controller.activeNotebookId}
                 inputValues={controller.inputValues}
                 sqlOptionsState={controller.resolvedOptionsByCell[item.cell.id]}
@@ -53,10 +61,18 @@ export function NotebookParameterPanel({ controller }: NotebookParameterPanelPro
             </div>
 
             <div className={styles.parameterActions}>
-              <button className="btn small" type="button" onClick={() => controller.jumpToInputCell(item.primaryKey)}>
+              <button
+                className="btn small"
+                type="button"
+                onClick={() => controller.jumpToInputCell(item.primaryKey)}
+              >
                 Open Widget
               </button>
-              <button className="btn small" type="button" onClick={() => controller.resetParameterWidget(item.cell.id)}>
+              <button
+                className="btn small"
+                type="button"
+                onClick={() => controller.resetParameterWidget(item.cell.id)}
+              >
                 Reset
               </button>
             </div>

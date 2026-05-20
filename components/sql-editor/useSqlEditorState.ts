@@ -90,7 +90,9 @@ export function useSqlEditorState() {
       const payload = await runQuery(connectionName, suffixWithLimit(current, 100))
       setResult(payload)
       setStatus({ text: `Success in ${payload.durationMs} ms`, tone: 'ok' })
-      tabs.setQueryTabs((all) => all.map((t) => (t.id === tabs.activeQueryTab?.id ? { ...t, dirty: false } : t)))
+      tabs.setQueryTabs((all) =>
+        all.map((t) => (t.id === tabs.activeQueryTab?.id ? { ...t, dirty: false } : t))
+      )
       await history.loadHistory()
     } catch (error) {
       setResult(null)
@@ -133,7 +135,6 @@ export function useSqlEditorState() {
       setExplaining(false)
     }
   }
-
 
   return {
     editorRef,

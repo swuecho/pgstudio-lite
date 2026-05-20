@@ -151,7 +151,11 @@ export function SqlSidebar({
               <button className="btn small" onClick={onRefreshHistory} disabled={loadingHistory}>
                 Refresh
               </button>
-              <button className="btn small danger" onClick={onClearHistory} disabled={filteredHistory.length === 0}>
+              <button
+                className="btn small danger"
+                onClick={onClearHistory}
+                disabled={filteredHistory.length === 0}
+              >
                 Clear
               </button>
             </>
@@ -186,28 +190,34 @@ export function SqlSidebar({
           {activeNavTab === 'history' ? (
             filteredHistory.length === 0 ? (
               <div className="empty-state">
-                {historySearch.trim() ? 'No history matches your search.' : 'No query history yet. Run a query to start.'}
+                {historySearch.trim()
+                  ? 'No history matches your search.'
+                  : 'No query history yet. Run a query to start.'}
               </div>
             ) : (
-            filteredHistory.map((item) => (
-              <div
-                key={item.id}
-                className={styles.historyItem}
-                role="button"
-                tabIndex={0}
-                onClick={() => onLoadHistoryQuery(item.query_text)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') onLoadHistoryQuery(item.query_text)
-                }}
-              >
-                <div className={styles.historyTop}>
-                  <span className={`pill ${item.status === 'success' ? 'ok' : 'error'}`}>{item.status}</span>
-                  <span>{item.duration_ms}ms</span>
+              filteredHistory.map((item) => (
+                <div
+                  key={item.id}
+                  className={styles.historyItem}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onLoadHistoryQuery(item.query_text)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') onLoadHistoryQuery(item.query_text)
+                  }}
+                >
+                  <div className={styles.historyTop}>
+                    <span className={`pill ${item.status === 'success' ? 'ok' : 'error'}`}>
+                      {item.status}
+                    </span>
+                    <span>{item.duration_ms}ms</span>
+                  </div>
+                  <div className={styles.historyQuery}>
+                    {item.query_text.split('\n').join(' ').slice(0, 140)}
+                  </div>
+                  <div className="history-meta">{formatTime(item.executed_at)}</div>
                 </div>
-                <div className={styles.historyQuery}>{item.query_text.split('\n').join(' ').slice(0, 140)}</div>
-                <div className="history-meta">{formatTime(item.executed_at)}</div>
-              </div>
-            ))
+              ))
             )
           ) : activeNavTab === 'snippets' ? (
             filteredSnippets.length === 0 ? (
@@ -217,73 +227,79 @@ export function SqlSidebar({
                   : 'No snippets yet. Use Save in the SQL editor to create one.'}
               </div>
             ) : (
-            filteredSnippets.map((item) => (
-              <div key={item.id} className={`${styles.historyItem} ${styles.snippetItem}`}>
-                <div className={styles.historyTop}>
-                  <span className="pill ok">snippet</span>
-                  {renamingSnippetId === item.id ? (
-                    <input
-                      className={styles.snippetTitleInput}
-                      value={renameDraft}
-                      autoFocus
-                      onChange={(event) => onChangeRenameDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault()
+              filteredSnippets.map((item) => (
+                <div key={item.id} className={`${styles.historyItem} ${styles.snippetItem}`}>
+                  <div className={styles.historyTop}>
+                    <span className="pill ok">snippet</span>
+                    {renamingSnippetId === item.id ? (
+                      <input
+                        className={styles.snippetTitleInput}
+                        value={renameDraft}
+                        autoFocus
+                        onChange={(event) => onChangeRenameDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void onRenameSnippet(item, renameDraft)
+                          }
+                          if (event.key === 'Escape') onCancelRenameSnippet()
+                        }}
+                        onBlur={() => {
                           void onRenameSnippet(item, renameDraft)
-                        }
-                        if (event.key === 'Escape') onCancelRenameSnippet()
-                      }}
-                      onBlur={() => {
-                        void onRenameSnippet(item, renameDraft)
-                      }}
-                    />
-                  ) : (
-                    <span>{item.title}</span>
-                  )}
-                </div>
-                <div className={`${styles.historyQuery} ${styles.snippetQuery}`}>{item.query_text.split('\n').join(' ').slice(0, 180)}</div>
-                <div className="history-meta">
-                  <span>{formatTime(item.updated_at)}</span>
-                </div>
-                <div className="history-actions">
-                  <button className="btn small" onClick={() => onLoadSnippetQuery(item.query_text)}>
-                    Load
-                  </button>
-                  <button className="btn small" onClick={() => onEditSnippet(item)}>
-                    Edit
-                  </button>
-                  <button className="btn small" onClick={() => onDuplicateSnippet(item)}>
-                    Duplicate
-                  </button>
-                  {renamingSnippetId === item.id ? (
-                    <button className="btn small" onClick={() => onRenameSnippet(item, renameDraft)}>
-                      Apply
+                        }}
+                      />
+                    ) : (
+                      <span>{item.title}</span>
+                    )}
+                  </div>
+                  <div className={`${styles.historyQuery} ${styles.snippetQuery}`}>
+                    {item.query_text.split('\n').join(' ').slice(0, 180)}
+                  </div>
+                  <div className="history-meta">
+                    <span>{formatTime(item.updated_at)}</span>
+                  </div>
+                  <div className="history-actions">
+                    <button className="btn small" onClick={() => onLoadSnippetQuery(item.query_text)}>
+                      Load
                     </button>
-                  ) : (
-                    <button className="btn small" onClick={() => onBeginRenameSnippet(item)}>
-                      Rename
+                    <button className="btn small" onClick={() => onEditSnippet(item)}>
+                      Edit
                     </button>
-                  )}
-                  <button className="btn small danger" onClick={() => onDeleteSnippet(item)}>
-                    Delete
-                  </button>
+                    <button className="btn small" onClick={() => onDuplicateSnippet(item)}>
+                      Duplicate
+                    </button>
+                    {renamingSnippetId === item.id ? (
+                      <button className="btn small" onClick={() => onRenameSnippet(item, renameDraft)}>
+                        Apply
+                      </button>
+                    ) : (
+                      <button className="btn small" onClick={() => onBeginRenameSnippet(item)}>
+                        Rename
+                      </button>
+                    )}
+                    <button className="btn small danger" onClick={() => onDeleteSnippet(item)}>
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))
             )
+          ) : schemaGroups.length === 0 ? (
+            <div className="empty-state">
+              {historySearch.trim()
+                ? 'No tables or views match your search.'
+                : 'No tables or views found for this connection.'}
+            </div>
           ) : (
-            schemaGroups.length === 0 ? (
-              <div className="empty-state">
-                {historySearch.trim()
-                  ? 'No tables or views match your search.'
-                  : 'No tables or views found for this connection.'}
-              </div>
-            ) : (
             schemaGroups.map(([schema, tables]) => (
               <div key={schema} className={styles.explorerGroup}>
-                <button className={`${styles.explorerSchema} ${styles.explorerToggleRow}`} onClick={() => onToggleSchema(schema)}>
-                  <span className={styles.explorerChevron}>{expandedSchemas[schema] === false ? '▸' : '▾'}</span>
+                <button
+                  className={`${styles.explorerSchema} ${styles.explorerToggleRow}`}
+                  onClick={() => onToggleSchema(schema)}
+                >
+                  <span className={styles.explorerChevron}>
+                    {expandedSchemas[schema] === false ? '▸' : '▾'}
+                  </span>
                   <span>{schema}</span>
                 </button>
                 {expandedSchemas[schema] !== false &&
@@ -335,12 +351,15 @@ export function SqlSidebar({
                   })}
               </div>
             ))
-            )
           )}
         </div>
 
         {onWidthResizerMouseDown && (
-          <div className={styles.widthResizer} onMouseDown={onWidthResizerMouseDown} title="Drag to resize sidebar" />
+          <div
+            className={styles.widthResizer}
+            onMouseDown={onWidthResizerMouseDown}
+            title="Drag to resize sidebar"
+          />
         )}
       </aside>
     </>

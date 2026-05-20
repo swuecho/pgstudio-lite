@@ -48,13 +48,17 @@ export function useSqlEditorSnippets({
     mutationFn: ({ id, payload }: { id: string; payload: { title?: string; queryText?: string } }) =>
       updateSnippet(id, payload, connectionName),
   })
-  const deleteSnippetMutation = useMutation({ mutationFn: (id: string) => deleteSnippetService(id, connectionName) })
+  const deleteSnippetMutation = useMutation({
+    mutationFn: (id: string) => deleteSnippetService(id, connectionName),
+  })
 
   function patchSnippetInCache(item: SnippetItem) {
     queryClient.setQueryData<{ items: SnippetItem[] }>(['sql', 'snippets', connectionName, 300], (prev) => {
       const current = prev?.items || []
       const exists = current.some((entry) => entry.id === item.id)
-      return { items: exists ? current.map((entry) => (entry.id === item.id ? item : entry)) : [item, ...current] }
+      return {
+        items: exists ? current.map((entry) => (entry.id === item.id ? item : entry)) : [item, ...current],
+      }
     })
   }
 
@@ -70,7 +74,12 @@ export function useSqlEditorSnippets({
 
   function getSuggestedSnippetTitle(queryText?: string) {
     const content = (queryText || '').trim()
-    return content.split('\n')[0].replace(/^--\s*/, '').slice(0, 48) || 'New snippet'
+    return (
+      content
+        .split('\n')[0]
+        .replace(/^--\s*/, '')
+        .slice(0, 48) || 'New snippet'
+    )
   }
 
   async function saveCurrentAsSnippet(options: { forceCreate?: boolean; title?: string } = {}) {
@@ -83,9 +92,7 @@ export function useSqlEditorSnippets({
 
     try {
       const canUpdateBoundSnippet =
-        activeQueryTab?.snippetId &&
-        activeQueryTab.snippetConnectionName === connectionName &&
-        !forceCreate
+        activeQueryTab?.snippetId && activeQueryTab.snippetConnectionName === connectionName && !forceCreate
       if (canUpdateBoundSnippet) {
         const payload = await updateSnippetMutation.mutateAsync({
           id: activeQueryTab.snippetId as string,
@@ -142,7 +149,10 @@ export function useSqlEditorSnippets({
     const content = queryText.trim()
     if (!content) return
     try {
-      const payload = await updateSnippetMutation.mutateAsync({ id: snippetId, payload: { queryText: content } })
+      const payload = await updateSnippetMutation.mutateAsync({
+        id: snippetId,
+        payload: { queryText: content },
+      })
       patchSnippetInCache(payload.item)
       setQueryTabs((all) =>
         all.map((tab) =>
@@ -235,6 +245,7 @@ export function useSqlEditorSnippets({
       void autosaveSnippetDraft(activeQueryTab.id, activeQueryTab.snippetId as string, activeQueryTab.query)
     }, 1200)
     return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeQueryTab?.id,
     activeQueryTab?.snippetId,

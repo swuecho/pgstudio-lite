@@ -40,11 +40,7 @@ export function CopyableCellValue({
   const displayText = truncated ? `${text.slice(0, maxDisplayLength)}…` : text
   const computedTitle =
     title ||
-    (copied
-      ? 'Copied!'
-      : truncated
-        ? `Click to copy (full value is ${text.length} chars)`
-        : 'Click to copy')
+    (copied ? 'Copied!' : truncated ? `Click to copy (full value is ${text.length} chars)` : 'Click to copy')
 
   return (
     <code

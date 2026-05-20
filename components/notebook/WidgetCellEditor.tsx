@@ -72,10 +72,22 @@ export function WidgetCellEditor({
           </div>
         ) : null}
         {metadata.widgetType === 'radio-group' ? (
-          <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} compact validationMessages={validationMessages} />
+          <RadioGroupEditor
+            metadata={metadata}
+            disabled={disabled}
+            onChange={onChange}
+            compact
+            validationMessages={validationMessages}
+          />
         ) : null}
         {metadata.widgetType === 'date-range' ? (
-          <DateRangeEditor metadata={metadata} disabled={disabled} onChange={onChange} compact validationMessages={validationMessages} />
+          <DateRangeEditor
+            metadata={metadata}
+            disabled={disabled}
+            onChange={onChange}
+            compact
+            validationMessages={validationMessages}
+          />
         ) : null}
         {metadata.widgetType === 'actions' ? (
           <ActionsEditor
@@ -87,7 +99,9 @@ export function WidgetCellEditor({
             compact
           />
         ) : null}
-        {metadata.widgetType === 'callout' ? <CalloutEditor metadata={metadata} disabled={disabled} onChange={onChange} compact /> : null}
+        {metadata.widgetType === 'callout' ? (
+          <CalloutEditor metadata={metadata} disabled={disabled} onChange={onChange} compact />
+        ) : null}
       </div>
     )
   }
@@ -116,7 +130,9 @@ export function WidgetCellEditor({
           </select>
         </label>
 
-        {(metadata.widgetType === 'radio-group' || metadata.widgetType === 'date-range' || metadata.widgetType === 'actions') && (
+        {(metadata.widgetType === 'radio-group' ||
+          metadata.widgetType === 'date-range' ||
+          metadata.widgetType === 'actions') && (
           <label className="grid gap-1.5 text-xs text-[var(--muted)]">
             Label
             <input
@@ -153,11 +169,21 @@ export function WidgetCellEditor({
       ) : null}
 
       {metadata.widgetType === 'radio-group' ? (
-        <RadioGroupEditor metadata={metadata} disabled={disabled} onChange={onChange} validationMessages={validationMessages} />
+        <RadioGroupEditor
+          metadata={metadata}
+          disabled={disabled}
+          onChange={onChange}
+          validationMessages={validationMessages}
+        />
       ) : null}
 
       {metadata.widgetType === 'date-range' ? (
-        <DateRangeEditor metadata={metadata} disabled={disabled} onChange={onChange} validationMessages={validationMessages} />
+        <DateRangeEditor
+          metadata={metadata}
+          disabled={disabled}
+          onChange={onChange}
+          validationMessages={validationMessages}
+        />
       ) : null}
 
       {metadata.widgetType === 'actions' ? (
@@ -282,7 +308,9 @@ function RadioGroupEditor({
             }
           />
         </label>
-        {validationMessages?.options?.length ? <ValidationList messages={validationMessages.options} /> : null}
+        {validationMessages?.options?.length ? (
+          <ValidationList messages={validationMessages.options} />
+        ) : null}
       </div>
       {validationMessages?.label?.length ? <ValidationList messages={validationMessages.label} /> : null}
       {validationMessages?.general?.length ? <ValidationList messages={validationMessages.general} /> : null}
@@ -318,7 +346,10 @@ function DateRangeEditor({
   validationMessages?: WidgetValidationMessages
 }) {
   const value =
-    metadata.value && typeof metadata.value === 'object' && 'start' in metadata.value && 'end' in metadata.value
+    metadata.value &&
+    typeof metadata.value === 'object' &&
+    'start' in metadata.value &&
+    'end' in metadata.value
       ? metadata.value
       : { start: '', end: '' }
   if (compact) {
@@ -365,7 +396,9 @@ function DateRangeEditor({
             }
           />
         </label>
-        {validationMessages?.startKey?.length ? <ValidationList messages={validationMessages.startKey} /> : null}
+        {validationMessages?.startKey?.length ? (
+          <ValidationList messages={validationMessages.startKey} />
+        ) : null}
         <label className="grid gap-1.5 text-xs text-[var(--muted)]">
           End Key
           <input
@@ -431,7 +464,12 @@ function ActionsEditor({
     return (
       <div className={styles.widgetInlineRow}>
         <span className={styles.widgetInlineLabel}>{metadata.label || 'Action'}</span>
-        <button className={`btn small primary ${styles.widgetActionButton}`} disabled={disabled} type="button" onClick={() => onTriggerAction?.(metadata)}>
+        <button
+          className={`btn small primary ${styles.widgetActionButton}`}
+          disabled={disabled}
+          type="button"
+          onClick={() => onTriggerAction?.(metadata)}
+        >
           {metadata.label || (action === 'run-targets' ? 'Run Targets' : 'Run')}
         </button>
       </div>
@@ -503,7 +541,12 @@ function ActionsEditor({
           ))}
         </div>
       ) : null}
-      <button className={`btn small primary ${styles.widgetActionButton}`} disabled={disabled} type="button" onClick={() => onTriggerAction?.(metadata)}>
+      <button
+        className={`btn small primary ${styles.widgetActionButton}`}
+        disabled={disabled}
+        type="button"
+        onClick={() => onTriggerAction?.(metadata)}
+      >
         {metadata.label || 'Run'}
       </button>
     </>
@@ -526,7 +569,9 @@ function CalloutEditor({
     return (
       <div className={`${styles.widgetCalloutPreview} ${calloutToneClassName(tone)}`}>
         {metadata.config?.title ? <div className="font-medium">{metadata.config.title}</div> : null}
-        {metadata.config?.body ? <div className="mt-1 whitespace-pre-wrap">{metadata.config.body}</div> : null}
+        {metadata.config?.body ? (
+          <div className="mt-1 whitespace-pre-wrap">{metadata.config.body}</div>
+        ) : null}
       </div>
     )
   }
@@ -542,7 +587,10 @@ function CalloutEditor({
             onChange={(event) =>
               onChange({
                 ...metadata,
-                config: { ...metadata.config, tone: event.target.value as 'info' | 'success' | 'warning' | 'danger' },
+                config: {
+                  ...metadata.config,
+                  tone: event.target.value as 'info' | 'success' | 'warning' | 'danger',
+                },
               })
             }
           >
@@ -558,7 +606,9 @@ function CalloutEditor({
             className="w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
             value={metadata.config?.title || ''}
             disabled={disabled}
-            onChange={(event) => onChange({ ...metadata, config: { ...metadata.config, title: event.target.value } })}
+            onChange={(event) =>
+              onChange({ ...metadata, config: { ...metadata.config, title: event.target.value } })
+            }
           />
         </label>
       </div>
@@ -568,12 +618,16 @@ function CalloutEditor({
           className="min-h-[84px] w-full rounded-[7px] border border-[var(--border)] bg-[var(--control-bg)] px-2.5 py-1.5 text-xs text-[var(--text)]"
           value={metadata.config?.body || ''}
           disabled={disabled}
-          onChange={(event) => onChange({ ...metadata, config: { ...metadata.config, body: event.target.value } })}
+          onChange={(event) =>
+            onChange({ ...metadata, config: { ...metadata.config, body: event.target.value } })
+          }
         />
       </label>
       <div className={`${styles.widgetCalloutPreview} ${calloutToneClassName(tone)}`}>
         {metadata.config?.title ? <div className="font-medium">{metadata.config.title}</div> : null}
-        {metadata.config?.body ? <div className="mt-1 whitespace-pre-wrap">{metadata.config.body}</div> : null}
+        {metadata.config?.body ? (
+          <div className="mt-1 whitespace-pre-wrap">{metadata.config.body}</div>
+        ) : null}
       </div>
     </>
   )
@@ -594,9 +648,19 @@ function defaultMetadataForType(widgetType: NotebookWidgetType): NotebookWidgetM
       label: 'Input',
       autoRun: true,
       value:
-        widgetType === 'checkbox' ? false : widgetType === 'number' || widgetType === 'range' ? null : widgetType === 'multiselect' ? [] : '',
-      options: widgetType === 'select' || widgetType === 'multiselect' ? [{ label: 'Option 1', value: 'option_1' }] : undefined,
-      config: widgetType === 'select' || widgetType === 'multiselect' ? { optionSource: 'manual' } : undefined,
+        widgetType === 'checkbox'
+          ? false
+          : widgetType === 'number' || widgetType === 'range'
+            ? null
+            : widgetType === 'multiselect'
+              ? []
+              : '',
+      options:
+        widgetType === 'select' || widgetType === 'multiselect'
+          ? [{ label: 'Option 1', value: 'option_1' }]
+          : undefined,
+      config:
+        widgetType === 'select' || widgetType === 'multiselect' ? { optionSource: 'manual' } : undefined,
     }
   }
   if (widgetType === 'radio-group') {
@@ -636,7 +700,15 @@ function defaultMetadataForType(widgetType: NotebookWidgetType): NotebookWidgetM
 
 function isInputLikeWidget(
   widgetType: NotebookWidgetType
-): widgetType is 'text' | 'number' | 'date' | 'datetime-local' | 'checkbox' | 'select' | 'range' | 'multiselect' {
+): widgetType is
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'datetime-local'
+  | 'checkbox'
+  | 'select'
+  | 'range'
+  | 'multiselect' {
   return (
     widgetType === 'text' ||
     widgetType === 'number' ||
@@ -673,7 +745,8 @@ function toLegacyInputMetadata(metadata: NotebookWidgetMetadata): NotebookInputC
     placeholder: metadata.placeholder,
     options: metadata.options,
     optionsSource: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
-    optionsQuery: typeof metadata.config?.optionsQuery === 'string' ? metadata.config.optionsQuery : undefined,
+    optionsQuery:
+      typeof metadata.config?.optionsQuery === 'string' ? metadata.config.optionsQuery : undefined,
     min: metadata.min,
     max: metadata.max,
     step: metadata.step,
@@ -681,7 +754,10 @@ function toLegacyInputMetadata(metadata: NotebookWidgetMetadata): NotebookInputC
   }
 }
 
-function fromLegacyInputMetadata(current: NotebookWidgetMetadata, metadata: NotebookInputCellMetadata): NotebookWidgetMetadata {
+function fromLegacyInputMetadata(
+  current: NotebookWidgetMetadata,
+  metadata: NotebookInputCellMetadata
+): NotebookWidgetMetadata {
   const widgetType = current.widgetType as NotebookInputType
   return {
     widgetType,

@@ -261,7 +261,11 @@
   gap: 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-2) 88%, var(--accent) 12%), var(--panel-2));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--panel-2) 88%, var(--accent) 12%),
+    var(--panel-2)
+  );
   padding: 12px;
 }
 

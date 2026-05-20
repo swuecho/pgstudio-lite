@@ -51,7 +51,15 @@ export function useActiveConnection(options: UseActiveConnectionOptions = {}) {
       const preferred = defaultConnectionName || connections[0].name
       setConnectionName(preferred)
     }
-  }, [autoResolve, connections, configured, defaultConnectionName, isLoading, connectionName, setConnectionName])
+  }, [
+    autoResolve,
+    connections,
+    configured,
+    defaultConnectionName,
+    isLoading,
+    connectionName,
+    setConnectionName,
+  ])
 
   return {
     connections,

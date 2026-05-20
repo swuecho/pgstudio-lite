@@ -7,15 +7,21 @@ export function escapeCsvCell(value: string): string {
   return value
 }
 
-export function rowsToCsv(fields: string[], rows: ResultExportRow[], formatCell: (value: unknown) => string): string {
+export function rowsToCsv(
+  fields: string[],
+  rows: ResultExportRow[],
+  formatCell: (value: unknown) => string
+): string {
   const header = fields.map((field) => escapeCsvCell(field)).join(',')
-  const body = rows.map((row) =>
-    fields.map((field) => escapeCsvCell(formatCell(row[field]))).join(',')
-  )
+  const body = rows.map((row) => fields.map((field) => escapeCsvCell(formatCell(row[field]))).join(','))
   return [header, ...body].join('\n')
 }
 
-export function rowsToTsv(fields: string[], rows: ResultExportRow[], formatCell: (value: unknown) => string): string {
+export function rowsToTsv(
+  fields: string[],
+  rows: ResultExportRow[],
+  formatCell: (value: unknown) => string
+): string {
   const header = fields.join('\t')
   const body = rows.map((row) => fields.map((field) => formatCell(row[field])).join('\t'))
   return [header, ...body].join('\n')

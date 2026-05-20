@@ -23,14 +23,19 @@ export default function SqlEditorPage() {
   const [isResizing, setIsResizing] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const [tabRenameState, setTabRenameState] = useState<{ tabId: string; title: string } | null>(null)
-  const [saveSnippetState, setSaveSnippetState] = useState<{ forceCreate: boolean; title: string } | null>(null)
-  const [duplicateSnippetState, setDuplicateSnippetState] = useState<{ id: string; title: string } | null>(null)
+  const [saveSnippetState, setSaveSnippetState] = useState<{ forceCreate: boolean; title: string } | null>(
+    null
+  )
+  const [duplicateSnippetState, setDuplicateSnippetState] = useState<{ id: string; title: string } | null>(
+    null
+  )
   const [deleteSnippetId, setDeleteSnippetId] = useState<string | null>(null)
   const sidebarSearchRef = useRef<HTMLInputElement>(null)
   const editorPanelBodyRef = useRef<HTMLDivElement>(null)
   const editorFooterRef = useRef<HTMLDivElement>(null)
 
-  const duplicateSnippetItem = state.filteredSnippets.find((item) => item.id === duplicateSnippetState?.id) || null
+  const duplicateSnippetItem =
+    state.filteredSnippets.find((item) => item.id === duplicateSnippetState?.id) || null
   const deleteSnippetItem = state.filteredSnippets.find((item) => item.id === deleteSnippetId) || null
 
   const quickActionItems = [
@@ -140,7 +145,13 @@ export default function SqlEditorPage() {
         return
       }
 
-      if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableTarget(event.target)) {
+      if (
+        event.key === '/' &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target)
+      ) {
         event.preventDefault()
         sidebarSearchRef.current?.focus()
         sidebarSearchRef.current?.select()
@@ -158,10 +169,8 @@ export default function SqlEditorPage() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [
-    state.historySearch,
-    state.setHistorySearch,
-  ])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.historySearch, state.setHistorySearch])
 
   useEffect(() => {
     return () => {
@@ -200,7 +209,10 @@ export default function SqlEditorPage() {
   }
 
   return (
-    <div className={styles.layoutRoot} style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}>
+    <div
+      className={styles.layoutRoot}
+      style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
+    >
       <SqlSidebar
         searchInputRef={sidebarSearchRef}
         connectionName={state.connectionName}
@@ -270,7 +282,9 @@ export default function SqlEditorPage() {
             <button className="btn small" onClick={() => state.createQueryTab()}>
               New
             </button>
-            <span className={`${styles.statusPill} ${styles[state.status.tone] || ''}`}>{state.status.text}</span>
+            <span className={`${styles.statusPill} ${styles[state.status.tone] || ''}`}>
+              {state.status.text}
+            </span>
             <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
               {state.connections.map((c) => (
                 <option key={c.name} value={c.name}>
@@ -280,7 +294,6 @@ export default function SqlEditorPage() {
               ))}
             </select>
             <SettingsButton section="connections" label="Settings" />
-
           </div>
         </div>
 
@@ -350,7 +363,11 @@ export default function SqlEditorPage() {
           </div>
         </div>
       </main>
-      <QuickActionsDialog open={showQuickActions} items={quickActionItems} onClose={() => setShowQuickActions(false)} />
+      <QuickActionsDialog
+        open={showQuickActions}
+        items={quickActionItems}
+        onClose={() => setShowQuickActions(false)}
+      />
       <PromptDialog
         open={Boolean(tabRenameState)}
         title="Rename tab"

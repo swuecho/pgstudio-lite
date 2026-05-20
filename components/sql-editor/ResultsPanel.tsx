@@ -32,7 +32,9 @@ function exportStatement(
 ) {
   if (statement.fields.length === 0 || statement.rows.length === 0) return
   const content =
-    format === 'csv' ? rowsToCsv(statement.fields, statement.rows, formatCell) : rowsToJson(statement.fields, statement.rows)
+    format === 'csv'
+      ? rowsToCsv(statement.fields, statement.rows, formatCell)
+      : rowsToJson(statement.fields, statement.rows)
   downloadText(buildResultExportFilename('query-result', format, statementIndex), content, `text/${format}`)
 }
 
@@ -71,7 +73,9 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                       Showing {statement.returnedRowCount} of {statement.rowCount}
                     </span>
                   ) : null}
-                  {statement.fields.length > 0 && statement.rows.length > 0 && !isExplainStatement(statement) ? (
+                  {statement.fields.length > 0 &&
+                  statement.rows.length > 0 &&
+                  !isExplainStatement(statement) ? (
                     <div className={styles.resultExportActions}>
                       <button
                         type="button"
@@ -118,7 +122,9 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                   </div>
                 ) : null}
                 {isExplainStatement(statement) ? (
-                  <pre className={styles.explainPlan}>{getExplainPlanText(statement) || 'No plan returned.'}</pre>
+                  <pre className={styles.explainPlan}>
+                    {getExplainPlanText(statement) || 'No plan returned.'}
+                  </pre>
                 ) : statement.fields.length > 0 ? (
                   <div className={styles.tableWrap}>
                     <table>

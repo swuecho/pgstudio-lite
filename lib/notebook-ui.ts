@@ -114,7 +114,10 @@ export type NotebookDiffSummary = {
   changedCellContentIds: string[]
 }
 
-export function summarizeNotebookDiff(currentNotebook: NotebookSpecV1, incomingNotebook: NotebookSpecV1): NotebookDiffSummary {
+export function summarizeNotebookDiff(
+  currentNotebook: NotebookSpecV1,
+  incomingNotebook: NotebookSpecV1
+): NotebookDiffSummary {
   const currentCellIds = currentNotebook.cells.map((cell) => cell.id)
   const incomingCellIds = incomingNotebook.cells.map((cell) => cell.id)
   const currentById = new Map(currentNotebook.cells.map((cell) => [cell.id, cell]))

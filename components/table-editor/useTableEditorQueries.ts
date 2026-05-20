@@ -40,7 +40,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     queryFn: () => getTablesService(state.connectionName),
     enabled: Boolean(state.connectionName),
   })
-  const tables = tablesQuery.data?.tables || []
+  const tables = useMemo(() => tablesQuery.data?.tables || [], [tablesQuery.data?.tables])
 
   const rowsQuery = useQuery({
     queryKey: [
@@ -78,9 +78,8 @@ export function useTableEditorQueries(state: TableEditorState) {
   const totalRows = Number(rowsQuery.data?.total || 0)
   const activeRelation = useMemo(
     () =>
-      tables.find(
-        (item) => item.schema === selectedTarget.schema && item.table === selectedTarget.table
-      ) || null,
+      tables.find((item) => item.schema === selectedTarget.schema && item.table === selectedTarget.table) ||
+      null,
     [tables, selectedTarget.schema, selectedTarget.table]
   )
   const hasPrimaryKey = columns.some((column) => column.isPrimaryKey)
@@ -93,10 +92,7 @@ export function useTableEditorQueries(state: TableEditorState) {
       : hasPrimaryKey
         ? ''
         : 'Table has no primary key; row edits are disabled'
-  const editableColumns = useMemo(
-    () => columns.filter((c) => !c.isIdentity && !c.isPrimaryKey),
-    [columns]
-  )
+  const editableColumns = useMemo(() => columns.filter((c) => !c.isIdentity && !c.isPrimaryKey), [columns])
 
   useEffect(() => {
     if (!selectedTarget.table) return
@@ -111,6 +107,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     if (rowsQuery.isSuccess && columns.length > 0) {
       state.setStatus('Ready')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedTarget.table,
     rowsQuery.isFetching,
@@ -118,7 +115,6 @@ export function useTableEditorQueries(state: TableEditorState) {
     rowsQuery.isSuccess,
     rowsQuery.error,
     columns.length,
-    state.setStatus,
   ])
 
   function invalidateRows() {
@@ -140,7 +136,11 @@ export function useTableEditorQueries(state: TableEditorState) {
 
   const deleteRowMutation = useMutation({
     mutationFn: (rowKey: RowKey) =>
-      removeRow(selectedTarget.table, { connectionName: state.connectionName, schema: selectedTarget.schema, rowKey }),
+      removeRow(selectedTarget.table, {
+        connectionName: state.connectionName,
+        schema: selectedTarget.schema,
+        rowKey,
+      }),
     onSuccess: invalidateRows,
   })
 
