@@ -1,11 +1,13 @@
 import dynamic from 'next/dynamic'
 import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
-import type { MutableRefObject } from 'react'
+import { memo, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { getCurrentTheme } from './utils'
 import { SchemaTable } from './types'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
+
+const QUERY_PERSIST_DELAY_MS = 400
 
 if (typeof window !== 'undefined') {
   ;(window as any).MonacoEnvironment = {
@@ -17,6 +19,7 @@ if (typeof window !== 'undefined') {
 loader.config({ paths: { vs: '/api/monaco' } })
 
 type EditorPaneProps = {
+  tabId: string
   value: string
   onChangeValue: (value: string) => void
   onMountEditor: (editor: MonacoEditorNs.IStandaloneCodeEditor) => void
@@ -28,7 +31,22 @@ type EditorPaneProps = {
   tableColumnsByKeyRef: MutableRefObject<Record<string, string[]>>
 }
 
-export function EditorPane({
+function uniqueColumns(tableColumnsByKey: Record<string, string[]>) {
+  const seen = new Set<string>()
+  const columns: string[] = []
+  for (const list of Object.values(tableColumnsByKey)) {
+    for (const column of list) {
+      if (!seen.has(column)) {
+        seen.add(column)
+        columns.push(column)
+      }
+    }
+  }
+  return columns
+}
+
+export const EditorPane = memo(function EditorPane({
+  tabId,
   value,
   onChangeValue,
   onMountEditor,
@@ -39,14 +57,63 @@ export function EditorPane({
   schemaTablesRef,
   tableColumnsByKeyRef,
 }: EditorPaneProps) {
+  const editorRef = useRef<MonacoEditorNs.IStandaloneCodeEditor | null>(null)
+  const draftRef = useRef(value)
+  const tabIdRef = useRef(tabId)
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flushToParent = useCallback(
+    (next?: string) => {
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current)
+        persistTimerRef.current = null
+      }
+      const query = next ?? draftRef.current
+      onChangeValue(query)
+    },
+    [onChangeValue]
+  )
+
+  const schedulePersist = useCallback(
+    (next: string) => {
+      draftRef.current = next
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+      persistTimerRef.current = setTimeout(() => {
+        persistTimerRef.current = null
+        onChangeValue(next)
+      }, QUERY_PERSIST_DELAY_MS)
+    },
+    [onChangeValue]
+  )
+
+  useEffect(() => {
+    if (tabId !== tabIdRef.current) {
+      flushToParent()
+      tabIdRef.current = tabId
+      draftRef.current = value
+      editorRef.current?.setValue(value)
+      return
+    }
+
+    if (value !== draftRef.current) {
+      draftRef.current = value
+      editorRef.current?.setValue(value)
+    }
+  }, [tabId, value, flushToParent])
+
+  useEffect(() => () => flushToParent(), [flushToParent])
+
   return (
     <div className="editor-wrap">
       <MonacoEditor
+        key={tabId}
         height="100%"
         language="pgsql"
-        value={value}
-        onChange={(next) => onChangeValue(next || '')}
+        defaultValue={value}
+        onChange={(next) => schedulePersist(next || '')}
         onMount={(editor, monaco) => {
+          editorRef.current = editor
+          draftRef.current = editor.getValue()
           onMountEditor(editor)
           monaco.editor.defineTheme('supabase-light', {
             base: 'vs',
@@ -114,15 +181,12 @@ export function EditorPane({
                 range,
               }))
 
-              const columnSuggestions = Object.values(tableColumnsByKeyRef.current)
-                .flatMap((columns) => columns)
-                .filter((v, i, arr) => arr.indexOf(v) === i)
-                .map((column) => ({
-                  label: column,
-                  kind: monaco.languages.CompletionItemKind.Field,
-                  insertText: column,
-                  range,
-                }))
+              const columnSuggestions = uniqueColumns(tableColumnsByKeyRef.current).map((column) => ({
+                label: column,
+                kind: monaco.languages.CompletionItemKind.Field,
+                insertText: column,
+                range,
+              }))
 
               const keywordSuggestions = keywords.map((keyword) => ({
                 label: keyword,
@@ -144,17 +208,21 @@ export function EditorPane({
 
           window.addEventListener('pgstudio:themechange', applyEditorTheme)
           editor.onDidDispose(() => {
+            editorRef.current = null
             provider.dispose()
             window.removeEventListener('pgstudio:themechange', applyEditorTheme)
           })
 
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+            flushToParent()
             onRunQuery()
           })
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
+            flushToParent()
             onExplainQuery()
           })
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            flushToParent()
             onSaveSnippet()
           })
           editor.onDidChangeCursorSelection((event) => onSelectionChange(!event.selection.isEmpty()))
@@ -173,4 +241,4 @@ export function EditorPane({
       />
     </div>
   )
-}
+})

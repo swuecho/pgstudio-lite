@@ -1,6 +1,13 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
+import { createDebouncedStateStorage } from '../../../lib/debouncedStorage'
 import type { QueryTab } from '../types'
+
+const debouncedTabsStorage = createDebouncedStateStorage(500)
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => debouncedTabsStorage.flush())
+}
 
 type TabsUpdater = QueryTab[] | ((prev: QueryTab[]) => QueryTab[])
 
@@ -26,6 +33,7 @@ export const useSqlEditorTabsStore = create<SqlEditorTabsStore>()(
     }),
     {
       name: 'pgstudio-sql-tabs',
+      storage: createJSONStorage(() => debouncedTabsStorage),
       partialize: (state) => ({
         queryTabs: state.queryTabs,
         activeQueryTabId: state.activeQueryTabId,

@@ -23,11 +23,17 @@ export function useSqlEditorState() {
   })
 
   const tabs = useSqlEditorTabs()
+
+  function getEditorQueryText() {
+    return editorRef?.getModel()?.getValue() || tabs.activeQueryTab?.query || ''
+  }
+
   const explorer = useSqlEditorExplorer(connectionName, historySearch)
   const history = useSqlEditorHistory(historySearch, connectionName)
   const snippets = useSqlEditorSnippets({
     connectionName,
     activeQueryTab: tabs.activeQueryTab,
+    getQueryText: getEditorQueryText,
     setQueryTabs: tabs.setQueryTabs,
     setStatus,
     setActiveNavTab,
@@ -53,7 +59,7 @@ export function useSqlEditorState() {
 
   function insertIntoEditor(sqlText: string) {
     if (!editorRef) {
-      const base = tabs.activeQueryTab?.query || ''
+      const base = getEditorQueryText()
       tabs.setActiveTabQuery(base ? `${base}\n${sqlText}` : sqlText)
       return
     }
@@ -61,8 +67,7 @@ export function useSqlEditorState() {
     const model = editorRef.getModel()
     if (!selection || !model) return
     editorRef.executeEdits('insert-sql', [{ range: selection, text: sqlText, forceMoveMarkers: true }])
-    const nextValue = model.getValue()
-    tabs.setActiveTabQuery(nextValue)
+    tabs.setActiveTabQuery(model.getValue())
     editorRef.focus()
   }
 
@@ -71,7 +76,7 @@ export function useSqlEditorState() {
     const selection = editorRef.getSelection()
     const selectedQuery =
       selection && !selection.isEmpty() ? editorRef.getModel()?.getValueInRange(selection) || '' : ''
-    return selectedQuery || tabs.activeQueryTab.query
+    return selectedQuery || getEditorQueryText()
   }
 
   async function runCurrentQuery() {
@@ -177,6 +182,7 @@ export function useSqlEditorState() {
     createQueryTab: tabs.createQueryTab,
     activeQueryTab: tabs.activeQueryTab,
     setActiveTabQuery: tabs.setActiveTabQuery,
+    getEditorQueryText,
     openSnippetInTab: (item: SnippetItem) => tabs.openSnippetInTab(item, connectionName),
     getSuggestedSnippetTitle: snippets.getSuggestedSnippetTitle,
     getDuplicateSnippetTitle: snippets.getDuplicateSnippetTitle,

@@ -99,7 +99,7 @@ export default function SqlEditorPage() {
   ]
 
   function openSaveSnippetDialog(forceCreate: boolean) {
-    if (!(state.activeQueryTab?.query || '').trim()) {
+    if (!state.getEditorQueryText().trim()) {
       void state.saveCurrentAsSnippet({ forceCreate })
       return
     }
@@ -116,7 +116,7 @@ export default function SqlEditorPage() {
 
     setSaveSnippetState({
       forceCreate,
-      title: state.getSuggestedSnippetTitle(state.activeQueryTab?.query),
+      title: state.getSuggestedSnippetTitle(state.getEditorQueryText()),
     })
   }
 
@@ -311,6 +311,7 @@ export default function SqlEditorPage() {
 
         <div className={styles.editorPanelBody} ref={editorPanelBodyRef}>
           <EditorPane
+            tabId={state.activeQueryTabId}
             value={state.activeQueryTab?.query || ''}
             onChangeValue={(value) => state.setActiveTabQuery(value)}
             onMountEditor={state.setEditorRef}
