@@ -1,7 +1,7 @@
 import dynamic from 'next/dynamic'
 import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
-import { memo, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { memo, useEffect, useRef, type MutableRefObject } from 'react'
 import { getCurrentTheme } from './utils'
 import { SchemaTable } from './types'
 
@@ -22,6 +22,7 @@ type EditorPaneProps = {
   tabId: string
   value: string
   onChangeValue: (value: string) => void
+  onPersistTabQuery: (tabId: string, value: string) => void
   onMountEditor: (editor: MonacoEditorNs.IStandaloneCodeEditor) => void
   onSelectionChange: (hasSelection: boolean) => void
   onRunQuery: () => void
@@ -49,6 +50,7 @@ export const EditorPane = memo(function EditorPane({
   tabId,
   value,
   onChangeValue,
+  onPersistTabQuery,
   onMountEditor,
   onSelectionChange,
   onRunQuery,
@@ -61,47 +63,81 @@ export const EditorPane = memo(function EditorPane({
   const draftRef = useRef(value)
   const tabIdRef = useRef(tabId)
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isApplyingExternalValueRef = useRef(false)
+  const onChangeValueRef = useRef(onChangeValue)
+  const onPersistTabQueryRef = useRef(onPersistTabQuery)
+  const onRunQueryRef = useRef(onRunQuery)
+  const onExplainQueryRef = useRef(onExplainQuery)
+  const onSaveSnippetRef = useRef(onSaveSnippet)
+  const onSelectionChangeRef = useRef(onSelectionChange)
+  const onMountEditorRef = useRef(onMountEditor)
 
-  const flushToParent = useCallback(
-    (next?: string) => {
+  onChangeValueRef.current = onChangeValue
+  onPersistTabQueryRef.current = onPersistTabQuery
+  onRunQueryRef.current = onRunQuery
+  onExplainQueryRef.current = onExplainQuery
+  onSaveSnippetRef.current = onSaveSnippet
+  onSelectionChangeRef.current = onSelectionChange
+  onMountEditorRef.current = onMountEditor
+
+  const flushToParent = (next?: string) => {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current)
+      persistTimerRef.current = null
+    }
+    const query = next ?? draftRef.current
+    if (query === value) return
+    onChangeValueRef.current(query)
+  }
+
+  const schedulePersist = (next: string) => {
+    if (isApplyingExternalValueRef.current) return
+    draftRef.current = next
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+    persistTimerRef.current = setTimeout(() => {
+      persistTimerRef.current = null
+      if (next === value) return
+      onChangeValueRef.current(next)
+    }, QUERY_PERSIST_DELAY_MS)
+  }
+
+  const applyExternalValue = (nextValue: string) => {
+    draftRef.current = nextValue
+    if (!editorRef.current || editorRef.current.getValue() === nextValue) return
+    isApplyingExternalValueRef.current = true
+    editorRef.current.setValue(nextValue)
+    queueMicrotask(() => {
+      isApplyingExternalValueRef.current = false
+    })
+  }
+
+  useEffect(() => {
+    if (tabId !== tabIdRef.current) {
+      const previousTabId = tabIdRef.current
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current)
         persistTimerRef.current = null
       }
-      const query = next ?? draftRef.current
-      onChangeValue(query)
-    },
-    [onChangeValue]
-  )
-
-  const schedulePersist = useCallback(
-    (next: string) => {
-      draftRef.current = next
-      if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
-      persistTimerRef.current = setTimeout(() => {
-        persistTimerRef.current = null
-        onChangeValue(next)
-      }, QUERY_PERSIST_DELAY_MS)
-    },
-    [onChangeValue]
-  )
-
-  useEffect(() => {
-    if (tabId !== tabIdRef.current) {
-      flushToParent()
+      onPersistTabQueryRef.current(previousTabId, draftRef.current)
       tabIdRef.current = tabId
-      draftRef.current = value
-      editorRef.current?.setValue(value)
+      applyExternalValue(value)
       return
     }
 
-    if (value !== draftRef.current) {
-      draftRef.current = value
-      editorRef.current?.setValue(value)
-    }
-  }, [tabId, value, flushToParent])
+    if (value === draftRef.current) return
+    applyExternalValue(value)
+  }, [tabId, value])
 
-  useEffect(() => () => flushToParent(), [flushToParent])
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current)
+        persistTimerRef.current = null
+      }
+      const query = draftRef.current
+      onChangeValueRef.current(query)
+    }
+  }, [])
 
   return (
     <div className="editor-wrap">
@@ -114,7 +150,7 @@ export const EditorPane = memo(function EditorPane({
         onMount={(editor, monaco) => {
           editorRef.current = editor
           draftRef.current = editor.getValue()
-          onMountEditor(editor)
+          onMountEditorRef.current(editor)
           monaco.editor.defineTheme('supabase-light', {
             base: 'vs',
             inherit: true,
@@ -215,17 +251,19 @@ export const EditorPane = memo(function EditorPane({
 
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
             flushToParent()
-            onRunQuery()
+            onRunQueryRef.current()
           })
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
             flushToParent()
-            onExplainQuery()
+            onExplainQueryRef.current()
           })
           editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             flushToParent()
-            onSaveSnippet()
+            onSaveSnippetRef.current()
           })
-          editor.onDidChangeCursorSelection((event) => onSelectionChange(!event.selection.isEmpty()))
+          editor.onDidChangeCursorSelection((event) =>
+            onSelectionChangeRef.current(!event.selection.isEmpty())
+          )
         }}
         options={{
           tabSize: 2,

@@ -314,6 +314,7 @@ export default function SqlEditorPage() {
             tabId={state.activeQueryTabId}
             value={state.activeQueryTab?.query || ''}
             onChangeValue={(value) => state.setActiveTabQuery(value)}
+            onPersistTabQuery={(tabId, value) => state.setTabQuery(tabId, value)}
             onMountEditor={state.setEditorRef}
             onSelectionChange={state.setHasSelection}
             onRunQuery={() => {

@@ -13,25 +13,49 @@ export function useSqlEditorTabs() {
     [activeQueryTabId, queryTabs]
   )
 
-  function setActiveTabQuery(nextQuery: string, dirty = true, snippetId?: string | null) {
-    setQueryTabs((tabs) =>
-      tabs.map((tab) =>
-        tab.id === activeQueryTabId
+  function setTabQuery(
+    tabId: string,
+    nextQuery: string,
+    dirty = true,
+    snippetId?: string | null
+  ) {
+    setQueryTabs((tabs) => {
+      const targetTab = tabs.find((tab) => tab.id === tabId)
+      if (!targetTab) return tabs
+
+      const nextSnippetId = snippetId === undefined ? targetTab.snippetId : snippetId || undefined
+      const nextSnippetConnectionName =
+        snippetId === undefined
+          ? targetTab.snippetConnectionName
+          : snippetId
+            ? targetTab.snippetConnectionName
+            : undefined
+
+      if (
+        targetTab.query === nextQuery &&
+        targetTab.dirty === dirty &&
+        targetTab.snippetId === nextSnippetId &&
+        targetTab.snippetConnectionName === nextSnippetConnectionName
+      ) {
+        return tabs
+      }
+
+      return tabs.map((tab) =>
+        tab.id === tabId
           ? {
               ...tab,
               query: nextQuery,
               dirty,
-              snippetId: snippetId === undefined ? tab.snippetId : snippetId || undefined,
-              snippetConnectionName:
-                snippetId === undefined
-                  ? tab.snippetConnectionName
-                  : snippetId
-                    ? tab.snippetConnectionName
-                    : undefined,
+              snippetId: nextSnippetId,
+              snippetConnectionName: nextSnippetConnectionName,
             }
           : tab
       )
-    )
+    })
+  }
+
+  function setActiveTabQuery(nextQuery: string, dirty = true, snippetId?: string | null) {
+    setTabQuery(activeQueryTabId, nextQuery, dirty, snippetId)
   }
 
   function createQueryTab(
@@ -107,6 +131,7 @@ export function useSqlEditorTabs() {
     setActiveQueryTabId,
     activeQueryTab,
     setActiveTabQuery,
+    setTabQuery,
     createQueryTab,
     closeTab,
     renameTab,

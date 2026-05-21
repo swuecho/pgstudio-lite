@@ -26,9 +26,11 @@ export const useSqlEditorTabsStore = create<SqlEditorTabsStore>()(
       queryTabs: [{ id: 'tab-1', title: 'Query 1', query: DEFAULT_QUERY, dirty: false }],
       activeQueryTabId: 'tab-1',
       setQueryTabs: (updater) =>
-        set((state) => ({
-          queryTabs: typeof updater === 'function' ? updater(state.queryTabs) : updater,
-        })),
+        set((state) => {
+          const nextTabs = typeof updater === 'function' ? updater(state.queryTabs) : updater
+          if (nextTabs === state.queryTabs) return state
+          return { queryTabs: nextTabs }
+        }),
       setActiveQueryTabId: (id) => set({ activeQueryTabId: id }),
     }),
     {
