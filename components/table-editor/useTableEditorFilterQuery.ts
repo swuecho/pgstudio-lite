@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react'
+import { useEffect } from 'react'
 import { filterModeNeedsValue, hasActiveTableFilter, type TableFilterMode } from '../../lib/table-filter'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { useTableEditorLocalStore } from './stores/tableEditorLocalStore'
@@ -17,7 +17,7 @@ export function useTableEditorFilterQuery(state: UseTableEditorFilterQueryParams
   const debouncedFilterValue = useDebouncedValue(state.filterValue, state.filterDebounceMs)
   const debouncedFilterValueEnd = useDebouncedValue(state.filterValueEnd, state.filterDebounceMs)
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (state.filterDebounceMs === 0) {
       useTableEditorLocalStore.setState({ filterDebounceMs: DEFAULT_FILTER_DEBOUNCE_MS })
     }
