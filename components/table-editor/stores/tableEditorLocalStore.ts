@@ -13,6 +13,7 @@ type TableEditorLocalStore = {
   filterValueEnd: string
   filterMode: TableFilterMode
   filterDebounceMs: number
+  skipFilterRestore: boolean
   visibleColumns: string[]
   applyTableNavigation: (args: { activeTable: string; filter?: TableEditorFilter }) => void
   setActiveTable: (value: string) => void
@@ -41,6 +42,7 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   filterValueEnd: '',
   filterMode: 'contains',
   filterDebounceMs: 300,
+  skipFilterRestore: false,
   visibleColumns: [],
   applyTableNavigation: ({ activeTable, filter }) =>
     set({
@@ -49,6 +51,7 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
       sortBy: '',
       visibleColumns: [],
       filterDebounceMs: filter ? 0 : 300,
+      skipFilterRestore: Boolean(filter),
       ...(filter
         ? {
             filterColumn: filter.filterColumn,

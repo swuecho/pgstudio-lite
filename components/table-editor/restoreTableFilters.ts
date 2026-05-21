@@ -1,4 +1,4 @@
-import { hasActiveTableFilter, type TableFilterMode } from '../../lib/table-filter'
+import type { TableFilterMode } from '../../lib/table-filter'
 import {
   tableEditorFilterKey,
   useTableEditorFilterStore,
@@ -33,15 +33,8 @@ export function restoreTableFilters(
   setters: FilterSetters
 ) {
   const local = useTableEditorLocalStore.getState()
-  if (
-    local.filterDebounceMs === 0 &&
-    hasActiveTableFilter(
-      local.filterColumn,
-      local.filterMode,
-      local.filterValue,
-      local.filterValueEnd
-    )
-  ) {
+  if (local.skipFilterRestore) {
+    useTableEditorLocalStore.setState({ skipFilterRestore: false })
     return
   }
 
