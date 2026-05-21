@@ -100,8 +100,8 @@ export function TableSidebar({
   const sortedTables = useMemo(() => sortTables(filteredTables, sortMode), [filteredTables, sortMode])
 
   const { pinned, recent, rest } = useMemo(
-    () => partitionPinnedRecent(sortedTables, pinnedKeys, recentKeys, activeTable),
-    [activeTable, pinnedKeys, recentKeys, sortedTables]
+    () => partitionPinnedRecent(tables, pinnedKeys, recentKeys, sortedTables),
+    [pinnedKeys, recentKeys, sortedTables, tables]
   )
 
   const mainSections = useMemo((): TableListSection[] => {
@@ -368,12 +368,26 @@ export function TableSidebar({
                   : 'No tables or views found in this schema.'}
             </div>
           ) : (
-            listSections.map((section) => (
-              <div key={section.id} className={styles.tableCardSection}>
-                {section.label ? <div className={styles.tableCardSectionLabel}>{section.label}</div> : null}
-                {section.tables.map((table) => renderTableButton(table, { showSchema: searchAllSchemas }))}
-              </div>
-            ))
+            listSections.map((section, index) => {
+              const showDividerAfter =
+                section.id === 'recent' &&
+                index < listSections.length - 1 &&
+                listSections[index + 1].tables.length > 0
+
+              return (
+                <div key={section.id}>
+                  <div className={styles.tableCardSection}>
+                    {section.label ? (
+                      <div className={styles.tableCardSectionLabel}>{section.label}</div>
+                    ) : null}
+                    {section.tables.map((table) => renderTableButton(table, { showSchema: searchAllSchemas }))}
+                  </div>
+                  {showDividerAfter ? (
+                    <div className={styles.tableCardSectionDivider} role="separator" aria-hidden="true" />
+                  ) : null}
+                </div>
+              )
+            })
           )}
         </div>
 
