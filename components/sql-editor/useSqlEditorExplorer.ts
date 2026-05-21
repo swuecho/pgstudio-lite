@@ -70,6 +70,22 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
     return result
   }, [expandedTables, connectionName, queryClient])
 
+  function readColumnsFromCache(schema: string, table: string): string[] {
+    const key = `${schema}.${table}`
+    const cached = queryClient.getQueryData<{ columns: Array<{ name: string }> }>([
+      'sql',
+      'schema-columns',
+      connectionName,
+      schema,
+      table,
+    ])
+    const columns = cached?.columns?.map((c) => c.name) ?? []
+    if (columns.length) {
+      tableColumnsByKeyRef.current[key] = columns
+    }
+    return columns
+  }
+
   async function loadColumnsForTable(schema: string, table: string) {
     const key = `${schema}.${table}`
     if (tableColumnsByKeyRef.current[key]?.length) return
@@ -80,9 +96,17 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
         queryKey: ['sql', 'schema-columns', connectionName, schema, table],
         queryFn: () => getSchemaColumns(connectionName, schema, table),
       })
+      readColumnsFromCache(schema, table)
     } finally {
       setLoadingColumnsByKey((prev) => ({ ...prev, [key]: false }))
     }
+  }
+
+  async function ensureColumnsForTable(schema: string, table: string): Promise<string[]> {
+    const cached = readColumnsFromCache(schema, table)
+    if (cached.length) return cached
+    await loadColumnsForTable(schema, table)
+    return readColumnsFromCache(schema, table)
   }
 
   function toggleSchema(schema: string) {
@@ -169,6 +193,7 @@ export function useSqlEditorExplorer(connectionName: string, historySearch: stri
     toggleSchema,
     toggleTable,
     loadSchema,
+    ensureColumnsForTable,
     loadingSchema: schemaQuery.isFetching,
   }
 }

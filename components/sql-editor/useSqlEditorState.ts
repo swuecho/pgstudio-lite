@@ -200,6 +200,7 @@ export function useSqlEditorState() {
     insertIntoEditor,
     schemaTablesRef: explorer.schemaTablesRef,
     tableColumnsByKeyRef: explorer.tableColumnsByKeyRef,
+    ensureColumnsForTable: explorer.ensureColumnsForTable,
     setHasSelection,
   }
 }

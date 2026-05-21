@@ -328,6 +328,7 @@ export default function SqlEditorPage() {
             }}
             schemaTablesRef={state.schemaTablesRef}
             tableColumnsByKeyRef={state.tableColumnsByKeyRef}
+            ensureColumnsForTable={state.ensureColumnsForTable}
           />
 
           <div

@@ -2,6 +2,18 @@ import dynamic from 'next/dynamic'
 import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { memo, useEffect, useRef, type MutableRefObject } from 'react'
+import {
+  aliasByTableKey,
+  buildAliasMap,
+  buildMergedColumnSuggestions,
+  getClauseColumnContext,
+  getDotCompletionContext,
+  getQueryTables,
+  getTextBeforeCursor,
+  isFromJoinTableContext,
+  resolveAvailableAlias,
+  resolveTableForDotContext,
+} from '../../lib/sql-completion-context'
 import { getCurrentTheme } from './utils'
 import { SchemaTable } from './types'
 
@@ -30,20 +42,7 @@ type EditorPaneProps = {
   onSaveSnippet: () => void
   schemaTablesRef: MutableRefObject<SchemaTable[]>
   tableColumnsByKeyRef: MutableRefObject<Record<string, string[]>>
-}
-
-function uniqueColumns(tableColumnsByKey: Record<string, string[]>) {
-  const seen = new Set<string>()
-  const columns: string[] = []
-  for (const list of Object.values(tableColumnsByKey)) {
-    for (const column of list) {
-      if (!seen.has(column)) {
-        seen.add(column)
-        columns.push(column)
-      }
-    }
-  }
-  return columns
+  ensureColumnsForTable: (schema: string, table: string) => Promise<string[]>
 }
 
 export const EditorPane = memo(function EditorPane({
@@ -58,6 +57,7 @@ export const EditorPane = memo(function EditorPane({
   onSaveSnippet,
   schemaTablesRef,
   tableColumnsByKeyRef,
+  ensureColumnsForTable,
 }: EditorPaneProps) {
   const editorRef = useRef<MonacoEditorNs.IStandaloneCodeEditor | null>(null)
   const draftRef = useRef(value)
@@ -71,8 +71,10 @@ export const EditorPane = memo(function EditorPane({
   const onSaveSnippetRef = useRef(onSaveSnippet)
   const onSelectionChangeRef = useRef(onSelectionChange)
   const onMountEditorRef = useRef(onMountEditor)
+  const ensureColumnsForTableRef = useRef(ensureColumnsForTable)
 
   onChangeValueRef.current = onChangeValue
+  ensureColumnsForTableRef.current = ensureColumnsForTable
   onPersistTabQueryRef.current = onPersistTabQuery
   onRunQueryRef.current = onRunQuery
   onExplainQueryRef.current = onExplainQuery
@@ -201,38 +203,136 @@ export const EditorPane = memo(function EditorPane({
           ]
 
           const provider = monaco.languages.registerCompletionItemProvider('pgsql', {
-            provideCompletionItems(model: MonacoEditorNs.ITextModel, position: any) {
-              const word = model.getWordUntilPosition(position)
+            triggerCharacters: ['.'],
+            async provideCompletionItems(model: MonacoEditorNs.ITextModel, position: any) {
+              const lineCount = model.getLineCount()
+              const lines = Array.from({ length: lineCount }, (_, i) => model.getLineContent(i + 1))
+              const textBeforeCursor = getTextBeforeCursor(lines, position)
+              const dotContext = getDotCompletionContext(textBeforeCursor)
+
+              const prefixLength = dotContext?.prefix.length ?? 0
               const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: Math.max(1, position.column - prefixLength),
+                endColumn: position.column,
+              }
+
+              const sql = model.getValue()
+              const schemaTables = schemaTablesRef.current
+
+              if (dotContext) {
+                const tableRef = resolveTableForDotContext(dotContext, sql, schemaTables)
+                if (!tableRef) {
+                  return { suggestions: [] }
+                }
+
+                const tableKey = `${tableRef.schema}.${tableRef.table}`
+                let columns =
+                  tableColumnsByKeyRef.current[tableKey] ??
+                  (await ensureColumnsForTableRef.current(tableRef.schema, tableRef.table))
+
+                const prefix = dotContext.prefix.toLowerCase()
+                if (prefix) {
+                  columns = columns.filter((column) => column.toLowerCase().startsWith(prefix))
+                }
+
+                return {
+                  suggestions: columns.map((column) => ({
+                    label: column,
+                    kind: monaco.languages.CompletionItemKind.Field,
+                    insertText: column,
+                    detail: tableKey,
+                    range,
+                  })),
+                }
+              }
+
+              const clauseContext = getClauseColumnContext(textBeforeCursor)
+              if (clauseContext) {
+                const tables = getQueryTables(sql, schemaTables)
+                if (tables.length === 0) {
+                  return { suggestions: [] }
+                }
+
+                const aliases = aliasByTableKey(sql, schemaTables)
+                const columnsByTable = await Promise.all(
+                  tables.map(async (table) => {
+                    const tableKey = `${table.schema}.${table.table}`
+                    const columns =
+                      tableColumnsByKeyRef.current[tableKey] ??
+                      (await ensureColumnsForTableRef.current(table.schema, table.table))
+                    return {
+                      table,
+                      alias: aliases[tableKey] ?? table.table,
+                      columns,
+                    }
+                  })
+                )
+
+                const word = model.getWordUntilPosition(position)
+                const clauseRange = {
+                  startLineNumber: position.lineNumber,
+                  endLineNumber: position.lineNumber,
+                  startColumn: clauseContext.prefix
+                    ? word.startColumn
+                    : Math.max(1, position.column),
+                  endColumn: position.column,
+                }
+
+                const merged = buildMergedColumnSuggestions(columnsByTable, clauseContext.prefix)
+                return {
+                  suggestions: merged.map((item) => ({
+                    label: item.name,
+                    kind: monaco.languages.CompletionItemKind.Field,
+                    insertText: item.insertText,
+                    detail: item.detail,
+                    range: clauseRange,
+                  })),
+                }
+              }
+
+              const word = model.getWordUntilPosition(position)
+              const defaultRange = {
                 startLineNumber: position.lineNumber,
                 endLineNumber: position.lineNumber,
                 startColumn: word.startColumn,
                 endColumn: word.endColumn,
               }
 
-              const tableSuggestions = schemaTablesRef.current.map((item) => ({
-                label: `${item.schema}.${item.table}`,
-                kind: monaco.languages.CompletionItemKind.Class,
-                insertText: `${item.schema}.${item.table}`,
-                range,
-              }))
-
-              const columnSuggestions = uniqueColumns(tableColumnsByKeyRef.current).map((column) => ({
-                label: column,
-                kind: monaco.languages.CompletionItemKind.Field,
-                insertText: column,
-                range,
-              }))
+              const inFromJoin = isFromJoinTableContext(textBeforeCursor)
+              const usedAliases = inFromJoin
+                ? Object.keys(buildAliasMap(sql, schemaTables))
+                : []
+              const tableSuggestions = schemaTables.map((item) => {
+                const label = `${item.schema}.${item.table}`
+                if (!inFromJoin) {
+                  return {
+                    label,
+                    kind: monaco.languages.CompletionItemKind.Class,
+                    insertText: label,
+                    range: defaultRange,
+                  }
+                }
+                const alias = resolveAvailableAlias(item.table, usedAliases)
+                return {
+                  label,
+                  kind: monaco.languages.CompletionItemKind.Class,
+                  insertText: `${label} ${alias} `,
+                  detail: `alias ${alias}`,
+                  range: defaultRange,
+                }
+              })
 
               const keywordSuggestions = keywords.map((keyword) => ({
                 label: keyword,
                 kind: monaco.languages.CompletionItemKind.Keyword,
                 insertText: keyword,
-                range,
+                range: defaultRange,
               }))
 
               return {
-                suggestions: [...keywordSuggestions, ...tableSuggestions, ...columnSuggestions],
+                suggestions: [...keywordSuggestions, ...tableSuggestions],
               }
             },
           })
