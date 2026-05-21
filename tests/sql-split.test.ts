@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { splitStatements } from '../lib/db'
+import { parseSql } from '../lib/pg-parser'
 
 describe('splitStatements', () => {
   it('splits a single statement without trailing semicolon', async () => {
@@ -173,6 +174,18 @@ insert into users (name) values ('alice');`
 
   it('handles a single statement with no semicolons anywhere', async () => {
     expect(await splitStatements('select 1')).toEqual(['select 1'])
+  })
+
+  it('keeps CTE warehouse query as one statement', async () => {
+    const sql = `with warehouse_sku_total as (
+select warehouse_id , sum(jikeyun_current_quantity ) as current_quantity from public.warehouse_skus 
+group by warehouse_id )
+select w.jikeyun_warehouse_name , wst.current_quantity 	from warehouse_sku_total wst 
+inner join public.warehouses w on wst.warehouse_id = w.id`
+    expect(await splitStatements(sql)).toHaveLength(1)
+    expect(await splitStatements(sql)).toEqual([sql])
+    const parsed = await parseSql(sql)
+    expect(parsed.stmts).toHaveLength(1)
   })
 
   it('handles statements with Unicode characters', async () => {

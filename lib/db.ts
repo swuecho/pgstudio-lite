@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, desc, eq } from 'drizzle-orm'
 import pg from 'pg'
 import { parseSql } from './pg-parser'
+import { extractSelectOutputColumnNames, narrowResultToSelectList } from './query-output-columns'
 import { dbConnections, notebooks, queryHistory, querySnippets } from '../drizzle/schema'
 import { metaDb } from './meta-db'
 import { isMutableRelationKind, mapPgRelkind, type RelationKind } from './relation-kind'
@@ -826,14 +827,21 @@ export async function executeQuery({
         const result = values
           ? await client.query({ text: statement, values })
           : await client.query(statement)
-        const rows =
+        const pgFields = result.fields.map((f: { name: string }) => f.name)
+        const outputColumns = await extractSelectOutputColumnNames(statement)
+        const rawRows =
           result.rows.length > MAX_RESULT_ROWS ? result.rows.slice(0, MAX_RESULT_ROWS) : result.rows
+        const { fields, rows } = narrowResultToSelectList(
+          pgFields,
+          rawRows as Record<string, unknown>[],
+          outputColumns,
+        )
         results.push({
           command: result.command,
           rowCount: result.rowCount ?? 0,
           returnedRowCount: rows.length,
           truncated: result.rows.length > MAX_RESULT_ROWS,
-          fields: result.fields.map((f: { name: string }) => f.name),
+          fields,
           rows,
           tableTarget: await extractPrimaryTableTarget(statement),
         })
