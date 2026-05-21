@@ -15,6 +15,7 @@ type StatusState = { text: string; tone: string }
 type UseSqlEditorSnippetsParams = {
   connectionName: string
   activeQueryTab: QueryTab | undefined
+  getQueryText: () => string
   setQueryTabs: Dispatch<SetStateAction<QueryTab[]>>
   setStatus: Dispatch<SetStateAction<StatusState>>
   setActiveNavTab: Dispatch<SetStateAction<'history' | 'snippets' | 'explorer'>>
@@ -23,6 +24,7 @@ type UseSqlEditorSnippetsParams = {
 export function useSqlEditorSnippets({
   connectionName,
   activeQueryTab,
+  getQueryText,
   setQueryTabs,
   setStatus,
   setActiveNavTab,
@@ -84,7 +86,7 @@ export function useSqlEditorSnippets({
 
   async function saveCurrentAsSnippet(options: { forceCreate?: boolean; title?: string } = {}) {
     const forceCreate = options.forceCreate === true
-    const content = (activeQueryTab?.query || '').trim()
+    const content = getQueryText().trim()
     if (!content) {
       setStatus({ text: 'Query is empty', tone: 'warning' })
       return
@@ -242,7 +244,7 @@ export function useSqlEditorSnippets({
     if (!activeQueryTab?.snippetId || !activeQueryTab.dirty) return
     if (activeQueryTab.snippetConnectionName !== connectionName) return
     const timer = window.setTimeout(() => {
-      void autosaveSnippetDraft(activeQueryTab.id, activeQueryTab.snippetId as string, activeQueryTab.query)
+      void autosaveSnippetDraft(activeQueryTab.id, activeQueryTab.snippetId as string, getQueryText())
     }, 1200)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
