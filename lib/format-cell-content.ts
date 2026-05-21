@@ -5,6 +5,15 @@ export function formatCellContentForView(value: unknown, dataType?: string): str
 
   const kind = dataType ? getColumnKind(dataType) : null
 
+  if (kind === 'json' && typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return JSON.stringify(parsed, null, 2)
+    } catch {
+      return value
+    }
+  }
+
   if (kind === 'json' || (typeof value === 'object' && value !== null)) {
     try {
       return JSON.stringify(value, null, 2)
@@ -14,14 +23,6 @@ export function formatCellContentForView(value: unknown, dataType?: string): str
   }
 
   if (typeof value === 'string') {
-    if (kind === 'json') {
-      try {
-        const parsed = JSON.parse(value)
-        return JSON.stringify(parsed, null, 2)
-      } catch {
-        return value
-      }
-    }
     return value
   }
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { TableFilterMode } from '../../../lib/table-filter'
 import type { TableEditorFilter } from './tableEditorFilterStore'
 
 type TableEditorLocalStore = {
