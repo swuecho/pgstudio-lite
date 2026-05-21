@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
-const MAX_RECENT = 8
+import { MAX_RECENT_TABLES } from '../../../lib/table-editor-nav'
 
 export const EMPTY_TABLE_KEYS: string[] = []
 
@@ -21,7 +20,7 @@ function withoutKey(keys: string[], tableKey: string) {
 }
 
 function withRecentFront(keys: string[], tableKey: string) {
-  return [tableKey, ...withoutKey(keys, tableKey)].slice(0, MAX_RECENT)
+  return [tableKey, ...withoutKey(keys, tableKey)].slice(0, MAX_RECENT_TABLES)
 }
 
 export const useTableEditorNavStore = create<TableEditorNavStore>()(

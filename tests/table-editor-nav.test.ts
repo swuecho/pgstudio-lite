@@ -64,9 +64,46 @@ describe('table-editor-nav', () => {
   it('partitions pinned and recent without duplicates', () => {
     const usersKey = toTableKey('public', 'users')
     const ordersKey = toTableKey('public', 'orders_mv')
-    const result = partitionPinnedRecent(sampleTables, [ordersKey], [usersKey, ordersKey], usersKey)
+    const result = partitionPinnedRecent(sampleTables, [ordersKey], [usersKey, ordersKey])
     expect(result.pinned.map((t) => t.table)).toEqual(['orders_mv'])
-    expect(result.recent).toHaveLength(0)
-    expect(result.rest.map((t) => t.table)).toEqual(['users', 'summary'])
+    expect(result.recent.map((t) => t.table)).toEqual(['users'])
+    expect(result.rest.map((t) => t.table)).toEqual(['summary'])
+  })
+
+  it('includes the active table in recent so five items can show above the divider', () => {
+    const tables: TableInfo[] = [
+      { schema: 'public', table: 'item1', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item2', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item3', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item4', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item5', estimatedRows: 1, kind: 'table' },
+    ]
+    const recentKeys = tables.map((table) => toTableKey(table.schema, table.table))
+    const result = partitionPinnedRecent(tables, [], recentKeys)
+    expect(result.recent.map((t) => t.table)).toEqual(['item1', 'item2', 'item3', 'item4', 'item5'])
+    expect(result.rest).toHaveLength(0)
+  })
+
+  it('sorts recent tables alphanumerically and keeps at most five', () => {
+    const tables: TableInfo[] = [
+      { schema: 'public', table: 'item10', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item2', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item1', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item20', estimatedRows: 1, kind: 'view' },
+      { schema: 'public', table: 'item3', estimatedRows: 1, kind: 'view' },
+      { schema: 'public', table: 'item4', estimatedRows: 1, kind: 'table' },
+      { schema: 'public', table: 'item5', estimatedRows: 1, kind: 'table' },
+    ]
+    const recentKeys = [
+      toTableKey('public', 'item20'),
+      toTableKey('public', 'item2'),
+      toTableKey('public', 'item10'),
+      toTableKey('public', 'item1'),
+      toTableKey('public', 'item3'),
+      toTableKey('public', 'item4'),
+      toTableKey('public', 'item5'),
+    ]
+    const result = partitionPinnedRecent(tables, [], recentKeys)
+    expect(result.recent.map((t) => t.table)).toEqual(['item1', 'item10', 'item2', 'item20', 'item3'])
   })
 })

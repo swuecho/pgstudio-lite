@@ -45,8 +45,14 @@ export function formatRowCountLabel(count: number) {
   return `~${formatCompactRowCount(count)} rows`
 }
 
+export const MAX_RECENT_TABLES = 5
+
 export function toTableKey(schema: string, table: string) {
   return `${schema}.${table}`
+}
+
+export function compareTablesByName(a: TableInfo, b: TableInfo) {
+  return a.table.localeCompare(b.table) || a.schema.localeCompare(b.schema)
 }
 
 export type TableListGroup = {
@@ -103,7 +109,7 @@ export function sortTables(tables: TableInfo[], mode: TableListSortMode): TableI
         a.schema.localeCompare(b.schema)
     )
   }
-  return copy.sort((a, b) => a.table.localeCompare(b.table) || a.schema.localeCompare(b.schema))
+  return copy.sort(compareTablesByName)
 }
 
 export function groupTablesByKind(tables: TableInfo[]): TableListGroup[] {
@@ -122,12 +128,12 @@ export function groupTablesByKind(tables: TableInfo[]): TableListGroup[] {
 }
 
 export function partitionPinnedRecent(
-  tables: TableInfo[],
+  allTables: TableInfo[],
   pinnedKeys: string[],
   recentKeys: string[],
-  activeKey: string
+  visibleTables: TableInfo[] = allTables
 ) {
-  const byKey = new Map(tables.map((table) => [toTableKey(table.schema, table.table), table]))
+  const byKey = new Map(allTables.map((table) => [toTableKey(table.schema, table.table), table]))
   const used = new Set<string>()
 
   const pinned: TableInfo[] = []
@@ -139,15 +145,16 @@ export function partitionPinnedRecent(
   }
 
   const recent: TableInfo[] = []
-  for (const key of recentKeys) {
-    if (!key || key === activeKey || used.has(key)) continue
+  for (const key of recentKeys.slice(0, MAX_RECENT_TABLES)) {
+    if (!key || used.has(key)) continue
     const table = byKey.get(key)
     if (!table) continue
     recent.push(table)
     used.add(key)
   }
+  recent.sort(compareTablesByName)
 
-  const rest = tables.filter((table) => !used.has(toTableKey(table.schema, table.table)))
+  const rest = visibleTables.filter((table) => !used.has(toTableKey(table.schema, table.table)))
   return { pinned, recent, rest }
 }
 

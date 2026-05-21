@@ -189,6 +189,11 @@
   padding: 2px 2px 0;
 }
 
+.tableCardSectionDivider {
+  margin: 8px 2px 4px;
+  border-top: 1px dashed var(--border);
+}
+
 .tableMainHeader {
   background: linear-gradient(180deg, var(--surface-table-main-start), var(--surface-table-main-end));
 }
