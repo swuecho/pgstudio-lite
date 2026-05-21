@@ -28,6 +28,8 @@ type TableEditorState = {
   filterValue: string
   filterValueEnd: string
   filterMode: TableFilterMode
+  rowsQueryEnabled?: boolean
+  hideRowsWhileLoading?: boolean
 }
 
 export function useTableEditorQueries(state: TableEditorState) {
@@ -72,10 +74,11 @@ export function useTableEditorQueries(state: TableEditorState) {
         filterValueEnd: state.filterValueEnd,
         filterMode: state.filterMode,
       }),
-    enabled: Boolean(state.connectionName && selectedTarget.table),
+    enabled: Boolean(state.connectionName && selectedTarget.table && state.rowsQueryEnabled !== false),
   })
   const columns = useMemo(() => rowsQuery.data?.columns || [], [rowsQuery.data?.columns])
-  const rows = rowsQuery.data?.rows || []
+  const rows =
+    state.hideRowsWhileLoading && rowsQuery.isLoading ? [] : rowsQuery.data?.rows || []
   const totalRows = Number(rowsQuery.data?.total || 0)
   const activeRelation = useMemo(
     () =>

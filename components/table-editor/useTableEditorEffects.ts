@@ -7,13 +7,15 @@ import {
 } from '../../lib/table-filter'
 import { getColumnKind } from '../../lib/table-column-kind'
 import { resolveNextActiveTable, resolveSortAndFilter } from './tableEditorContracts'
+import { restoreTableFilters } from './restoreTableFilters'
 import { tableEditorFilterKey, useTableEditorFilterStore } from './stores/tableEditorFilterStore'
+import type { TableEditorFilter } from './stores/tableEditorFilterStore'
 import type { ColumnInfo, TableInfo } from './types'
 
 type UseTableEditorEffectsParams = {
   connectionName: string
   activeTable: string
-  setActiveTable: (value: string) => void
+  applyTableNavigation: (args: { activeTable: string; filter?: TableEditorFilter }) => void
   pageSize: number
   sortBy: string
   setSortBy: (value: string) => void
@@ -29,7 +31,6 @@ type UseTableEditorEffectsParams = {
   debouncedFilterValue: string
   debouncedFilterValueEnd: string
   setPage: (value: number | ((prev: number) => number)) => void
-  setVisibleColumns: (value: string[]) => void
   tables: TableInfo[]
   loadingTables: boolean
   columns: ColumnInfo[]
@@ -38,7 +39,7 @@ type UseTableEditorEffectsParams = {
 export function useTableEditorEffects({
   connectionName,
   activeTable,
-  setActiveTable,
+  applyTableNavigation,
   pageSize,
   sortBy,
   setSortBy,
@@ -54,7 +55,6 @@ export function useTableEditorEffects({
   debouncedFilterValue,
   debouncedFilterValueEnd,
   setPage,
-  setVisibleColumns,
   tables,
   loadingTables,
   columns,
@@ -65,41 +65,25 @@ export function useTableEditorEffects({
   useEffect(() => {
     const nextActiveTable = resolveNextActiveTable(tables, activeTable, loadingTables)
     if (nextActiveTable !== null && nextActiveTable !== activeTable) {
-      setActiveTable(nextActiveTable)
+      applyTableNavigation({ activeTable: nextActiveTable })
     }
-  }, [tables, loadingTables, activeTable, setActiveTable])
+  }, [tables, loadingTables, activeTable, applyTableNavigation])
 
   useEffect(() => {
     if (!activeTable) return
-
-    setPage(0)
-    setSortBy('')
-    setVisibleColumns([])
-
-    const saved =
-      useTableEditorFilterStore.getState().filtersByKey[tableEditorFilterKey(connectionName, activeTable)]
-    if (saved) {
-      setFilterColumn(saved.filterColumn)
-      setFilterMode(saved.filterMode)
-      setFilterValue(saved.filterValue)
-      setFilterValueEnd(saved.filterValueEnd)
-      return
-    }
-
-    setFilterColumn('')
-    setFilterValue('')
-    setFilterValueEnd('')
-    setFilterMode('contains')
+    restoreTableFilters(connectionName, activeTable, {
+      setFilterColumn,
+      setFilterMode,
+      setFilterValue,
+      setFilterValueEnd,
+    })
   }, [
     activeTable,
     connectionName,
-    setPage,
-    setSortBy,
     setFilterColumn,
     setFilterValue,
     setFilterValueEnd,
     setFilterMode,
-    setVisibleColumns,
   ])
 
   useEffect(() => {

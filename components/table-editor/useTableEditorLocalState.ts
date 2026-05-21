@@ -24,6 +24,8 @@ export function useTableEditorLocalState() {
   const setFilterValueEnd = useTableEditorLocalStore((s) => s.setFilterValueEnd)
   const filterMode = useTableEditorLocalStore((s) => s.filterMode)
   const setFilterMode = useTableEditorLocalStore((s) => s.setFilterMode)
+  const filterDebounceMs = useTableEditorLocalStore((s) => s.filterDebounceMs)
+  const applyTableNavigation = useTableEditorLocalStore((s) => s.applyTableNavigation)
   const visibleColumns = useTableEditorLocalStore((s) => s.visibleColumns)
   const setVisibleColumns = useTableEditorLocalStore((s) => s.setVisibleColumns)
   const toggleVisibleColumn = useTableEditorLocalStore((s) => s.toggleVisibleColumn)
@@ -51,6 +53,8 @@ export function useTableEditorLocalState() {
     setFilterValueEnd,
     filterMode,
     setFilterMode,
+    filterDebounceMs,
+    applyTableNavigation,
     visibleColumns,
     setVisibleColumns,
     toggleVisibleColumn,
