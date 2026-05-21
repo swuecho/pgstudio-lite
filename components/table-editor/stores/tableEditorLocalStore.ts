@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TableFilterMode } from '../../../lib/table-filter'
+import type { TableEditorFilter } from './tableEditorFilterStore'
 
 type TableEditorLocalStore = {
   activeTable: string
@@ -12,7 +12,9 @@ type TableEditorLocalStore = {
   filterValue: string
   filterValueEnd: string
   filterMode: TableFilterMode
+  filterDebounceMs: number
   visibleColumns: string[]
+  applyTableNavigation: (args: { activeTable: string; filter?: TableEditorFilter }) => void
   setActiveTable: (value: string) => void
   setStatus: (value: string) => void
   setPage: (value: number | ((prev: number) => number)) => void
@@ -38,7 +40,29 @@ export const useTableEditorLocalStore = create<TableEditorLocalStore>((set) => (
   filterValue: '',
   filterValueEnd: '',
   filterMode: 'contains',
+  filterDebounceMs: 300,
   visibleColumns: [],
+  applyTableNavigation: ({ activeTable, filter }) =>
+    set({
+      activeTable,
+      page: 0,
+      sortBy: '',
+      visibleColumns: [],
+      filterDebounceMs: filter ? 0 : 300,
+      ...(filter
+        ? {
+            filterColumn: filter.filterColumn,
+            filterMode: filter.filterMode,
+            filterValue: filter.filterValue,
+            filterValueEnd: filter.filterValueEnd,
+          }
+        : {
+            filterColumn: '',
+            filterValue: '',
+            filterValueEnd: '',
+            filterMode: 'contains',
+          }),
+    }),
   setActiveTable: (value) => set({ activeTable: value }),
   setStatus: (value) => set({ status: value }),
   setPage: (value) => set((state) => ({ page: typeof value === 'function' ? value(state.page) : value })),

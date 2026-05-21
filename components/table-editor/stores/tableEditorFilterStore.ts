@@ -2,16 +2,19 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { TableFilterMode } from '../../../lib/table-filter'
 
-export type SavedTableFilter = {
+export type TableEditorFilter = {
   filterColumn: string
   filterMode: TableFilterMode
   filterValue: string
   filterValueEnd: string
 }
 
+/** @deprecated Use TableEditorFilter */
+export type SavedTableFilter = TableEditorFilter
+
 type TableEditorFilterStore = {
-  filtersByKey: Record<string, SavedTableFilter>
-  setFilterForKey: (key: string, filter: SavedTableFilter) => void
+  filtersByKey: Record<string, TableEditorFilter>
+  setFilterForKey: (key: string, filter: TableEditorFilter) => void
   clearFilterForKey: (key: string) => void
 }
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import type { CSSProperties } from 'react'
+import { buildTableEditorHref } from '../../lib/table-editor-url'
 import type { ColumnForeignKey, ColumnInfo } from './types'
 import { formatCellDisplayValue, formatForeignKeyTarget } from './foreignKeyUtils'
 import styles from './ForeignKeyPopover.module.css'
@@ -21,23 +22,24 @@ type ForeignKeyPopoverProps = {
   onMouseLeave: () => void
 }
 
-function buildTableEditorHref(args: {
+function buildForeignKeyTableEditorHref(args: {
   connectionName: string
   foreignKey: ColumnForeignKey
   match: Record<string, unknown>
 }) {
   const { foreignKey, match, connectionName } = args
   const filterColumn = foreignKey.constraintReferencedColumns[0]
-  const filterValue = match[filterColumn]
-  const query: Record<string, string> = {
+  return buildTableEditorHref({
     connectionName,
     schema: foreignKey.referencedSchema,
     table: foreignKey.referencedTable,
-    filterColumn,
-    filterValue: String(filterValue ?? ''),
-    filterMode: 'equals',
-  }
-  return { pathname: '/table-editor', query }
+    filter: {
+      filterColumn,
+      filterValue: String(match[filterColumn] ?? ''),
+      filterMode: 'equals',
+      filterValueEnd: '',
+    },
+  })
 }
 
 export function ForeignKeyPopover({
@@ -55,7 +57,7 @@ export function ForeignKeyPopover({
 }: ForeignKeyPopoverProps) {
   const displayColumns = columns.slice(0, MAX_DISPLAY_COLUMNS)
   const targetLabel = formatForeignKeyTarget(foreignKey)
-  const tableEditorHref = buildTableEditorHref({ connectionName, foreignKey, match })
+  const tableEditorHref = buildForeignKeyTableEditorHref({ connectionName, foreignKey, match })
 
   async function copyValue() {
     const text = formatCellDisplayValue(cellValue, 10_000)

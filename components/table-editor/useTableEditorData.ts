@@ -1,13 +1,15 @@
 import type { TableFilterMode } from '../../lib/table-filter'
-import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { useTableEditorEffects } from './useTableEditorEffects'
+import { useTableEditorFilterQuery } from './useTableEditorFilterQuery'
 import { useTableEditorQueries } from './useTableEditorQueries'
+import type { TableEditorFilter } from './stores/tableEditorFilterStore'
 
 type TableEditorState = {
   connectionName: string
   setConnectionName: (value: string) => void
   activeTable: string
   setActiveTable: (value: string) => void
+  applyTableNavigation: (args: { activeTable: string; filter?: TableEditorFilter }) => void
   setStatus: (value: string) => void
   page: number
   setPage: (value: number | ((prev: number) => number)) => void
@@ -23,23 +25,31 @@ type TableEditorState = {
   setFilterValueEnd: (value: string) => void
   filterMode: TableFilterMode
   setFilterMode: (value: TableFilterMode) => void
+  filterDebounceMs: number
   setVisibleColumns: (value: string[]) => void
 }
 
 export function useTableEditorData(state: TableEditorState) {
-  const debouncedFilterValue = useDebouncedValue(state.filterValue)
-  const debouncedFilterValueEnd = useDebouncedValue(state.filterValueEnd)
+  const filterQuery = useTableEditorFilterQuery({
+    filterColumn: state.filterColumn,
+    filterValue: state.filterValue,
+    filterValueEnd: state.filterValueEnd,
+    filterMode: state.filterMode,
+    filterDebounceMs: state.filterDebounceMs,
+  })
 
   const queries = useTableEditorQueries({
     ...state,
-    filterValue: debouncedFilterValue,
-    filterValueEnd: debouncedFilterValueEnd,
+    filterValue: filterQuery.debouncedFilterValue,
+    filterValueEnd: filterQuery.debouncedFilterValueEnd,
+    rowsQueryEnabled: filterQuery.rowsQueryEnabled,
+    hideRowsWhileLoading: filterQuery.hideRowsWhileLoading,
   })
 
   useTableEditorEffects({
     connectionName: state.connectionName,
     activeTable: state.activeTable,
-    setActiveTable: state.setActiveTable,
+    applyTableNavigation: state.applyTableNavigation,
     pageSize: state.pageSize,
     sortBy: state.sortBy,
     setSortBy: state.setSortBy,
@@ -52,10 +62,9 @@ export function useTableEditorData(state: TableEditorState) {
     setFilterValueEnd: state.setFilterValueEnd,
     filterMode: state.filterMode,
     setFilterMode: state.setFilterMode,
-    debouncedFilterValue,
-    debouncedFilterValueEnd,
+    debouncedFilterValue: filterQuery.debouncedFilterValue,
+    debouncedFilterValueEnd: filterQuery.debouncedFilterValueEnd,
     setPage: state.setPage,
-    setVisibleColumns: state.setVisibleColumns,
     tables: queries.tables,
     loadingTables: queries.loadingTables,
     columns: queries.columns,
