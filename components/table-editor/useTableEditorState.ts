@@ -16,7 +16,7 @@ export function useTableEditorState() {
       tablesTruncated: actions.tablesTruncated,
       loadingTables: actions.loadingTables,
       activeTable: state.activeTable,
-      onSelectTable: (tableKey) => state.applyTableNavigation({ activeTable: tableKey }),
+      onSelectTable: (tableKey: string) => state.applyTableNavigation({ activeTable: tableKey }),
       onRefreshTables: () => {
         void actions.loadTables()
       },

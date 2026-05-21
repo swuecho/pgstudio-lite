@@ -73,6 +73,7 @@ export function useTableEditorData(state: TableEditorState) {
   return {
     connections: queries.connections,
     tables: queries.tables,
+    tablesTruncated: queries.tablesTruncated,
     columns: queries.columns,
     rows: queries.rows,
     totalRows: queries.totalRows,
