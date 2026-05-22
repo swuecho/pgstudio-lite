@@ -1,12 +1,22 @@
 import { fetchJson } from '../../lib/http'
 import { hasActiveTableFilter, type TableFilterMode } from '../../lib/table-filter'
 import type {
+  TableEditorBookmark,
+  TableEditorRecentView,
+  TableEditorViewState,
+} from '../../lib/table-editor-views'
+import type {
   ColumnInfo,
   Connection,
   RowData,
   RowKey,
   TableInfo,
 } from '../../components/table-editor/types'
+
+export type TableEditorViewsResponse = {
+  bookmarks: TableEditorBookmark[]
+  recentViews: TableEditorRecentView[]
+}
 
 export async function getConnections() {
   return fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
@@ -105,5 +115,70 @@ export async function removeRow(
   return fetchJson<{ ok: boolean }>(`/api/tables/${encodeURIComponent(table)}/rows`, {
     method: 'DELETE',
     body: JSON.stringify(body),
+  })
+}
+
+export async function saveTableEditorViewBookmark(args: {
+  connectionName: string
+  title: string
+  activeTable: string
+  filter?: TableEditorViewState['filter']
+}) {
+  return fetchJson<{ item: TableEditorBookmark }>('/api/table-editor-views', {
+    method: 'POST',
+    body: JSON.stringify(args),
+  })
+}
+
+export async function updateTableEditorViewBookmark(args: {
+  connectionName: string
+  id: string
+  title?: string
+  pinned?: boolean
+}) {
+  return fetchJson<{ item: TableEditorBookmark }>('/api/table-editor-views', {
+    method: 'PATCH',
+    body: JSON.stringify(args),
+  })
+}
+
+export async function deleteTableEditorViewBookmark(id: string, connectionName: string) {
+  return fetchJson<{ ok: boolean }>('/api/table-editor-views', {
+    method: 'DELETE',
+    body: JSON.stringify({ id, connectionName }),
+  })
+}
+
+export async function getTableEditorViews(connectionName: string) {
+  return fetchJson<TableEditorViewsResponse>(
+    `/api/table-editor-views?connectionName=${encodeURIComponent(connectionName)}`
+  )
+}
+
+export async function recordTableEditorViewRecent(args: {
+  connectionName: string
+  activeTable: string
+  filter?: TableEditorViewState['filter']
+}) {
+  return fetchJson<{ item: TableEditorRecentView | null }>('/api/table-editor-views', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'recordRecent', ...args }),
+  })
+}
+
+export async function importTableEditorViewsFromLocalStorage(payload: {
+  bookmarksByConnection: Record<string, TableEditorBookmark[]>
+  recentViewsByConnection: Record<string, TableEditorRecentView[]>
+}) {
+  return fetchJson<{ ok: boolean }>('/api/table-editor-views', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'import', ...payload }),
+  })
+}
+
+export async function clearTableEditorViewRecent(connectionName: string) {
+  return fetchJson<{ ok: boolean }>('/api/table-editor-views', {
+    method: 'DELETE',
+    body: JSON.stringify({ action: 'clearRecent', connectionName }),
   })
 }

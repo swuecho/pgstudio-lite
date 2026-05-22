@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { RelationKindBadge } from '../components/shared/RelationKindBadge'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
 import { ErrorBoundary } from '../components/shared/ErrorBoundary'
 import { TableGridPanel } from '../components/table-editor/GridPanel'
+import { SaveViewPopover } from '../components/table-editor/SaveViewPopover'
 import { TableSidebar } from '../components/table-editor/Sidebar'
 import { useTableEditorState } from '../components/table-editor/useTableEditorState'
 import { useTableEditorUrlSync } from '../components/table-editor/useTableEditorUrlSync'
@@ -15,7 +16,13 @@ export default function TableEditorPage() {
   const state = useTableEditorState()
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const filterValueInputRef = useRef<HTMLInputElement>(null)
-  const sidebarProps = state.getSidebarProps()
+
+  const [sidebarNavTab, setSidebarNavTab] = useState<'tables' | 'views'>('tables')
+
+  const sidebarProps = state.getSidebarProps({
+    activeNavTab: sidebarNavTab,
+    onChangeNavTab: setSidebarNavTab,
+  })
   const gridProps = state.getGridProps(filterValueInputRef)
 
   useTableEditorUrlSync({
@@ -50,6 +57,13 @@ export default function TableEditorPage() {
               </span>
             ) : null}
             {state.activeRelation ? <RelationKindBadge kind={state.activeRelation.kind} /> : null}
+            {state.currentView ? (
+              <SaveViewPopover
+                currentView={state.currentView}
+                onSave={state.saveBookmark}
+                onSaved={() => setSidebarNavTab('views')}
+              />
+            ) : null}
           </div>
           <div className={pageStyles.editorHeaderRight}>
             {state.connectionReadOnly ? (
