@@ -100,3 +100,56 @@ export const notebookCells = sqliteTable(
     notebookUpdatedAtIdx: index('idx_notebook_cells_updated_at').on(table.updatedAt),
   })
 )
+
+export const tableEditorBookmarks = sqliteTable(
+  'table_editor_bookmarks',
+  {
+    id: text('id').primaryKey(),
+    connectionName: text('connection_name').notNull(),
+    title: text('title').notNull(),
+    pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+    activeTable: text('active_table').notNull(),
+    filterColumn: text('filter_column'),
+    filterMode: text('filter_mode'),
+    filterValue: text('filter_value'),
+    filterValueEnd: text('filter_value_end'),
+    viewKey: text('view_key').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => ({
+    connectionViewKeyIdx: uniqueIndex('idx_table_editor_bookmarks_connection_view_key').on(
+      table.connectionName,
+      table.viewKey
+    ),
+    connectionUpdatedIdx: index('idx_table_editor_bookmarks_connection_updated').on(
+      table.connectionName,
+      table.updatedAt
+    ),
+  })
+)
+
+export const tableEditorRecentViews = sqliteTable(
+  'table_editor_recent_views',
+  {
+    id: text('id').primaryKey(),
+    connectionName: text('connection_name').notNull(),
+    activeTable: text('active_table').notNull(),
+    filterColumn: text('filter_column'),
+    filterMode: text('filter_mode'),
+    filterValue: text('filter_value'),
+    filterValueEnd: text('filter_value_end'),
+    viewKey: text('view_key').notNull(),
+    visitedAt: text('visited_at').notNull(),
+  },
+  (table) => ({
+    connectionViewKeyIdx: uniqueIndex('idx_table_editor_recent_views_connection_view_key').on(
+      table.connectionName,
+      table.viewKey
+    ),
+    connectionVisitedIdx: index('idx_table_editor_recent_views_connection_visited').on(
+      table.connectionName,
+      table.visitedAt
+    ),
+  })
+)

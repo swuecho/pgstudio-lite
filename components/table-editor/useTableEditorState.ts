@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import { formatTableFilterSummary } from '../../lib/table-filter'
+import { buildViewState, type TableEditorViewState } from '../../lib/table-editor-views'
 import { useTableEditorData } from './useTableEditorData'
 import { useTableEditorLocalState } from './useTableEditorLocalState'
 import { parseActiveTableKey } from './tableEditorContracts'
@@ -9,14 +10,46 @@ export function useTableEditorState() {
   const state = useTableEditorLocalState()
   const actions = useTableEditorData(state)
 
-  function getSidebarProps() {
+  const currentView: TableEditorViewState | null = buildViewState({
+    connectionName: state.connectionName,
+    activeTable: state.activeTable,
+    filterColumn: state.filterColumn,
+    filterMode: state.filterMode,
+    filterValue: state.filterValue,
+    filterValueEnd: state.filterValueEnd,
+  })
+
+  function navigateToView(view: TableEditorViewState) {
+    if (view.connectionName !== state.connectionName) {
+      state.setConnectionName(view.connectionName)
+    }
+    state.applyTableNavigation({ activeTable: view.activeTable, filter: view.filter })
+  }
+
+  function getSidebarProps(args?: {
+    activeNavTab?: 'tables' | 'views'
+    onChangeNavTab?: (tab: 'tables' | 'views') => void
+  }) {
     return {
       connectionName: state.connectionName,
       tables: actions.tables,
       tablesTruncated: actions.tablesTruncated,
       loadingTables: actions.loadingTables,
       activeTable: state.activeTable,
+      currentView,
+      activeNavTab: args?.activeNavTab,
+      onChangeNavTab: args?.onChangeNavTab,
+      bookmarks: actions.bookmarks,
+      recentViews: actions.recentViews,
+      loadingViews: actions.loadingViews,
       onSelectTable: (tableKey: string) => state.applyTableNavigation({ activeTable: tableKey }),
+      onNavigateToView: navigateToView,
+      onRenameBookmark: actions.renameBookmark,
+      onToggleBookmarkPinned: actions.toggleBookmarkPinned,
+      onDeleteBookmark: actions.deleteBookmark,
+      onClearRecentViews: () => {
+        void actions.clearRecentViews()
+      },
       onRefreshTables: () => {
         void actions.loadTables()
       },
@@ -88,6 +121,9 @@ export function useTableEditorState() {
     ...state,
     ...actions,
     filterSummary,
+    currentView,
+    navigateToView,
+    saveBookmark: actions.saveBookmark,
     getSidebarProps,
     getGridProps,
   }

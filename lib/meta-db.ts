@@ -167,5 +167,36 @@ function ensureBaseTables() {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_notebook_cells_notebook_position ON notebook_cells (notebook_id, position);
     CREATE INDEX IF NOT EXISTS idx_notebook_cells_updated_at ON notebook_cells (updated_at);
+
+    CREATE TABLE IF NOT EXISTS table_editor_bookmarks (
+      id text PRIMARY KEY NOT NULL,
+      connection_name text NOT NULL,
+      title text NOT NULL,
+      pinned integer DEFAULT false NOT NULL,
+      active_table text NOT NULL,
+      filter_column text,
+      filter_mode text,
+      filter_value text,
+      filter_value_end text,
+      view_key text NOT NULL,
+      created_at text NOT NULL,
+      updated_at text NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_table_editor_bookmarks_connection_view_key ON table_editor_bookmarks (connection_name, view_key);
+    CREATE INDEX IF NOT EXISTS idx_table_editor_bookmarks_connection_updated ON table_editor_bookmarks (connection_name, updated_at);
+
+    CREATE TABLE IF NOT EXISTS table_editor_recent_views (
+      id text PRIMARY KEY NOT NULL,
+      connection_name text NOT NULL,
+      active_table text NOT NULL,
+      filter_column text,
+      filter_mode text,
+      filter_value text,
+      filter_value_end text,
+      view_key text NOT NULL,
+      visited_at text NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_table_editor_recent_views_connection_view_key ON table_editor_recent_views (connection_name, view_key);
+    CREATE INDEX IF NOT EXISTS idx_table_editor_recent_views_connection_visited ON table_editor_recent_views (connection_name, visited_at);
   `)
 }

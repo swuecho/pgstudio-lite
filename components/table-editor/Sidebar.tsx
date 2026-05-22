@@ -15,10 +15,23 @@ import {
   type TableListGroup,
   type TableListSortMode,
 } from '../../lib/table-editor-nav'
+import {
+  filterViews,
+  formatRelativeTime,
+  formatViewLabel,
+  isSameView,
+  partitionViewBookmarks,
+  viewStateKey,
+  type TableEditorBookmark,
+  type TableEditorRecentView,
+  type TableEditorViewState,
+} from '../../lib/table-editor-views'
 import { EMPTY_TABLE_KEYS, useTableEditorNavStore } from './stores/tableEditorNavStore'
 import { useTableEditorSchemaStore } from './stores/tableEditorSchemaStore'
 import { TableInfo } from './types'
 import styles from './TableEditorStyles.module.css'
+
+type TableSidebarNavTab = 'tables' | 'views'
 
 type TableSidebarProps = {
   connectionName: string
@@ -26,7 +39,18 @@ type TableSidebarProps = {
   tablesTruncated: boolean
   loadingTables: boolean
   activeTable: string
+  currentView: TableEditorViewState | null
+  bookmarks: TableEditorBookmark[]
+  recentViews: TableEditorRecentView[]
+  loadingViews: boolean
+  activeNavTab?: TableSidebarNavTab
+  onChangeNavTab?: (tab: TableSidebarNavTab) => void
   onSelectTable: (table: string) => void
+  onNavigateToView: (view: TableEditorViewState) => void
+  onRenameBookmark: (id: string, title: string) => void | Promise<void>
+  onToggleBookmarkPinned: (id: string) => void | Promise<void>
+  onDeleteBookmark: (id: string) => void | Promise<void>
+  onClearRecentViews: () => void
   onRefreshTables: () => void
   onWidthResizerMouseDown?: (event: React.MouseEvent) => void
 }
@@ -43,7 +67,18 @@ export function TableSidebar({
   tablesTruncated,
   loadingTables,
   activeTable,
+  currentView,
+  bookmarks,
+  recentViews,
+  loadingViews,
+  activeNavTab: activeNavTabProp,
+  onChangeNavTab,
   onSelectTable,
+  onNavigateToView,
+  onRenameBookmark,
+  onToggleBookmarkPinned,
+  onDeleteBookmark,
+  onClearRecentViews,
   onRefreshTables,
   onWidthResizerMouseDown,
 }: TableSidebarProps) {
@@ -60,9 +95,16 @@ export function TableSidebar({
   const togglePinned = useTableEditorNavStore((state) => state.togglePinned)
   const recordRecent = useTableEditorNavStore((state) => state.recordRecent)
 
+  const [internalNavTab, setInternalNavTab] = useState<TableSidebarNavTab>('tables')
+  const activeNavTab = activeNavTabProp ?? internalNavTab
+  const setActiveNavTab = onChangeNavTab ?? setInternalNavTab
+
   const [tableSearch, setTableSearch] = useState('')
+  const [viewsSearch, setViewsSearch] = useState('')
   const [sortMode, setSortMode] = useState<TableListSortMode>('name')
   const [focusedKey, setFocusedKey] = useState('')
+  const [renamingBookmarkId, setRenamingBookmarkId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
 
   const listRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -127,6 +169,27 @@ export function TableSidebar({
 
   const flatTables = useMemo(() => flattenTableListSections(listSections), [listSections])
   const matchCount = flatTables.length
+
+  const { pinned: pinnedBookmarks, unpinned: unpinnedBookmarks } = useMemo(
+    () => partitionViewBookmarks(bookmarks),
+    [bookmarks]
+  )
+
+  const filteredPinnedBookmarks = useMemo(
+    () => filterViews(pinnedBookmarks, viewsSearch, (item) => item.title),
+    [pinnedBookmarks, viewsSearch]
+  )
+  const filteredBookmarks = useMemo(
+    () => filterViews(unpinnedBookmarks, viewsSearch, (item) => item.title),
+    [unpinnedBookmarks, viewsSearch]
+  )
+  const filteredRecentViews = useMemo(
+    () => filterViews(recentViews, viewsSearch),
+    [recentViews, viewsSearch]
+  )
+
+  const viewsMatchCount =
+    filteredPinnedBookmarks.length + filteredBookmarks.length + filteredRecentViews.length
 
   const handleSelectTable = useCallback(
     (tableKey: string) => {
@@ -274,6 +337,167 @@ export function TableSidebar({
     )
   }
 
+  const renderViewItem = (
+    view: TableEditorViewState,
+    options: {
+      key: string
+      title?: string
+      subtitle?: string
+      timestamp?: string
+      bookmark?: TableEditorBookmark
+    }
+  ) => {
+    const isActive = currentView ? isSameView(currentView, view) : false
+
+    return (
+      <div
+        key={options.key}
+        className={`history-item ${styles.viewItem} ${isActive ? styles.viewItemActive : ''}`}
+        role="button"
+        tabIndex={0}
+        onClick={() => onNavigateToView(view)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onNavigateToView(view)
+          }
+        }}
+      >
+        <div className={styles.viewItemTop}>
+          <span className={`pill ${options.bookmark ? 'ok' : ''}`.trim()}>
+            {options.bookmark ? 'bookmark' : 'recent'}
+          </span>
+          {options.bookmark && renamingBookmarkId === options.bookmark.id ? (
+            <input
+              className={styles.viewTitleInput}
+              value={renameDraft}
+              autoFocus
+              onClick={(event) => event.stopPropagation()}
+              onChange={(event) => setRenameDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  void onRenameBookmark(options.bookmark!.id, renameDraft)
+                  setRenamingBookmarkId(null)
+                }
+                if (event.key === 'Escape') setRenamingBookmarkId(null)
+              }}
+              onBlur={() => {
+                void onRenameBookmark(options.bookmark!.id, renameDraft)
+                setRenamingBookmarkId(null)
+              }}
+            />
+          ) : (
+            <span className={styles.viewItemTitle}>{options.title ?? formatViewLabel(view)}</span>
+          )}
+        </div>
+        <div className={styles.viewItemQuery}>{options.subtitle ?? formatViewLabel(view)}</div>
+        {options.timestamp ? <div className="history-meta">{options.timestamp}</div> : null}
+        {options.bookmark ? (
+          <div className="history-actions">
+            <button
+              className="btn small"
+              onClick={(event) => {
+                event.stopPropagation()
+                void onToggleBookmarkPinned(options.bookmark!.id)
+              }}
+            >
+              {options.bookmark.pinned ? 'Unpin' : 'Pin'}
+            </button>
+            {renamingBookmarkId === options.bookmark.id ? (
+              <button
+                className="btn small"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  void onRenameBookmark(options.bookmark!.id, renameDraft)
+                  setRenamingBookmarkId(null)
+                }}
+              >
+                Apply
+              </button>
+            ) : (
+              <button
+                className="btn small"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setRenamingBookmarkId(options.bookmark!.id)
+                  setRenameDraft(options.bookmark!.title)
+                }}
+              >
+                Rename
+              </button>
+            )}
+            <button
+              className="btn small danger"
+              onClick={(event) => {
+                event.stopPropagation()
+                void onDeleteBookmark(options.bookmark!.id)
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  const renderViewsList = () => {
+    if (viewsMatchCount === 0) {
+      return (
+        <div className="empty-state">
+          {viewsSearch.trim()
+            ? 'No views match your search.'
+            : 'No saved or recent views yet. Open a table or filter, then use Save view.'}
+        </div>
+      )
+    }
+
+    return (
+      <>
+        {filteredPinnedBookmarks.length > 0 ? (
+          <div className={styles.viewSection}>
+            <div className={styles.viewSectionLabel}>Pinned</div>
+            {filteredPinnedBookmarks.map((bookmark) =>
+              renderViewItem(bookmark, {
+                key: bookmark.id,
+                title: bookmark.title,
+                subtitle: formatViewLabel(bookmark),
+                timestamp: formatRelativeTime(bookmark.createdAt),
+                bookmark,
+              })
+            )}
+          </div>
+        ) : null}
+        {filteredBookmarks.length > 0 ? (
+          <div className={styles.viewSection}>
+            <div className={styles.viewSectionLabel}>Bookmarks</div>
+            {filteredBookmarks.map((bookmark) =>
+              renderViewItem(bookmark, {
+                key: bookmark.id,
+                title: bookmark.title,
+                subtitle: formatViewLabel(bookmark),
+                timestamp: formatRelativeTime(bookmark.createdAt),
+                bookmark,
+              })
+            )}
+          </div>
+        ) : null}
+        {filteredRecentViews.length > 0 ? (
+          <div className={styles.viewSection}>
+            <div className={styles.viewSectionLabel}>Recent</div>
+            {filteredRecentViews.map((view: TableEditorRecentView) =>
+              renderViewItem(view, {
+                key: viewStateKey(view),
+                timestamp: formatRelativeTime(view.visitedAt),
+              })
+            )}
+          </div>
+        ) : null}
+      </>
+    )
+  }
+
   return (
     <>
       <aside className="layout-rail">
@@ -292,9 +516,24 @@ export function TableSidebar({
       <aside className="layout-nav">
         <div className="layout-nav-header">
           <div className="nav-title">Table Editor</div>
+          <div className="nav-tabs-inline">
+            <button
+              className={`nav-tab ${activeNavTab === 'tables' ? 'active' : ''}`}
+              onClick={() => setActiveNavTab('tables')}
+            >
+              Tables
+            </button>
+            <button
+              className={`nav-tab ${activeNavTab === 'views' ? 'active' : ''}`}
+              onClick={() => setActiveNavTab('views')}
+            >
+              Views{connectionName ? ` · ${connectionName}` : ''}
+            </button>
+          </div>
         </div>
 
-        <div className={`layout-nav-controls ${styles.tableNavControls}`}>
+        {activeNavTab === 'tables' ? (
+          <div className={`layout-nav-controls ${styles.tableNavControls}`}>
           <select
             aria-label="Schema"
             value={selectedSchema}
@@ -343,8 +582,28 @@ export function TableSidebar({
             {searchAllSchemas ? ' · all schemas' : ''}
           </div>
         </div>
+        ) : (
+          <div className={`layout-nav-controls ${styles.viewsNavControls}`}>
+            <input
+              placeholder="Search views"
+              value={viewsSearch}
+              onChange={(event) => setViewsSearch(event.target.value)}
+              aria-label="Search saved and recent views"
+            />
+            <button
+              className="btn small danger"
+              onClick={onClearRecentViews}
+              disabled={recentViews.length === 0 || loadingViews}
+            >
+              Clear recent
+            </button>
+            <div className={styles.tableNavMeta} aria-live="polite">
+              {viewsMatchCount} {viewsMatchCount === 1 ? 'view' : 'views'}
+            </div>
+          </div>
+        )}
 
-        {tablesTruncated ? (
+        {activeNavTab === 'tables' && tablesTruncated ? (
           <div className={styles.tableListNotice} role="status">
             Showing first 500 tables. Narrow your schema or search to find others.
           </div>
@@ -352,14 +611,20 @@ export function TableSidebar({
 
         <div
           ref={listRef}
-          className={`layout-nav-list ${styles.tableCardsList} ${loadingTables ? styles.tableCardsListLoading : ''}`}
-          role="listbox"
-          aria-label="Tables and views"
-          aria-busy={loadingTables}
-          tabIndex={0}
-          onKeyDown={handleListKeyDown}
+          className={`layout-nav-list ${
+            activeNavTab === 'tables'
+              ? `${styles.tableCardsList} ${loadingTables ? styles.tableCardsListLoading : ''}`
+              : styles.viewsList
+          }`}
+          role={activeNavTab === 'tables' ? 'listbox' : undefined}
+          aria-label={activeNavTab === 'tables' ? 'Tables and views' : 'Saved and recent views'}
+          aria-busy={activeNavTab === 'tables' ? loadingTables : undefined}
+          tabIndex={activeNavTab === 'tables' ? 0 : undefined}
+          onKeyDown={activeNavTab === 'tables' ? handleListKeyDown : undefined}
         >
-          {flatTables.length === 0 ? (
+          {activeNavTab === 'views' ? (
+            renderViewsList()
+          ) : flatTables.length === 0 ? (
             <div className="empty-state">
               {tables.length === 0
                 ? 'No tables or views found for this connection.'

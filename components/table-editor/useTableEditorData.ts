@@ -2,6 +2,7 @@ import type { TableFilterMode } from '../../lib/table-filter'
 import { useTableEditorEffects } from './useTableEditorEffects'
 import { useTableEditorFilterQuery } from './useTableEditorFilterQuery'
 import { useTableEditorQueries } from './useTableEditorQueries'
+import { useTableEditorViews } from './useTableEditorViews'
 import type { TableEditorFilter } from './stores/tableEditorFilterStore'
 
 type TableEditorState = {
@@ -30,6 +31,8 @@ type TableEditorState = {
 }
 
 export function useTableEditorData(state: TableEditorState) {
+  const views = useTableEditorViews(state.connectionName)
+
   const filterQuery = useTableEditorFilterQuery({
     filterColumn: state.filterColumn,
     filterValue: state.filterValue,
@@ -68,6 +71,7 @@ export function useTableEditorData(state: TableEditorState) {
     tables: queries.tables,
     loadingTables: queries.loadingTables,
     columns: queries.columns,
+    recordRecentView: views.recordRecentView,
   })
 
   return {
@@ -89,5 +93,13 @@ export function useTableEditorData(state: TableEditorState) {
     activeRelation: queries.activeRelation,
     rowMutationsReadOnly: queries.rowMutationsReadOnly,
     rowMutationsDisabledReason: queries.rowMutationsDisabledReason,
+    bookmarks: views.bookmarks,
+    recentViews: views.recentViews,
+    loadingViews: views.loadingViews,
+    saveBookmark: views.saveBookmark,
+    renameBookmark: views.renameBookmark,
+    toggleBookmarkPinned: views.toggleBookmarkPinned,
+    deleteBookmark: views.deleteBookmark,
+    clearRecentViews: views.clearRecentViews,
   }
 }

@@ -616,3 +616,88 @@
   opacity: 0.9;
   vertical-align: middle;
 }
+
+:global(.layout-nav-controls).viewsNavControls {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-auto-rows: auto;
+  height: auto;
+  min-height: 46px;
+  gap: 6px;
+  align-items: center;
+}
+
+:global(.layout-nav-controls.viewsNavControls) input {
+  grid-column: 1 / -1;
+}
+
+.viewsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+}
+
+.viewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.viewSection + .viewSection {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.viewSectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 2px;
+}
+
+.viewItem {
+  cursor: pointer;
+}
+
+.viewItemActive {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
+}
+
+.viewItemTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.viewItemTitle {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewItemQuery {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.viewTitleInput {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 2px 6px;
+  font-size: 12px;
+  height: 24px;
+}

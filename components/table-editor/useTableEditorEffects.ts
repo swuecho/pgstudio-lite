@@ -1,16 +1,20 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   defaultFilterModeForColumnKind,
   hasActiveTableFilter,
   isFilterModeAllowedForColumnKind,
   type TableFilterMode,
 } from '../../lib/table-filter'
+import { buildViewState, viewStateKey } from '../../lib/table-editor-views'
 import { getColumnKind } from '../../lib/table-column-kind'
 import { resolveNextActiveTable, resolveSortAndFilter } from './tableEditorContracts'
 import { restoreTableFilters } from './restoreTableFilters'
 import { tableEditorFilterKey, useTableEditorFilterStore } from './stores/tableEditorFilterStore'
 import type { TableEditorFilter } from './stores/tableEditorFilterStore'
 import type { ColumnInfo, TableInfo } from './types'
+import type { TableEditorViewState } from '../../lib/table-editor-views'
+
+const RECENT_VIEW_DEBOUNCE_MS = 400
 
 type UseTableEditorEffectsParams = {
   connectionName: string
@@ -34,6 +38,7 @@ type UseTableEditorEffectsParams = {
   tables: TableInfo[]
   loadingTables: boolean
   columns: ColumnInfo[]
+  recordRecentView: (view: TableEditorViewState) => void
 }
 
 export function useTableEditorEffects({
@@ -58,9 +63,11 @@ export function useTableEditorEffects({
   tables,
   loadingTables,
   columns,
+  recordRecentView,
 }: UseTableEditorEffectsParams) {
   const setFilterForKey = useTableEditorFilterStore((state) => state.setFilterForKey)
   const clearFilterForKey = useTableEditorFilterStore((state) => state.clearFilterForKey)
+  const lastRecordedViewKeyRef = useRef('')
 
   useEffect(() => {
     const nextActiveTable = resolveNextActiveTable(tables, activeTable, loadingTables)
@@ -137,4 +144,39 @@ export function useTableEditorEffects({
       setFilterMode(defaultFilterModeForColumnKind(kind))
     }
   }, [columns, filterColumn, filterMode, setFilterMode])
+
+  useEffect(() => {
+    lastRecordedViewKeyRef.current = ''
+  }, [connectionName])
+
+  useEffect(() => {
+    if (!connectionName || !activeTable) return
+
+    const timeoutId = window.setTimeout(() => {
+      const view = buildViewState({
+        connectionName,
+        activeTable,
+        filterColumn,
+        filterMode,
+        filterValue: debouncedFilterValue,
+        filterValueEnd: debouncedFilterValueEnd,
+      })
+      if (!view) return
+
+      const key = viewStateKey(view)
+      if (lastRecordedViewKeyRef.current === key) return
+      lastRecordedViewKeyRef.current = key
+      recordRecentView(view)
+    }, RECENT_VIEW_DEBOUNCE_MS)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [
+    activeTable,
+    connectionName,
+    debouncedFilterValue,
+    debouncedFilterValueEnd,
+    filterColumn,
+    filterMode,
+    recordRecentView,
+  ])
 }
