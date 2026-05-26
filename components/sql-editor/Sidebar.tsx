@@ -109,6 +109,9 @@ export function SqlSidebar({
         <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/notebook">
           NB
         </Link>
+        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/activity">
+          AC
+        </Link>
         <div className="mt-auto flex justify-center">
           <ThemeToggle />
         </div>

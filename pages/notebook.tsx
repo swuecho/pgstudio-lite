@@ -31,6 +31,9 @@ export default function NotebookPage() {
           TB
         </Link>
         <button className={`${styles.railBtn} ${styles.active}`}>NB</button>
+        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/activity">
+          AC
+        </Link>
         <div className="mt-auto flex justify-center">
           <ThemeToggle />
         </div>

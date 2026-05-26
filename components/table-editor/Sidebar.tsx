@@ -508,6 +508,9 @@ export function TableSidebar({
         <Link className="rail-btn link-btn" href="/notebook">
           NB
         </Link>
+        <Link className="rail-btn link-btn" href="/activity">
+          AC
+        </Link>
         <div className="mt-auto flex justify-center">
           <ThemeToggle />
         </div>
