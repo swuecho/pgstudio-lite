@@ -15,6 +15,7 @@ import {
   rowsToTsv,
 } from '../../lib/result-export'
 import { formatExplainPlan } from './utils'
+import { ExplainPlanTree } from './ExplainPlanTree'
 
 type StatementResult = QueryResult['statements'][number]
 
@@ -26,6 +27,12 @@ function getExplainPlanText(statement: StatementResult) {
   const planField = statement.fields.find((field) => /query plan/i.test(field)) || statement.fields[0]
   if (!planField || statement.rows.length === 0) return ''
   return formatExplainPlan(statement.rows[0][planField])
+}
+
+function getExplainPlanValue(statement: StatementResult): unknown {
+  const planField = statement.fields.find((field) => /query plan/i.test(field)) || statement.fields[0]
+  if (!planField || statement.rows.length === 0) return null
+  return statement.rows[0][planField]
 }
 
 function exportStatement(
@@ -135,9 +142,10 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                   </div>
                 ) : null}
                 {isExplainStatement(statement) ? (
-                  <pre className={styles.explainPlan}>
-                    {getExplainPlanText(statement) || 'No plan returned.'}
-                  </pre>
+                  <ExplainPlanTree
+                    value={getExplainPlanValue(statement)}
+                    fallbackText={getExplainPlanText(statement)}
+                  />
                 ) : statement.fields.length > 0 ? (
                   <div className={styles.tableWrap}>
                     <table>
