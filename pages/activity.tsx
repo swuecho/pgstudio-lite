@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useRouter } from 'next/router'
+import { useCallback, useMemo, useState } from 'react'
 import ThemeToggle from '../components/theme-toggle'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
@@ -8,9 +9,16 @@ import { useActiveConnection } from '../components/shared/hooks/useActiveConnect
 import {
   useActivityLocks,
   useActivitySessions,
+  useActivityStatements,
   useControlBackend,
+  useStatementsAction,
 } from '../features/activity/useActivity'
-import type { ActivityLock, ActivitySession } from '../features/activity/activity.service'
+import type {
+  ActivityLock,
+  ActivitySession,
+  ActivityStatement,
+  StatementsOrderBy,
+} from '../features/activity/activity.service'
 import styles from '../components/activity/ActivityPage.module.css'
 
 const INTERVAL_OPTIONS = [
@@ -30,7 +38,7 @@ const STATE_OPTIONS = [
   'disabled',
 ]
 
-type Tab = 'sessions' | 'locks'
+type Tab = 'sessions' | 'locks' | 'statements'
 type PendingAction = { pid: number; action: 'cancel' | 'terminate' }
 
 function formatDuration(seconds: number): string {
@@ -68,6 +76,17 @@ export default function ActivityPage() {
   const [onlyBlocked, setOnlyBlocked] = useState(false)
   const [expandedPid, setExpandedPid] = useState<number | null>(null)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
+  const [statementsOrderBy, setStatementsOrderBy] = useState<StatementsOrderBy>('total')
+  const [expandedQueryid, setExpandedQueryid] = useState<string | null>(null)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const router = useRouter()
+  const openInEditor = useCallback(
+    (query: string, title: string) => {
+      if (!query.trim()) return
+      void router.push({ pathname: '/', query: { query, title } })
+    },
+    [router]
+  )
 
   const sessionsQuery = useActivitySessions(connectionName || '', {
     intervalMs,
@@ -79,13 +98,25 @@ export default function ActivityPage() {
     paused,
     enabled: tab === 'locks',
   })
+  const statementsQuery = useActivityStatements(connectionName || '', {
+    intervalMs,
+    paused,
+    enabled: tab === 'statements',
+    orderBy: statementsOrderBy,
+  })
   const control = useControlBackend(connectionName || '')
+  const statementsActionMutation = useStatementsAction(connectionName || '')
 
   const sessions = useMemo(
     () => sessionsQuery.data?.sessions ?? [],
     [sessionsQuery.data?.sessions]
   )
   const locks = useMemo(() => locksQuery.data?.locks ?? [], [locksQuery.data?.locks])
+  const statements = useMemo(
+    () => statementsQuery.data?.statements ?? [],
+    [statementsQuery.data?.statements]
+  )
+  const statementsInstalled = statementsQuery.data?.installed ?? true
 
   const blockingPids = useMemo(() => {
     const set = new Set<number>()
@@ -110,17 +141,24 @@ export default function ActivityPage() {
     })
   }, [sessions, filterUser, filterApp, filterState, onlyBlocked])
 
-  const fetchedAt = tab === 'sessions' ? sessionsQuery.data?.fetchedAt : locksQuery.data?.fetchedAt
-  const isLoading = tab === 'sessions' ? sessionsQuery.isLoading : locksQuery.isLoading
-  const error = tab === 'sessions' ? sessionsQuery.error : locksQuery.error
+  const activeQuery =
+    tab === 'sessions' ? sessionsQuery : tab === 'locks' ? locksQuery : statementsQuery
+  const fetchedAt = activeQuery.data?.fetchedAt
+  const isLoading = activeQuery.isLoading
+  const error = activeQuery.error
   const errorMessage = error instanceof Error ? error.message : null
 
   const statusText = (() => {
     if (errorMessage) return `error: ${errorMessage}`
     if (isLoading && !fetchedAt) return 'loading...'
-    const count = tab === 'sessions' ? filteredSessions.length : locks.length
+    const count =
+      tab === 'sessions'
+        ? filteredSessions.length
+        : tab === 'locks'
+          ? locks.length
+          : statements.length
     const time = fetchedAt ? new Date(fetchedAt).toLocaleTimeString() : ''
-    const label = tab === 'sessions' ? 'sessions' : 'locks'
+    const label = tab === 'sessions' ? 'sessions' : tab === 'locks' ? 'locks' : 'statements'
     return `${count} ${label}${time ? ` · ${time}` : ''}${paused ? ' · paused' : ''}`
   })()
 
@@ -197,8 +235,37 @@ export default function ActivityPage() {
             >
               Locks
             </button>
+            <button
+              className={`${styles.tabBtn} ${tab === 'statements' ? styles.active : ''}`}
+              onClick={() => setTab('statements')}
+            >
+              Statements
+            </button>
           </div>
           <div className={styles.toolbarRight}>
+            {tab === 'statements' && statementsInstalled ? (
+              <>
+                <select
+                  value={statementsOrderBy}
+                  onChange={(event) =>
+                    setStatementsOrderBy(event.target.value as StatementsOrderBy)
+                  }
+                  title="Sort"
+                >
+                  <option value="total">total time</option>
+                  <option value="mean">mean time</option>
+                  <option value="calls">calls</option>
+                </select>
+                <button
+                  className="btn small danger"
+                  disabled={connectionReadOnly}
+                  title={connectionReadOnly ? 'Connection is read-only' : 'pg_stat_statements_reset'}
+                  onClick={() => setResetConfirmOpen(true)}
+                >
+                  Reset stats
+                </button>
+              </>
+            ) : null}
             {connectionReadOnly ? (
               <span className="history-meta">connection is read-only</span>
             ) : null}
@@ -242,10 +309,31 @@ export default function ActivityPage() {
               expandedPid={expandedPid}
               onToggleExpand={(pid) => setExpandedPid((prev) => (prev === pid ? null : pid))}
               onAction={(pid, action) => setPendingAction({ pid, action })}
+              onOpenInEditor={(pid, query) => openInEditor(query, `pid ${pid}`)}
             />
           </>
-        ) : (
+        ) : tab === 'locks' ? (
           <LocksTable locks={locks} />
+        ) : statementsInstalled ? (
+          <StatementsTable
+            statements={statements}
+            expandedQueryid={expandedQueryid}
+            onToggleExpand={(queryid) =>
+              setExpandedQueryid((prev) => (prev === queryid ? null : queryid))
+            }
+            onOpenInEditor={(key, query) => openInEditor(query, `stmt ${key.slice(0, 8)}`)}
+          />
+        ) : (
+          <StatementsNotInstalled
+            readOnly={connectionReadOnly}
+            installing={statementsActionMutation.isPending}
+            installError={
+              statementsActionMutation.error instanceof Error
+                ? statementsActionMutation.error.message
+                : null
+            }
+            onInstall={() => statementsActionMutation.mutate('install')}
+          />
         )}
       </main>
 
@@ -266,6 +354,150 @@ export default function ActivityPage() {
         onClose={() => setPendingAction(null)}
         onConfirm={onConfirmAction}
       />
+
+      <ConfirmDialog
+        open={resetConfirmOpen}
+        title="Reset pg_stat_statements"
+        message="Reset all collected query statistics? This calls pg_stat_statements_reset() and cannot be undone."
+        confirmLabel="Reset"
+        confirmTone="danger"
+        onClose={() => setResetConfirmOpen(false)}
+        onConfirm={() => {
+          statementsActionMutation.mutate('reset', {
+            onSettled: () => setResetConfirmOpen(false),
+          })
+        }}
+      />
+    </div>
+  )
+}
+
+function formatMs(value: number): string {
+  if (!Number.isFinite(value)) return '-'
+  if (value < 1) return `${value.toFixed(2)}ms`
+  if (value < 1000) return `${value.toFixed(1)}ms`
+  if (value < 60_000) return `${(value / 1000).toFixed(2)}s`
+  return `${(value / 60_000).toFixed(2)}m`
+}
+
+function formatNumber(value: number): string {
+  return value.toLocaleString()
+}
+
+type StatementsTableProps = {
+  statements: ActivityStatement[]
+  expandedQueryid: string | null
+  onToggleExpand: (queryid: string) => void
+  onOpenInEditor: (key: string, query: string) => void
+}
+
+function StatementsTable({
+  statements,
+  expandedQueryid,
+  onToggleExpand,
+  onOpenInEditor,
+}: StatementsTableProps) {
+  if (statements.length === 0) {
+    return <div className={styles.empty}>No statements collected yet.</div>
+  }
+  return (
+    <div className={styles.tableScroll}>
+      <table className={styles.dataTable}>
+        <thead>
+          <tr>
+            <th>calls</th>
+            <th>total</th>
+            <th>mean</th>
+            <th>min</th>
+            <th>max</th>
+            <th>rows</th>
+            <th>blks hit</th>
+            <th>blks read</th>
+            <th>query</th>
+          </tr>
+        </thead>
+        <tbody>
+          {statements.map((statement, index) => {
+            const key = statement.queryid ?? `idx-${index}`
+            const expanded = expandedQueryid === key
+            const preview =
+              statement.query.length > 200 && !expanded
+                ? statement.query.slice(0, 200) + '…'
+                : statement.query
+            return (
+              <tr key={key}>
+                <td>{formatNumber(statement.calls)}</td>
+                <td>{formatMs(statement.total_exec_time_ms)}</td>
+                <td>{formatMs(statement.mean_exec_time_ms)}</td>
+                <td>{formatMs(statement.min_exec_time_ms)}</td>
+                <td>{formatMs(statement.max_exec_time_ms)}</td>
+                <td>{formatNumber(statement.rows)}</td>
+                <td>{formatNumber(statement.shared_blks_hit)}</td>
+                <td>{formatNumber(statement.shared_blks_read)}</td>
+                <td className={styles.queryCell}>
+                  <div className={expanded ? '' : styles.queryTruncated}>{preview}</div>
+                  <div className={styles.cellLinks}>
+                    {statement.query.length > 200 ? (
+                      <button className={styles.expandBtn} onClick={() => onToggleExpand(key)}>
+                        {expanded ? 'collapse' : 'expand'}
+                      </button>
+                    ) : null}
+                    {statement.query.trim() ? (
+                      <button
+                        className={styles.expandBtn}
+                        title="Open in SQL editor"
+                        onClick={() => onOpenInEditor(key, statement.query)}
+                      >
+                        ↗ editor
+                      </button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+type StatementsNotInstalledProps = {
+  readOnly: boolean
+  installing: boolean
+  installError: string | null
+  onInstall: () => void
+}
+
+function StatementsNotInstalled({
+  readOnly,
+  installing,
+  installError,
+  onInstall,
+}: StatementsNotInstalledProps) {
+  return (
+    <div className={styles.empty}>
+      <p>
+        The <code>pg_stat_statements</code> extension is not installed on this database.
+      </p>
+      <p style={{ marginTop: 8 }}>
+        Run <code>CREATE EXTENSION pg_stat_statements;</code> (and add{' '}
+        <code>shared_preload_libraries = &apos;pg_stat_statements&apos;</code> to{' '}
+        <code>postgresql.conf</code>, then restart) to enable per-query timing stats.
+      </p>
+      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+        <button
+          className="btn small primary"
+          disabled={readOnly || installing}
+          title={readOnly ? 'Connection is read-only' : 'CREATE EXTENSION pg_stat_statements'}
+          onClick={onInstall}
+        >
+          {installing ? 'Installing...' : 'Install extension'}
+        </button>
+      </div>
+      {installError ? (
+        <p style={{ marginTop: 12, color: 'var(--danger, #e54d4d)' }}>{installError}</p>
+      ) : null}
     </div>
   )
 }
@@ -277,6 +509,7 @@ type SessionsTableProps = {
   expandedPid: number | null
   onToggleExpand: (pid: number) => void
   onAction: (pid: number, action: 'cancel' | 'terminate') => void
+  onOpenInEditor: (pid: number, query: string) => void
 }
 
 function SessionsTable({
@@ -286,6 +519,7 @@ function SessionsTable({
   expandedPid,
   onToggleExpand,
   onAction,
+  onOpenInEditor,
 }: SessionsTableProps) {
   if (sessions.length === 0) {
     return <div className={styles.empty}>No matching sessions.</div>
@@ -333,14 +567,25 @@ function SessionsTable({
                 <td>{session.blocked_by.length > 0 ? session.blocked_by.join(', ') : ''}</td>
                 <td className={styles.queryCell}>
                   <div className={expanded ? '' : styles.queryTruncated}>{queryPreview}</div>
-                  {session.query.length > 200 ? (
-                    <button
-                      className={styles.expandBtn}
-                      onClick={() => onToggleExpand(session.pid)}
-                    >
-                      {expanded ? 'collapse' : 'expand'}
-                    </button>
-                  ) : null}
+                  <div className={styles.cellLinks}>
+                    {session.query.length > 200 ? (
+                      <button
+                        className={styles.expandBtn}
+                        onClick={() => onToggleExpand(session.pid)}
+                      >
+                        {expanded ? 'collapse' : 'expand'}
+                      </button>
+                    ) : null}
+                    {session.query.trim() ? (
+                      <button
+                        className={styles.expandBtn}
+                        title="Open in SQL editor"
+                        onClick={() => onOpenInEditor(session.pid, session.query)}
+                      >
+                        ↗ editor
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
                 <td>
                   <div className={styles.actionsCell}>

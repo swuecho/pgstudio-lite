@@ -33,8 +33,28 @@ export type ActivityLock = {
   query: string | null
 }
 
+export type ActivityStatement = {
+  queryid: string | null
+  query: string
+  calls: number
+  total_exec_time_ms: number
+  mean_exec_time_ms: number
+  min_exec_time_ms: number
+  max_exec_time_ms: number
+  rows: number
+  shared_blks_hit: number
+  shared_blks_read: number
+}
+
+export type StatementsOrderBy = 'total' | 'mean' | 'calls'
+
 export type SessionsResponse = { sessions: ActivitySession[]; fetchedAt: string }
 export type LocksResponse = { locks: ActivityLock[]; fetchedAt: string }
+export type StatementsResponse = {
+  installed: boolean
+  statements: ActivityStatement[]
+  fetchedAt: string
+}
 
 function withConnection(path: string, connectionName: string) {
   const sep = path.includes('?') ? '&' : '?'
@@ -47,6 +67,22 @@ export function fetchSessions(connectionName: string) {
 
 export function fetchLocks(connectionName: string) {
   return fetchJson<LocksResponse>(withConnection('/api/activity/locks', connectionName))
+}
+
+export function fetchStatements(connectionName: string, orderBy: StatementsOrderBy) {
+  return fetchJson<StatementsResponse>(
+    withConnection(`/api/activity/statements?orderBy=${orderBy}`, connectionName)
+  )
+}
+
+export function statementsAction(input: {
+  action: 'install' | 'reset'
+  connectionName: string
+}) {
+  return fetchJson<{ ok: boolean }>(
+    withConnection('/api/activity/statements', input.connectionName),
+    { method: 'POST', body: JSON.stringify({ action: input.action }) }
+  )
 }
 
 export function controlBackend(input: {
