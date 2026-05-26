@@ -1654,6 +1654,147 @@ export function clearTableEditorRecentViews(connectionName?: string) {
     .run()
 }
 
+export type ActivitySession = {
+  pid: number
+  user: string | null
+  application_name: string | null
+  client_addr: string | null
+  state: string | null
+  wait_event_type: string | null
+  wait_event: string | null
+  backend_type: string | null
+  database: string | null
+  query_start: string | null
+  xact_start: string | null
+  duration_seconds: number
+  blocked_by: number[]
+  query: string
+}
+
+export type ActivityLock = {
+  pid: number | null
+  locktype: string | null
+  mode: string | null
+  granted: boolean
+  relation_name: string | null
+  relkind: string | null
+  transaction_id: string | null
+  virtualxid: string | null
+  virtualtransaction: string | null
+  user: string | null
+  application_name: string | null
+  state: string | null
+  query: string | null
+}
+
+export async function getActivitySessions(connectionName?: string): Promise<ActivitySession[]> {
+  return withClient(connectionName, async (client) => {
+    const sql = `
+      select
+        a.pid,
+        a.usename                     as user,
+        a.application_name,
+        a.client_addr::text           as client_addr,
+        a.state,
+        a.wait_event_type,
+        a.wait_event,
+        a.backend_type,
+        a.datname                     as database,
+        a.xact_start,
+        a.query_start,
+        extract(epoch from (now() - coalesce(a.query_start, a.xact_start, a.backend_start)))::float as duration_seconds,
+        coalesce(pg_blocking_pids(a.pid), '{}') as blocked_by,
+        a.query
+      from pg_stat_activity a
+      where a.pid <> pg_backend_pid()
+        and a.backend_type = 'client backend'
+      order by
+        (coalesce(array_length(pg_blocking_pids(a.pid), 1), 0) > 0) desc,
+        a.query_start asc nulls last
+    `
+    const { rows } = await client.query(sql)
+    return rows.map((row: Record<string, unknown>) => ({
+      pid: Number(row.pid),
+      user: row.user == null ? null : String(row.user),
+      application_name: row.application_name == null ? null : String(row.application_name),
+      client_addr: row.client_addr == null ? null : String(row.client_addr),
+      state: row.state == null ? null : String(row.state),
+      wait_event_type: row.wait_event_type == null ? null : String(row.wait_event_type),
+      wait_event: row.wait_event == null ? null : String(row.wait_event),
+      backend_type: row.backend_type == null ? null : String(row.backend_type),
+      database: row.database == null ? null : String(row.database),
+      query_start: row.query_start == null ? null : new Date(row.query_start as string | Date).toISOString(),
+      xact_start: row.xact_start == null ? null : new Date(row.xact_start as string | Date).toISOString(),
+      duration_seconds: Number(row.duration_seconds || 0),
+      blocked_by: Array.isArray(row.blocked_by)
+        ? (row.blocked_by as unknown[]).map((value) => Number(value))
+        : [],
+      query: row.query == null ? '' : String(row.query),
+    }))
+  })
+}
+
+export async function getActivityLocks(connectionName?: string): Promise<ActivityLock[]> {
+  return withClient(connectionName, async (client) => {
+    const sql = `
+      select
+        l.pid,
+        l.locktype,
+        l.mode,
+        l.granted,
+        case when c.oid is null then null else n.nspname || '.' || c.relname end as relation_name,
+        c.relkind                     as relkind,
+        l.transactionid::text         as transaction_id,
+        l.virtualxid,
+        l.virtualtransaction,
+        a.usename                     as user,
+        a.application_name,
+        a.state,
+        a.query
+      from pg_locks l
+      left join pg_class c     on c.oid = l.relation
+      left join pg_namespace n on n.oid = c.relnamespace
+      left join pg_stat_activity a on a.pid = l.pid
+      where l.pid is null or l.pid <> pg_backend_pid()
+      order by l.granted asc, l.pid nulls last
+    `
+    const { rows } = await client.query(sql)
+    return rows.map((row: Record<string, unknown>) => ({
+      pid: row.pid == null ? null : Number(row.pid),
+      locktype: row.locktype == null ? null : String(row.locktype),
+      mode: row.mode == null ? null : String(row.mode),
+      granted: row.granted === true,
+      relation_name: row.relation_name == null ? null : String(row.relation_name),
+      relkind: row.relkind == null ? null : String(row.relkind),
+      transaction_id: row.transaction_id == null ? null : String(row.transaction_id),
+      virtualxid: row.virtualxid == null ? null : String(row.virtualxid),
+      virtualtransaction: row.virtualtransaction == null ? null : String(row.virtualtransaction),
+      user: row.user == null ? null : String(row.user),
+      application_name: row.application_name == null ? null : String(row.application_name),
+      state: row.state == null ? null : String(row.state),
+      query: row.query == null ? null : String(row.query),
+    }))
+  })
+}
+
+export async function controlBackend(
+  connectionName: string | undefined,
+  pid: number,
+  action: 'cancel' | 'terminate'
+): Promise<boolean> {
+  const connection = getConnectionByName(connectionName)
+  if (connection.readOnly) {
+    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
+    error.statusCode = 403
+    throw error
+  }
+  return withClient(connectionName, async (client) => {
+    const fn = action === 'terminate' ? 'pg_terminate_backend' : 'pg_cancel_backend'
+    const { rows } = await client.query(`select ${fn}($1) as success`, [pid])
+    return rows[0]?.success === true
+  })
+}
+
 export function importTableEditorViewsFromLocalStorage(payload: {
   bookmarksByConnection: Record<string, TableEditorBookmark[]>
   recentViewsByConnection: Record<string, TableEditorRecentView[]>

@@ -1,0 +1,236 @@
+.layoutRoot {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  background: var(--bg);
+}
+
+.layoutRail {
+  border-right: 1px solid var(--border);
+  background: var(--surface-rail);
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.railBtn {
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.railBtn.active,
+.railBtn:hover {
+  background: var(--panel-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.layoutMain {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-3);
+  overflow: hidden;
+}
+
+.header {
+  height: var(--header-h);
+  min-height: var(--header-h);
+  flex: 0 0 var(--header-h);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+}
+
+.title {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.headerRight select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  padding: 6px 9px;
+  color: var(--text);
+  height: 36px;
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 46px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tabBtn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tabBtn.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.filterBar input,
+.filterBar select {
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  padding: 0 8px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.filterBar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tableScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.dataTable th,
+.dataTable td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.dataTable th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  z-index: 1;
+}
+
+.dataTable td.queryCell {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  max-width: 480px;
+}
+
+.queryTruncated {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rowBlocker {
+  background: color-mix(in srgb, #e54d4d 12%, transparent);
+}
+
+.rowBlocked {
+  background: color-mix(in srgb, #e6a23c 14%, transparent);
+}
+
+.actionsCell {
+  display: flex;
+  gap: 6px;
+}
+
+.empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.expandBtn {
+  background: none;
+  border: none;
+  color: var(--link, var(--accent));
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0;
+  margin-top: 4px;
+}
+
+@media (max-width: 980px) {
+  .layoutRoot {
+    grid-template-columns: 1fr !important;
+  }
+  .layoutRail {
+    display: none;
+  }
+}
