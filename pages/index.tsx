@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router'
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
@@ -18,6 +19,19 @@ export default function SqlEditorPage() {
   const SPLITTER_HEIGHT = 12
 
   const state = useSqlEditorState()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!router.isReady) return
+    const raw = router.query.query
+    const query = Array.isArray(raw) ? raw[0] : raw
+    if (typeof query !== 'string' || !query.trim()) return
+    const title = typeof router.query.title === 'string' ? router.query.title : 'From Activity'
+    state.createQueryTab(query, { title, dirty: true })
+    const { query: _omit, title: _omitTitle, ...rest } = router.query
+    void router.replace({ pathname: router.pathname, query: rest }, undefined, { shallow: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady])
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const [resultsHeight, setResultsHeight] = useState(260)
   const [isResizing, setIsResizing] = useState(false)

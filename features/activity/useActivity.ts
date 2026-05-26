@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { controlBackend, fetchLocks, fetchSessions } from './activity.service'
+import {
+  controlBackend,
+  fetchLocks,
+  fetchSessions,
+  fetchStatements,
+  statementsAction,
+  type StatementsOrderBy,
+} from './activity.service'
 
 export function useActivitySessions(
   connectionName: string,
@@ -26,6 +33,31 @@ export function useActivityLocks(
     refetchInterval: options.paused ? false : options.intervalMs,
     refetchOnWindowFocus: false,
     placeholderData: (previous) => previous,
+  })
+}
+
+export function useActivityStatements(
+  connectionName: string,
+  options: { intervalMs: number; paused: boolean; enabled: boolean; orderBy: StatementsOrderBy }
+) {
+  return useQuery({
+    queryKey: ['activity', 'statements', connectionName, options.orderBy],
+    queryFn: () => fetchStatements(connectionName, options.orderBy),
+    enabled: Boolean(connectionName) && options.enabled,
+    refetchInterval: options.paused ? false : options.intervalMs,
+    refetchOnWindowFocus: false,
+    placeholderData: (previous) => previous,
+  })
+}
+
+export function useStatementsAction(connectionName: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (action: 'install' | 'reset') =>
+      statementsAction({ action, connectionName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity', 'statements', connectionName] })
+    },
   })
 }
 

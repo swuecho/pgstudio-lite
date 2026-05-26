@@ -1777,6 +1777,99 @@ export async function getActivityLocks(connectionName?: string): Promise<Activit
   })
 }
 
+export type ActivityStatement = {
+  queryid: string | null
+  query: string
+  calls: number
+  total_exec_time_ms: number
+  mean_exec_time_ms: number
+  min_exec_time_ms: number
+  max_exec_time_ms: number
+  rows: number
+  shared_blks_hit: number
+  shared_blks_read: number
+}
+
+export type ActivityStatementsResult = {
+  installed: boolean
+  statements: ActivityStatement[]
+}
+
+export async function getActivityStatements(
+  connectionName?: string,
+  options: { limit?: number; orderBy?: 'total' | 'mean' | 'calls' } = {}
+): Promise<ActivityStatementsResult> {
+  const limit = Math.max(1, Math.min(500, Number(options.limit || 200)))
+  const orderColumn =
+    options.orderBy === 'mean'
+      ? 'mean_exec_time'
+      : options.orderBy === 'calls'
+        ? 'calls'
+        : 'total_exec_time'
+  return withClient(connectionName, async (client) => {
+    const ext = await client.query(
+      `select 1 from pg_extension where extname = 'pg_stat_statements' limit 1`
+    )
+    if (ext.rows.length === 0) {
+      return { installed: false, statements: [] }
+    }
+    const sql = `
+      select
+        queryid::text                 as queryid,
+        query,
+        calls,
+        total_exec_time               as total_exec_time_ms,
+        mean_exec_time                as mean_exec_time_ms,
+        min_exec_time                 as min_exec_time_ms,
+        max_exec_time                 as max_exec_time_ms,
+        rows,
+        shared_blks_hit,
+        shared_blks_read
+      from pg_stat_statements
+      order by ${orderColumn} desc nulls last
+      limit $1
+    `
+    const { rows } = await client.query(sql, [limit])
+    const statements = rows.map((row: Record<string, unknown>) => ({
+      queryid: row.queryid == null ? null : String(row.queryid),
+      query: row.query == null ? '' : String(row.query),
+      calls: Number(row.calls || 0),
+      total_exec_time_ms: Number(row.total_exec_time_ms || 0),
+      mean_exec_time_ms: Number(row.mean_exec_time_ms || 0),
+      min_exec_time_ms: Number(row.min_exec_time_ms || 0),
+      max_exec_time_ms: Number(row.max_exec_time_ms || 0),
+      rows: Number(row.rows || 0),
+      shared_blks_hit: Number(row.shared_blks_hit || 0),
+      shared_blks_read: Number(row.shared_blks_read || 0),
+    }))
+    return { installed: true, statements }
+  })
+}
+
+export async function installPgStatStatements(connectionName?: string): Promise<void> {
+  const connection = getConnectionByName(connectionName)
+  if (connection.readOnly) {
+    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
+    error.statusCode = 403
+    throw error
+  }
+  await withClient(connectionName, async (client) => {
+    await client.query('create extension if not exists pg_stat_statements')
+  })
+}
+
+export async function resetActivityStatements(connectionName?: string): Promise<void> {
+  const connection = getConnectionByName(connectionName)
+  if (connection.readOnly) {
+    const error = new Error(`Connection '${connection.name}' is read-only`) as Error & { statusCode?: number }
+    error.statusCode = 403
+    throw error
+  }
+  await withClient(connectionName, async (client) => {
+    await client.query('select pg_stat_statements_reset()')
+  })
+}
+
 export async function controlBackend(
   connectionName: string | undefined,
   pid: number,
