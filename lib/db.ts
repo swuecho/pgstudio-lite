@@ -834,6 +834,7 @@ export async function executeQuery({
         fields: string[]
         rows: Record<string, unknown>[]
         tableTarget: QueryTableTarget | null
+        tableTargetPrimaryKey: string[]
       }> = []
 
       await client.query(`set statement_timeout = ${QUERY_STATEMENT_TIMEOUT_MS}`)
@@ -851,6 +852,15 @@ export async function executeQuery({
           rawRows as Record<string, unknown>[],
           outputColumns,
         )
+        const tableTarget = await extractPrimaryTableTarget(statement)
+        let tableTargetPrimaryKey: string[] = []
+        if (tableTarget) {
+          try {
+            tableTargetPrimaryKey = await getPrimaryKeyColumns(client, tableTarget.schema, tableTarget.table)
+          } catch {
+            // Target may be a view/CTE without a resolvable primary key; skip.
+          }
+        }
         results.push({
           command: result.command,
           rowCount: result.rowCount ?? 0,
@@ -858,7 +868,8 @@ export async function executeQuery({
           truncated: result.rows.length > MAX_RESULT_ROWS,
           fields,
           rows,
-          tableTarget: await extractPrimaryTableTarget(statement),
+          tableTarget,
+          tableTargetPrimaryKey,
         })
       }
 
@@ -1867,6 +1878,82 @@ export async function resetActivityStatements(connectionName?: string): Promise<
   }
   await withClient(connectionName, async (client) => {
     await client.query('select pg_stat_statements_reset()')
+  })
+}
+
+export type IncomingForeignKey = {
+  name: string
+  childSchema: string
+  childTable: string
+  childColumns: string[]
+  parentColumns: string[]
+}
+
+export async function getIncomingForeignKeys(
+  connectionName: string | undefined,
+  schema: string,
+  table: string
+): Promise<IncomingForeignKey[]> {
+  return withClient(connectionName, async (client) => {
+    const sql = `
+      select
+        c.conname                     as constraint_name,
+        n.nspname                     as child_schema,
+        cl.relname                    as child_table,
+        json_agg(a.attname order by u.ord)  as child_columns,
+        json_agg(af.attname order by u.ord) as parent_columns
+      from pg_constraint c
+      join pg_class cl on cl.oid = c.conrelid
+      join pg_namespace n on n.oid = cl.relnamespace
+      join pg_class cf on cf.oid = c.confrelid
+      join pg_namespace nf on nf.oid = cf.relnamespace
+      join unnest(c.conkey, c.confkey) with ordinality as u(attnum, refattnum, ord) on true
+      join pg_attribute a on a.attrelid = c.conrelid and a.attnum = u.attnum and not a.attisdropped
+      join pg_attribute af on af.attrelid = c.confrelid and af.attnum = u.refattnum and not af.attisdropped
+      where c.contype = 'f'
+        and nf.nspname = $1
+        and cf.relname = $2
+      group by c.conname, n.nspname, cl.relname
+      order by c.conname
+    `
+    const { rows } = await client.query(sql, [schema, table])
+    return rows.map((row: Record<string, unknown>) => ({
+      name: String(row.constraint_name),
+      childSchema: String(row.child_schema),
+      childTable: String(row.child_table),
+      childColumns: parsePgStringArray(row.child_columns),
+      parentColumns: parsePgStringArray(row.parent_columns),
+    }))
+  })
+}
+
+export async function fetchRowsByMatch(
+  connectionName: string | undefined,
+  schema: string,
+  table: string,
+  matchColumns: string[],
+  values: unknown[],
+  limit: number
+): Promise<{ rows: Record<string, unknown>[]; total: number }> {
+  if (matchColumns.length === 0 || matchColumns.length !== values.length) {
+    return { rows: [], total: 0 }
+  }
+  const safeLimit = Math.max(1, Math.min(50, limit))
+  return withClient(connectionName, async (client) => {
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
+    const whereClause = matchColumns
+      .map((col, index) => `${sqlIdent(col)} = $${index + 1}`)
+      .join(' and ')
+    const dataSql = `select * from ${qTable} where ${whereClause} limit ${safeLimit}`
+    const countSql = `select count(*)::bigint as total from ${qTable} where ${whereClause}`
+    const [dataResult, countResult] = await Promise.all([
+      client.query(dataSql, values),
+      client.query(countSql, values),
+    ])
+    return {
+      rows: dataResult.rows as Record<string, unknown>[],
+      total: Number(countResult.rows[0]?.total || 0),
+    }
   })
 }
 

@@ -389,7 +389,7 @@ export function TableGridPanel({
                     ) : null}
                   </th>
                 ))}
-                {!readOnlyTable ? <th className={styles.tableActionsCol}>actions</th> : null}
+                <th className={styles.tableActionsCol}>actions</th>
               </tr>
             </thead>
             <tbody>
@@ -500,25 +500,38 @@ export function TableGridPanel({
                       </td>
                     )
                   })}
-                  {!readOnlyTable ? (
-                    <td className={styles.tableActionsCol}>
-                      <button
-                        className="btn small danger"
-                        onClick={() => {
-                          const rowPreview = truncate(previewValue(row), 500)
-                          setDialog({
-                            title: 'Preview row delete',
-                            lines: [`Row: ${formatRowKey(row._rowKey)}`, `Data: ${rowPreview}`],
-                            confirmLabel: 'Delete row',
-                            cancelLabel: 'Cancel',
-                            onConfirm: () => onDeleteRow(row._rowKey),
-                          })
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  ) : null}
+                  <td className={styles.tableActionsCol}>
+                    <div className="history-actions">
+                      {row._rowKey ? (
+                        <a
+                          className="btn small"
+                          href={`/trace?schema=${encodeURIComponent(schema)}&table=${encodeURIComponent(table)}&pk=${encodeURIComponent(JSON.stringify(row._rowKey))}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Trace foreign-key lineage from this row"
+                        >
+                          Trace
+                        </a>
+                      ) : null}
+                      {!readOnlyTable ? (
+                        <button
+                          className="btn small danger"
+                          onClick={() => {
+                            const rowPreview = truncate(previewValue(row), 500)
+                            setDialog({
+                              title: 'Preview row delete',
+                              lines: [`Row: ${formatRowKey(row._rowKey)}`, `Data: ${rowPreview}`],
+                              confirmLabel: 'Delete row',
+                              cancelLabel: 'Cancel',
+                              onConfirm: () => onDeleteRow(row._rowKey),
+                            })
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

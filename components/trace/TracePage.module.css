@@ -1,0 +1,245 @@
+.layoutRoot {
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  background: var(--bg);
+}
+
+.layoutRail {
+  border-right: 1px solid var(--border);
+  background: var(--surface-rail);
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.railBtn {
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.railBtn:hover {
+  background: var(--panel-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.layoutMain {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-3);
+  overflow: hidden;
+}
+
+.header {
+  height: var(--header-h);
+  min-height: var(--header-h);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+}
+
+.title {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls select,
+.controls input {
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  padding: 0 8px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.nodeCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nodeCardRoot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent) inset;
+}
+
+.nodeHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nodeRelation {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+
+.nodeRelation.parent {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--accent);
+}
+
+.nodeRelation.child {
+  border-color: color-mix(in srgb, #e6a23c 45%, var(--border));
+  color: #e6a23c;
+}
+
+.nodeTitle {
+  font-weight: 600;
+}
+
+.nodePkChip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+}
+
+.cycleChip {
+  font-size: 11px;
+  color: #e6a23c;
+  background: color-mix(in srgb, #e6a23c 12%, var(--panel));
+  border: 1px solid color-mix(in srgb, #e6a23c 45%, var(--border));
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+
+.rerootBtn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 3px 10px;
+}
+
+.rerootBtn:hover {
+  color: var(--text);
+  background: var(--panel);
+}
+
+.fieldList {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr;
+  gap: 4px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.fieldLabel {
+  color: var(--muted);
+}
+
+.fieldValue {
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.subSection {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subSectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.subSectionTitle:hover {
+  color: var(--text);
+}
+
+.subSectionCaret {
+  display: inline-block;
+  width: 10px;
+  text-align: center;
+}
+
+.children {
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-left: 1px dashed var(--border);
+  padding-left: 10px;
+}
+
+.truncatedNote {
+  font-size: 11px;
+  color: #e6a23c;
+}
+
+.errorBox {
+  border: 1px solid color-mix(in srgb, #e54d4d 50%, var(--border));
+  background: color-mix(in srgb, #e54d4d 10%, var(--panel));
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 12px;
+}

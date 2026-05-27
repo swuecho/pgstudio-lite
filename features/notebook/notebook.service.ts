@@ -134,6 +134,23 @@ export async function importNotebook(payload: {
   })
 }
 
+export async function generateTourNotebook(payload: {
+  connectionName?: string
+  schema?: string
+  maxTables?: number
+}) {
+  const params = new URLSearchParams()
+  if (payload.connectionName) params.set('connectionName', payload.connectionName)
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return fetchJson<{ ok: boolean; notebook_id: string; cell_count: number }>(
+    `/api/notebooks/generate-tour${suffix}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ schema: payload.schema, maxTables: payload.maxTables }),
+    }
+  )
+}
+
 export async function exportNotebook(notebookId: string) {
   return fetchJson<NotebookSpecV1>(`/api/notebooks/${encodeURIComponent(notebookId)}/export`)
 }
