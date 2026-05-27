@@ -100,6 +100,23 @@
   font-weight: 600;
 }
 
+.resultTraceCell {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.resultTraceLink {
+  text-decoration: none;
+  color: var(--link);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.resultTraceLink:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+
 .resultOpenLink:hover {
   color: var(--link-hover);
   text-decoration: underline;

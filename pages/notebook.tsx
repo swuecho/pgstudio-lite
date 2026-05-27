@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import ThemeToggle from '../components/theme-toggle'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
@@ -11,12 +12,23 @@ import { NotebookParameterPanel } from '../components/notebook/NotebookParameter
 import { NotebookSidebar } from '../components/notebook/NotebookSidebar'
 import { useNotebookPageState } from '../components/notebook/useNotebookPageState'
 import { NOTEBOOK_WIDGET_PRESETS } from '../lib/notebook-widgets'
+import { generateTourNotebook } from '../features/notebook/notebook.service'
 import styles from '../components/notebook/NotebookPage.module.css'
 
 export default function NotebookPage() {
   const controller = useNotebookPageState()
+  const queryClient = useQueryClient()
   const [renameNotebookState, setRenameNotebookState] = useState<{ id: string; title: string } | null>(null)
   const [deleteNotebookState, setDeleteNotebookState] = useState<{ id: string; title: string } | null>(null)
+
+  const tourMutation = useMutation({
+    mutationFn: (connectionName: string | undefined) =>
+      generateTourNotebook({ connectionName }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: ['notebooks'] })
+      void controller.setActiveNotebookId(result.notebook_id)
+    },
+  })
 
   return (
     <div
@@ -77,6 +89,16 @@ export default function NotebookPage() {
               ))}
             </select>
             <SettingsButton section="connections" label="Settings" />
+            <button
+              className={`btn small ${styles.actionButton}`}
+              disabled={tourMutation.isPending}
+              title="Generate a tour notebook for the current connection"
+              onClick={() =>
+                tourMutation.mutate(controller.activeNotebook?.connection_name || undefined)
+              }
+            >
+              {tourMutation.isPending ? 'Generating...' : 'Generate Tour'}
+            </button>
             <button
               className={`btn small ${styles.actionButton}`}
               onClick={() => controller.notebookImport.setShowImportModal(true)}

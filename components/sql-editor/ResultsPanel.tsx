@@ -29,6 +29,32 @@ function getExplainPlanText(statement: StatementResult) {
   return formatExplainPlan(statement.rows[0][planField])
 }
 
+function getTraceTarget(statement: StatementResult) {
+  const target = statement.tableTarget
+  const pkColumns = statement.tableTargetPrimaryKey
+  if (!target || !pkColumns || pkColumns.length === 0) return null
+  if (!pkColumns.every((column) => statement.fields.includes(column))) return null
+  return { schema: target.schema, table: target.table, pkColumns }
+}
+
+function buildTraceHref(
+  target: { schema: string; table: string; pkColumns: string[] },
+  row: Record<string, unknown>
+): string | null {
+  const pk: Record<string, unknown> = {}
+  for (const column of target.pkColumns) {
+    const value = row[column]
+    if (value == null) return null
+    pk[column] = value
+  }
+  const params = new URLSearchParams({
+    schema: target.schema,
+    table: target.table,
+    pk: JSON.stringify(pk),
+  })
+  return `/trace?${params.toString()}`
+}
+
 function getExplainPlanValue(statement: StatementResult): unknown {
   const planField = statement.fields.find((field) => /query plan/i.test(field)) || statement.fields[0]
   if (!planField || statement.rows.length === 0) return null
@@ -147,6 +173,9 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                     fallbackText={getExplainPlanText(statement)}
                   />
                 ) : statement.fields.length > 0 ? (
+                  (() => {
+                    const traceTarget = getTraceTarget(statement)
+                    return (
                   <div className={styles.tableWrap}>
                     <table>
                       <thead>
@@ -154,6 +183,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                           {statement.fields.map((field) => (
                             <th key={field}>{field}</th>
                           ))}
+                          {traceTarget ? <th aria-label="trace" /> : null}
                         </tr>
                       </thead>
                       <tbody>
@@ -189,11 +219,31 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                                 </td>
                               )
                             })}
+                            {traceTarget ? (
+                              <td className={styles.resultTraceCell}>
+                                {(() => {
+                                  const href = buildTraceHref(traceTarget, row)
+                                  return href ? (
+                                    <Link
+                                      className={styles.resultTraceLink}
+                                      href={href}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title="Trace foreign-key lineage from this row"
+                                    >
+                                      Trace
+                                    </Link>
+                                  ) : null
+                                })()}
+                              </td>
+                            ) : null}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                    )
+                  })()
                 ) : (
                   <div className={styles.emptyState}>Command executed successfully.</div>
                 )}

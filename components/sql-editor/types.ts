@@ -7,6 +7,7 @@ export type QueryResult = {
     fields: string[]
     rows: Record<string, unknown>[]
     tableTarget?: { schema: string; table: string } | null
+    tableTargetPrimaryKey?: string[]
   }>
   totalRows: number
   durationMs: number
