@@ -57,6 +57,7 @@ When in doubt, follow patterns in nearby files (naming, validation with Zod, err
 | `npm run typecheck` | TypeScript (`tsc --noEmit`) |
 | `npm run lint` | ESLint |
 | `npm run test` | Vitest (single run) |
+| `npm run test:integration` | Vitest: real Postgres smoke tests (see below) |
 | `npm run test:watch` | Vitest watch mode |
 | `npm run format` | Prettier write |
 | `npm run format:check` | Prettier check (no writes) |
@@ -89,6 +90,19 @@ If Prettier reports issues, fix them with `npm run format`.
 - Tests live under **`tests/`** and use **Vitest** with **jsdom** where UI is involved.
 - Prefer focused tests next to the behavior they protect; reuse existing helpers and fixtures if present.
 - If a change touches API contracts or parsing, add or extend tests that cover success and validation/error paths where practical.
+
+### Postgres integration tests
+
+[`tests/pg.integration.test.ts`](./tests/pg.integration.test.ts) exercises **`lib/db`** against a real PostgreSQL instance (no mocked `executeQuery`). They are **skipped** in a normal `npm test` run unless you opt in:
+
+```bash
+export PGSTUDIO_PG_INTEGRATION=1
+export PG_CONNECTION_STRING='postgres://user:pass@localhost:5432/dbname'
+export PG_CONNECTION_NAME=default   # optional; must match a seeded connection name
+npm run test:integration
+```
+
+GitHub Actions runs the same command in the **`pg-integration`** job (with a Postgres 16 service container). Use a disposable local database, not production credentials.
 
 ## Security and secrets
 
