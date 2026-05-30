@@ -1,5 +1,7 @@
 # PG Studio Lite
 
+For development setup, checks, and pull request expectations, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 PG Studio Lite is a local PostgreSQL web manager built with Next.js. It includes:
 
 - SQL Editor
