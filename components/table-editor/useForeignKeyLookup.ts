@@ -19,12 +19,7 @@ export function useForeignKeyLookup() {
     table: string
     match: Record<string, unknown>
   }) {
-    const queryKey = foreignKeyLookupQueryKey(
-      args.connectionName,
-      args.schema,
-      args.table,
-      args.match
-    )
+    const queryKey = foreignKeyLookupQueryKey(args.connectionName, args.schema, args.table, args.match)
     return queryClient.fetchQuery({
       queryKey,
       queryFn: () => lookupReferencedRow(args),

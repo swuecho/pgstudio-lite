@@ -19,7 +19,10 @@ describe.runIf(integrationEnabled)('PostgreSQL integration', () => {
 
   afterAll(async () => {
     try {
-      await executeQuery({ query: 'drop table if exists public.pgstudio_ci_probe', connectionName: 'default' })
+      await executeQuery({
+        query: 'drop table if exists public.pgstudio_ci_probe',
+        connectionName: 'default',
+      })
     } catch {
       // Best-effort cleanup; pool shutdown still runs below.
     }

@@ -19,14 +19,7 @@ describe('CellContentPanel', () => {
       value: { writeText },
     })
 
-    render(
-      <CellContentPanel
-        columnName="payload"
-        dataType="jsonb"
-        value={{ ok: true }}
-        onClose={onClose}
-      />
-    )
+    render(<CellContentPanel columnName="payload" dataType="jsonb" value={{ ok: true }} onClose={onClose} />)
 
     expect(screen.getByText(/"ok": true/)).toBeInTheDocument()
     expect(screen.getByRole('separator', { name: 'Resize cell viewer' })).toBeInTheDocument()

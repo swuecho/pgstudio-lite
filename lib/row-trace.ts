@@ -159,7 +159,15 @@ async function buildNode(
         const childKey = visitedKey(fk.referencedSchema, fk.referencedTable, parentPk)
         const subTree = ctx.visited.has(childKey)
           ? makeNode(fk.referencedSchema, fk.referencedTable, parentPk, parentRow, depth + 1, true)
-          : await buildNode(ctx, fk.referencedSchema, fk.referencedTable, parentPk, parentRow, depth + 1, 'parent')
+          : await buildNode(
+              ctx,
+              fk.referencedSchema,
+              fk.referencedTable,
+              parentPk,
+              parentRow,
+              depth + 1,
+              'parent'
+            )
         node.parents.push({
           via: fk.name,
           direction: 'parent',

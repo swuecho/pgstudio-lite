@@ -22,8 +22,7 @@ export default function NotebookPage() {
   const [deleteNotebookState, setDeleteNotebookState] = useState<{ id: string; title: string } | null>(null)
 
   const tourMutation = useMutation({
-    mutationFn: (connectionName: string | undefined) =>
-      generateTourNotebook({ connectionName }),
+    mutationFn: (connectionName: string | undefined) => generateTourNotebook({ connectionName }),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['notebooks'] })
       void controller.setActiveNotebookId(result.notebook_id)
@@ -93,9 +92,7 @@ export default function NotebookPage() {
               className={`btn small ${styles.actionButton}`}
               disabled={tourMutation.isPending}
               title="Generate a tour notebook for the current connection"
-              onClick={() =>
-                tourMutation.mutate(controller.activeNotebook?.connection_name || undefined)
-              }
+              onClick={() => tourMutation.mutate(controller.activeNotebook?.connection_name || undefined)}
             >
               {tourMutation.isPending ? 'Generating...' : 'Generate Tour'}
             </button>

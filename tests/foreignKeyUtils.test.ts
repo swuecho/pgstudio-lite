@@ -43,8 +43,8 @@ describe('foreignKeyUtils', () => {
   it('formats target and header labels', () => {
     expect(formatForeignKeyTarget(singleFk)).toBe('users')
     expect(formatForeignKeyHeaderTitle(singleFk)).toBe('References users (id)')
-    expect(
-      formatForeignKeyTarget({ ...singleFk, referencedSchema: 'app', referencedTable: 'users' })
-    ).toBe('app.users')
+    expect(formatForeignKeyTarget({ ...singleFk, referencedSchema: 'app', referencedTable: 'users' })).toBe(
+      'app.users'
+    )
   })
 })

@@ -211,10 +211,18 @@ export default function TracePage() {
   return (
     <div className={styles.layoutRoot}>
       <aside className={styles.layoutRail}>
-        <Link className={styles.railBtn} href="/">SQL</Link>
-        <Link className={styles.railBtn} href="/table-editor">TB</Link>
-        <Link className={styles.railBtn} href="/notebook">NB</Link>
-        <Link className={styles.railBtn} href="/activity">AC</Link>
+        <Link className={styles.railBtn} href="/">
+          SQL
+        </Link>
+        <Link className={styles.railBtn} href="/table-editor">
+          TB
+        </Link>
+        <Link className={styles.railBtn} href="/notebook">
+          NB
+        </Link>
+        <Link className={styles.railBtn} href="/activity">
+          AC
+        </Link>
         <div className="mt-auto flex justify-center">
           <ThemeToggle />
         </div>
@@ -222,9 +230,7 @@ export default function TracePage() {
 
       <main className={styles.layoutMain}>
         <div className={styles.header}>
-          <div className={styles.title}>
-            Trace · {schema && table ? `${schema}.${table}` : 'no target'}
-          </div>
+          <div className={styles.title}>Trace · {schema && table ? `${schema}.${table}` : 'no target'}</div>
           <div className={styles.controls}>
             <select
               value={maxDepth}
@@ -241,10 +247,7 @@ export default function TracePage() {
                 </option>
               ))}
             </select>
-            <select
-              value={connectionName || ''}
-              onChange={(event) => setConnectionName(event.target.value)}
-            >
+            <select value={connectionName || ''} onChange={(event) => setConnectionName(event.target.value)}>
               {connections.map((c) => (
                 <option key={c.name} value={c.name}>
                   {c.name}

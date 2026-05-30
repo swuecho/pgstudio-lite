@@ -88,6 +88,8 @@ export function useTableEditorUrlSync(state: TableEditorUrlSyncState) {
       undefined,
       { shallow: true }
     )
+    // Granular deps mirror URL fields + filter state; listing `router`/`state` risks replace feedback loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     router.isReady,
     router.query.connectionName,

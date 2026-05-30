@@ -75,14 +75,11 @@ export function fetchStatements(connectionName: string, orderBy: StatementsOrder
   )
 }
 
-export function statementsAction(input: {
-  action: 'install' | 'reset'
-  connectionName: string
-}) {
-  return fetchJson<{ ok: boolean }>(
-    withConnection('/api/activity/statements', input.connectionName),
-    { method: 'POST', body: JSON.stringify({ action: input.action }) }
-  )
+export function statementsAction(input: { action: 'install' | 'reset'; connectionName: string }) {
+  return fetchJson<{ ok: boolean }>(withConnection('/api/activity/statements', input.connectionName), {
+    method: 'POST',
+    body: JSON.stringify({ action: input.action }),
+  })
 }
 
 export function controlBackend(input: {

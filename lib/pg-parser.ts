@@ -23,9 +23,9 @@ async function loadWasmModule(): Promise<WasmModule> {
   if (!initPromise) {
     initPromise = (async () => {
       const libpgQueryUrl = pathToFileURL(path.join(WASM_DIR, 'libpg-query.js')).href
-      const initPgQuery = (await import(/* webpackIgnore: true */ libpgQueryUrl)).default as (
-        options?: { locateFile?: (file: string) => string },
-      ) => Promise<WasmModule>
+      const initPgQuery = (await import(/* webpackIgnore: true */ libpgQueryUrl)).default as (options?: {
+        locateFile?: (file: string) => string
+      }) => Promise<WasmModule>
       wasmModule = await initPgQuery({
         locateFile: (file) => path.join(WASM_DIR, file),
       })
@@ -48,7 +48,9 @@ function stringToPtr(module: WasmModule, str: string): number {
   }
 }
 
-export async function parseSql(query: string): Promise<{ stmts?: Array<{ stmt: unknown; stmt_location?: number; stmt_len?: number }> }> {
+export async function parseSql(
+  query: string
+): Promise<{ stmts?: Array<{ stmt: unknown; stmt_location?: number; stmt_len?: number }> }> {
   if (query === null || query === undefined) {
     throw new Error('Query cannot be null or undefined')
   }

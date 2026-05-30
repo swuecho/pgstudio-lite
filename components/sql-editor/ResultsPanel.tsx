@@ -98,7 +98,10 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
   const [cellView, setCellView] = useState<SqlCellView | null>(null)
 
   return (
-    <div className={`${styles.resultsWrap} ${cellView ? styles.resultsWrapWithPanel : ''}`.trim()} style={style}>
+    <div
+      className={`${styles.resultsWrap} ${cellView ? styles.resultsWrapWithPanel : ''}`.trim()}
+      style={style}
+    >
       <div className={styles.resultsHead}>
         <span>Results</span>
         <span className="history-meta">{result ? `${result.totalRows} rows` : ''}</span>
@@ -176,72 +179,72 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                   (() => {
                     const traceTarget = getTraceTarget(statement)
                     return (
-                  <div className={styles.tableWrap}>
-                    <table>
-                      <thead>
-                        <tr>
-                          {statement.fields.map((field) => (
-                            <th key={field}>{field}</th>
-                          ))}
-                          {traceTarget ? <th aria-label="trace" /> : null}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {statement.rows.map((row, rowIndex) => (
-                          <tr key={rowIndex}>
-                            {statement.fields.map((field) => {
-                              const rawValue = row[field]
-                              const isViewable = canOpenCellViewer(undefined, rawValue)
-                              const isViewing =
-                                cellView?.statementIndex === index &&
-                                cellView.rowIndex === rowIndex &&
-                                cellView.field === field
-                              return (
-                                <td
-                                  key={`${rowIndex}-${field}`}
-                                  className={isViewable ? styles.resultCellViewable : undefined}
-                                  data-viewing={isViewing ? 'true' : undefined}
-                                  title={isViewable ? 'Double-click to view full content' : undefined}
-                                  onDoubleClick={() => {
-                                    if (isViewable) {
-                                      setCellView({
-                                        statementIndex: index,
-                                        rowIndex,
-                                        field,
-                                        value: rawValue,
-                                      })
-                                    }
-                                  }}
-                                >
-                                  <CopyableCellValue
-                                    {...copyableCellDisplayProps(formatCell(rawValue))}
-                                  />
-                                </td>
-                              )
-                            })}
-                            {traceTarget ? (
-                              <td className={styles.resultTraceCell}>
-                                {(() => {
-                                  const href = buildTraceHref(traceTarget, row)
-                                  return href ? (
-                                    <Link
-                                      className={styles.resultTraceLink}
-                                      href={href}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      title="Trace foreign-key lineage from this row"
+                      <div className={styles.tableWrap}>
+                        <table>
+                          <thead>
+                            <tr>
+                              {statement.fields.map((field) => (
+                                <th key={field}>{field}</th>
+                              ))}
+                              {traceTarget ? <th aria-label="trace" /> : null}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {statement.rows.map((row, rowIndex) => (
+                              <tr key={rowIndex}>
+                                {statement.fields.map((field) => {
+                                  const rawValue = row[field]
+                                  const isViewable = canOpenCellViewer(undefined, rawValue)
+                                  const isViewing =
+                                    cellView?.statementIndex === index &&
+                                    cellView.rowIndex === rowIndex &&
+                                    cellView.field === field
+                                  return (
+                                    <td
+                                      key={`${rowIndex}-${field}`}
+                                      className={isViewable ? styles.resultCellViewable : undefined}
+                                      data-viewing={isViewing ? 'true' : undefined}
+                                      title={isViewable ? 'Double-click to view full content' : undefined}
+                                      onDoubleClick={() => {
+                                        if (isViewable) {
+                                          setCellView({
+                                            statementIndex: index,
+                                            rowIndex,
+                                            field,
+                                            value: rawValue,
+                                          })
+                                        }
+                                      }}
                                     >
-                                      Trace
-                                    </Link>
-                                  ) : null
-                                })()}
-                              </td>
-                            ) : null}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                                      <CopyableCellValue
+                                        {...copyableCellDisplayProps(formatCell(rawValue))}
+                                      />
+                                    </td>
+                                  )
+                                })}
+                                {traceTarget ? (
+                                  <td className={styles.resultTraceCell}>
+                                    {(() => {
+                                      const href = buildTraceHref(traceTarget, row)
+                                      return href ? (
+                                        <Link
+                                          className={styles.resultTraceLink}
+                                          href={href}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          title="Trace foreign-key lineage from this row"
+                                        >
+                                          Trace
+                                        </Link>
+                                      ) : null
+                                    })()}
+                                  </td>
+                                ) : null}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )
                   })()
                 ) : (

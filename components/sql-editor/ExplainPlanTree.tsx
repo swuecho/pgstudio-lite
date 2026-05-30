@@ -7,7 +7,7 @@ type PlanNode = {
   'Async Capable'?: boolean
   'Join Type'?: string
   'Relation Name'?: string
-  'Alias'?: string
+  Alias?: string
   'Index Name'?: string
   'Startup Cost'?: number
   'Total Cost'?: number
@@ -22,7 +22,7 @@ type PlanNode = {
   'Shared Read Blocks'?: number
   'Shared Dirtied Blocks'?: number
   'Shared Written Blocks'?: number
-  'Filter'?: string
+  Filter?: string
   'Index Cond'?: string
   'Hash Cond'?: string
   'Recheck Cond'?: string
@@ -183,11 +183,7 @@ function PlanNodeRow({ node, totalTimeMs, depth }: PlanNodeRowProps) {
             />
           ) : null}
           {node['Rows Removed by Filter'] ? (
-            <Metric
-              label="filtered out"
-              value={formatNumber(node['Rows Removed by Filter'])}
-              tone="warn"
-            />
+            <Metric label="filtered out" value={formatNumber(node['Rows Removed by Filter'])} tone="warn" />
           ) : null}
         </div>
         {node['Filter'] || node['Index Cond'] || node['Hash Cond'] || node['Recheck Cond'] ? (
@@ -202,12 +198,7 @@ function PlanNodeRow({ node, totalTimeMs, depth }: PlanNodeRowProps) {
       {hasChildren && open ? (
         <div className={styles.children}>
           {children.map((child, index) => (
-            <PlanNodeRow
-              key={index}
-              node={child}
-              totalTimeMs={totalTimeMs}
-              depth={depth + 1}
-            />
+            <PlanNodeRow key={index} node={child} totalTimeMs={totalTimeMs} depth={depth + 1} />
           ))}
         </div>
       ) : null}
@@ -247,17 +238,14 @@ export function ExplainPlanTree({ value, fallbackText }: ExplainPlanTreeProps) {
   }
 
   const totalTimeMs =
-    totalExecutionTime(roots) ||
-    roots.reduce((sum, root) => sum + (root.Plan['Actual Total Time'] || 0), 0)
+    totalExecutionTime(roots) || roots.reduce((sum, root) => sum + (root.Plan['Actual Total Time'] || 0), 0)
 
   return (
     <div className={styles.container}>
       <div className={styles.summaryBar}>
         {roots.map((root, index) => (
           <div key={index} className={styles.summaryItem}>
-            {root['Planning Time'] != null ? (
-              <span>planning: {formatMs(root['Planning Time'])}</span>
-            ) : null}
+            {root['Planning Time'] != null ? <span>planning: {formatMs(root['Planning Time'])}</span> : null}
             {root['Execution Time'] != null ? (
               <span>execution: {formatMs(root['Execution Time'])}</span>
             ) : null}

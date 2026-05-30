@@ -90,10 +90,12 @@ export function useTableEditorViews(connectionName: string) {
     mutationFn: () => clearTableEditorViewRecent(connectionName),
   })
 
-  function patchViewsCache(updater: (current: { bookmarks: TableEditorBookmark[]; recentViews: TableEditorRecentView[] }) => {
-    bookmarks: TableEditorBookmark[]
-    recentViews: TableEditorRecentView[]
-  }) {
+  function patchViewsCache(
+    updater: (current: { bookmarks: TableEditorBookmark[]; recentViews: TableEditorRecentView[] }) => {
+      bookmarks: TableEditorBookmark[]
+      recentViews: TableEditorRecentView[]
+    }
+  ) {
     queryClient.setQueryData<{ bookmarks: TableEditorBookmark[]; recentViews: TableEditorRecentView[] }>(
       viewsQueryKey(connectionName),
       (prev) => {

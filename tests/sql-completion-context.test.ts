@@ -77,10 +77,7 @@ describe('getDotCompletionContext', () => {
 
 describe('getTextBeforeCursor', () => {
   it('collects text from prior lines and current line', () => {
-    const text = getTextBeforeCursor(
-      ['select *', 'from public.skus s on s.'],
-      { lineNumber: 2, column: 25 }
-    )
+    const text = getTextBeforeCursor(['select *', 'from public.skus s on s.'], { lineNumber: 2, column: 25 })
     expect(text).toBe('select *\nfrom public.skus s on s.')
   })
 })

@@ -183,10 +183,7 @@ export function TableSidebar({
     () => filterViews(unpinnedBookmarks, viewsSearch, (item) => item.title),
     [unpinnedBookmarks, viewsSearch]
   )
-  const filteredRecentViews = useMemo(
-    () => filterViews(recentViews, viewsSearch),
-    [recentViews, viewsSearch]
-  )
+  const filteredRecentViews = useMemo(() => filterViews(recentViews, viewsSearch), [recentViews, viewsSearch])
 
   const viewsMatchCount =
     filteredPinnedBookmarks.length + filteredBookmarks.length + filteredRecentViews.length
@@ -537,54 +534,54 @@ export function TableSidebar({
 
         {activeNavTab === 'tables' ? (
           <div className={`layout-nav-controls ${styles.tableNavControls}`}>
-          <select
-            aria-label="Schema"
-            value={selectedSchema}
-            onChange={(event) => setPersistedSchema(connectionName, event.target.value)}
-            disabled={availableSchemas.length === 0 || searchAllSchemas}
-            title={searchAllSchemas ? 'Schema filter disabled while searching all schemas' : undefined}
-          >
-            {availableSchemas.map((schema) => (
-              <option key={schema} value={schema}>
-                {schema}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Sort tables"
-            value={sortMode}
-            onChange={(event) => setSortMode(event.target.value as TableListSortMode)}
-          >
-            <option value="name">Sort: name</option>
-            <option value="kind">Sort: type</option>
-            <option value="size">Sort: size</option>
-          </select>
-          <div className={styles.tableSearchWrap}>
-            <input
-              placeholder="Search (table:, view:, mv:)"
-              value={tableSearch}
-              onChange={(event) => setTableSearch(event.target.value)}
-              aria-label="Search tables and views"
-            />
-            {tableSearch ? (
-              <button
-                type="button"
-                className={styles.tableSearchClear}
-                aria-label="Clear search"
-                onClick={() => setTableSearch('')}
-              >
-                ×
-              </button>
-            ) : null}
+            <select
+              aria-label="Schema"
+              value={selectedSchema}
+              onChange={(event) => setPersistedSchema(connectionName, event.target.value)}
+              disabled={availableSchemas.length === 0 || searchAllSchemas}
+              title={searchAllSchemas ? 'Schema filter disabled while searching all schemas' : undefined}
+            >
+              {availableSchemas.map((schema) => (
+                <option key={schema} value={schema}>
+                  {schema}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Sort tables"
+              value={sortMode}
+              onChange={(event) => setSortMode(event.target.value as TableListSortMode)}
+            >
+              <option value="name">Sort: name</option>
+              <option value="kind">Sort: type</option>
+              <option value="size">Sort: size</option>
+            </select>
+            <div className={styles.tableSearchWrap}>
+              <input
+                placeholder="Search (table:, view:, mv:)"
+                value={tableSearch}
+                onChange={(event) => setTableSearch(event.target.value)}
+                aria-label="Search tables and views"
+              />
+              {tableSearch ? (
+                <button
+                  type="button"
+                  className={styles.tableSearchClear}
+                  aria-label="Clear search"
+                  onClick={() => setTableSearch('')}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+            <button className="btn small" onClick={onRefreshTables} disabled={loadingTables}>
+              {loadingTables ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <div className={styles.tableNavMeta} aria-live="polite">
+              {matchCount} {matchCount === 1 ? 'table' : 'tables'}
+              {searchAllSchemas ? ' · all schemas' : ''}
+            </div>
           </div>
-          <button className="btn small" onClick={onRefreshTables} disabled={loadingTables}>
-            {loadingTables ? 'Refreshing...' : 'Refresh'}
-          </button>
-          <div className={styles.tableNavMeta} aria-live="polite">
-            {matchCount} {matchCount === 1 ? 'table' : 'tables'}
-            {searchAllSchemas ? ' · all schemas' : ''}
-          </div>
-        </div>
         ) : (
           <div className={`layout-nav-controls ${styles.viewsNavControls}`}>
             <input
@@ -648,7 +645,9 @@ export function TableSidebar({
                     {section.label ? (
                       <div className={styles.tableCardSectionLabel}>{section.label}</div>
                     ) : null}
-                    {section.tables.map((table) => renderTableButton(table, { showSchema: searchAllSchemas }))}
+                    {section.tables.map((table) =>
+                      renderTableButton(table, { showSchema: searchAllSchemas })
+                    )}
                   </div>
                   {showDividerAfter ? (
                     <div className={styles.tableCardSectionDivider} role="separator" aria-hidden="true" />

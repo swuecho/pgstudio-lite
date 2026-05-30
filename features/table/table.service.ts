@@ -5,13 +5,7 @@ import type {
   TableEditorRecentView,
   TableEditorViewState,
 } from '../../lib/table-editor-views'
-import type {
-  ColumnInfo,
-  Connection,
-  RowData,
-  RowKey,
-  TableInfo,
-} from '../../components/table-editor/types'
+import type { ColumnInfo, Connection, RowData, RowKey, TableInfo } from '../../components/table-editor/types'
 
 export type TableEditorViewsResponse = {
   bookmarks: TableEditorBookmark[]

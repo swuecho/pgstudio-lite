@@ -20,6 +20,8 @@ inner join public.warehouses w on wst.warehouse_id = w.id`
   })
 
   it('extracts aliased expressions', async () => {
-    await expect(extractSelectOutputColumnNames('select count(*) as total from t')).resolves.toEqual(['total'])
+    await expect(extractSelectOutputColumnNames('select count(*) as total from t')).resolves.toEqual([
+      'total',
+    ])
   })
 })

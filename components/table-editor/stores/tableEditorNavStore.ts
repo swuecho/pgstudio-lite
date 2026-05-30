@@ -31,9 +31,7 @@ export const useTableEditorNavStore = create<TableEditorNavStore>()(
       togglePinned: (connectionName, tableKey) =>
         set((state) => {
           const current = state.pinnedByConnection[connectionName] ?? EMPTY_TABLE_KEYS
-          const next = current.includes(tableKey)
-            ? withoutKey(current, tableKey)
-            : [...current, tableKey]
+          const next = current.includes(tableKey) ? withoutKey(current, tableKey) : [...current, tableKey]
           if (sameKeyOrder(current, next)) return state
           return {
             pinnedByConnection: {

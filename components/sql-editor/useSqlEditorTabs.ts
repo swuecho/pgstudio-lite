@@ -13,12 +13,7 @@ export function useSqlEditorTabs() {
     [activeQueryTabId, queryTabs]
   )
 
-  function setTabQuery(
-    tabId: string,
-    nextQuery: string,
-    dirty = true,
-    snippetId?: string | null
-  ) {
+  function setTabQuery(tabId: string, nextQuery: string, dirty = true, snippetId?: string | null) {
     setQueryTabs((tabs) => {
       const targetTab = tabs.find((tab) => tab.id === tabId)
       if (!targetTab) return tabs

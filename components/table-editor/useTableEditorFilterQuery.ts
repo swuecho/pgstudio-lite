@@ -23,12 +23,10 @@ export function useTableEditorFilterQuery(state: UseTableEditorFilterQueryParams
     }
   }, [state.filterDebounceMs])
 
-  const filterNeedsValue =
-    Boolean(state.filterColumn) && filterModeNeedsValue(state.filterMode)
+  const filterNeedsValue = Boolean(state.filterColumn) && filterModeNeedsValue(state.filterMode)
   const filterSettled =
     !filterNeedsValue ||
-    (state.filterValue === debouncedFilterValue &&
-      state.filterValueEnd === debouncedFilterValueEnd)
+    (state.filterValue === debouncedFilterValue && state.filterValueEnd === debouncedFilterValueEnd)
   const hasFilter = hasActiveTableFilter(
     state.filterColumn,
     state.filterMode,

@@ -55,12 +55,7 @@ export function CellContentPanel({
   }, [onClose])
 
   return (
-    <section
-      ref={panelRef}
-      className={styles.panel}
-      style={{ height }}
-      aria-label="Cell content viewer"
-    >
+    <section ref={panelRef} className={styles.panel} style={{ height }} aria-label="Cell content viewer">
       <div
         className={`${styles.resizeHandle} ${isResizing ? styles.resizeHandleActive : ''}`.trim()}
         role="separator"

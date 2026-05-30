@@ -302,273 +302,299 @@ export function TableGridPanel({
   return (
     <>
       <div className={`${styles.tablePage} ${cellView ? styles.tablePageWithPanel : ''}`.trim()}>
-      <div className={styles.tableGridWrap}>
-        <div className={styles.tableToolbar}>
-          <div className={styles.toolbarGroup}>
-            <ColumnsSelector
-              columns={columns}
-              visibleColumns={visibleColumns}
-              onToggleColumn={onToggleVisibleColumn}
-              onShowAll={onShowAllColumns}
-              onHideAll={onHideAllColumns}
-            />
-          </div>
-
-          <div className={styles.toolbarSpacer} aria-hidden="true" />
-
-          <div className={styles.toolbarGroup}>
-            <SortPopover
-              columns={columns}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onChangeSortBy={onChangeSortBy}
-              onChangeSortOrder={onChangeSortOrder}
-            />
-          </div>
-
-          <div className={styles.toolbarGroup}>
-            <FilterPopover
-              columns={columns}
-              filterColumn={filterColumn}
-              filterMode={filterMode}
-              filterValue={filterValue}
-              filterValueEnd={filterValueEnd}
-              totalRows={totalRows}
-              filterValueInputRef={filterValueInputRef}
-              onChangeFilterColumn={onChangeFilterColumn}
-              onChangeFilterMode={onChangeFilterMode}
-              onChangeFilterValue={onChangeFilterValue}
-              onChangeFilterValueEnd={onChangeFilterValueEnd}
-              onClearFilters={onClearFilters}
-            />
-          </div>
-
-          <div className={styles.toolbarGroup}>
-            <span className={styles.toolbarGroupLabel}>Rows</span>
-            <select
-              className={styles.toolbarPageSize}
-              value={String(pageSize)}
-              onChange={(e) => onChangePageSize(Number(e.target.value) || 50)}
-              aria-label="Rows per page"
-            >
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="250">250</option>
-              <option value="500">500</option>
-            </select>
-          </div>
-
-          {!readOnlyTable ? (
+        <div className={styles.tableGridWrap}>
+          <div className={styles.tableToolbar}>
             <div className={styles.toolbarGroup}>
-              <button
-                className="btn small primary"
-                onClick={() => setShowInsertRow(true)}
-                disabled={columns.length === 0}
-              >
-                Add row
-              </button>
+              <ColumnsSelector
+                columns={columns}
+                visibleColumns={visibleColumns}
+                onToggleColumn={onToggleVisibleColumn}
+                onShowAll={onShowAllColumns}
+                onHideAll={onHideAllColumns}
+              />
             </div>
-          ) : null}
-        </div>
-        <div className={styles.tableScrollArea}>
-          <table className={styles.tableGridTable}>
-            <thead>
-              <tr>
-                {displayColumns.map((col) => (
-                  <th key={col.name}>
-                    {col.name}
-                    {col.foreignKey ? (
-                      <span
-                        className={styles.columnFkIcon}
-                        title={formatForeignKeyHeaderTitle(col.foreignKey)}
-                        aria-hidden
-                      >
-                        ↗
-                      </span>
-                    ) : null}
-                  </th>
-                ))}
-                <th className={styles.tableActionsCol}>actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, rowIndex) => (
-                <tr key={row._rowKey ? formatRowKey(row._rowKey) : `row-${rowIndex}`}>
-                  {displayColumns.map((col) => {
-                    const readOnly = readOnlyTable || !editableColumns.some((c) => c.name === col.name)
-                    const editorKind = getEditorKind(col.dataType)
-                    const cellValue = row[col.name]
-                    const isViewable = canOpenCellViewer(col.dataType, cellValue)
-                    const isViewing = viewingCellKey === getCellViewKey(row, col)
-                    return (
-                      <td
-                        key={col.name}
-                        className={`${isViewable ? styles.tableCellViewable : ''} ${isViewing ? styles.tableCellViewing : ''}`.trim() || undefined}
-                        title={isViewable ? 'Double-click to view full content' : undefined}
-                        onDoubleClick={() => {
-                          if (isViewable) openCellView(row, col)
-                        }}
-                      >
-                        {wrapFkCell(
-                          col,
-                          row,
-                          readOnly ? (
-                          <CopyableCellValue
-                            {...copyableCellDisplayProps(row[col.name], { dataType: col.dataType })}
-                          />
-                        ) : isBooleanColumn(col.dataType) ? (
-                          <div className={styles.tableCellEditor}>
-                            <button
-                              className={`${styles.tableBoolToggle} ${row[col.name] === true ? styles.tableBoolToggleOn : ''}`}
-                              onClick={() => {
-                                commitRowChange(row, col.name, row[col.name] !== true, col.dataType)
-                              }}
-                              title={`Toggle ${col.name}`}
-                            >
-                              {row[col.name] === true ? 'TRUE' : 'FALSE'}
-                            </button>
-                          </div>
-                        ) : isDateColumn(col.dataType) ? (
-                          <div className={styles.tableCellEditor}>
-                            <input
-                              className={`${styles.cellInput} ${styles.tableTypedInput}`}
-                              type="date"
-                              defaultValue={toDateInputValue(row[col.name])}
-                              onBlur={(e) => {
-                                const target = e.currentTarget
-                                const raw = target.value
-                                const nextValue = raw || null
-                                const result = commitRowChange(row, col.name, nextValue, col.dataType, () => {
-                                  target.value = toDateInputValue(row[col.name])
-                                })
-                                if (result === 'unchanged') target.value = toDateInputValue(row[col.name])
-                              }}
-                            />
-                          </div>
-                        ) : isDateTimeColumn(col.dataType) ? (
-                          <div className={styles.tableCellEditor}>
-                            <input
-                              className={`${styles.cellInput} ${styles.tableTypedInput}`}
-                              type="datetime-local"
-                              defaultValue={toDateTimeInputValue(row[col.name])}
-                              onBlur={(e) => {
-                                const target = e.currentTarget
-                                const raw = target.value
-                                const nextValue = raw || null
-                                const result = commitRowChange(row, col.name, nextValue, col.dataType, () => {
-                                  target.value = toDateTimeInputValue(row[col.name])
-                                })
-                                if (result === 'unchanged') target.value = toDateTimeInputValue(row[col.name])
-                              }}
-                            />
-                          </div>
-                        ) : isJsonColumn(col.dataType) ? (
-                          <div className={styles.tableCellEditor}>
-                            <span className={styles.tableCellKind}>JSON</span>
-                            <button
-                              type="button"
-                              className={styles.jsonbPreviewButton}
-                              onClick={() => openCellView(row, col)}
-                              title="Click to view JSON (double-click cell)"
-                            >
-                              <code className={styles.jsonbPreviewText}>
-                                {truncate(formatJsonbPreview(row[col.name]), 150)}
-                              </code>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className={styles.tableCellEditor}>
-                            {editorKind ? (
-                              <span className={styles.tableCellKind}>{editorKind.toUpperCase()}</span>
-                            ) : null}
-                            <input
-                              className={`${styles.cellInput} ${styles.tableTypedInput}`}
-                              defaultValue={String(row[col.name] ?? '')}
-                              onBlur={(e) => {
-                                const target = e.currentTarget
-                                const nextValue = target.value
-                                const result = commitRowChange(row, col.name, nextValue, col.dataType, () => {
-                                  target.value = String(row[col.name] ?? '')
-                                })
-                                if (result === 'unchanged') target.value = String(row[col.name] ?? '')
-                              }}
-                            />
-                          </div>
-                        )
-                        )}
-                      </td>
-                    )
-                  })}
-                  <td className={styles.tableActionsCol}>
-                    <div className="history-actions">
-                      {row._rowKey ? (
-                        <a
-                          className="btn small"
-                          href={`/trace?schema=${encodeURIComponent(schema)}&table=${encodeURIComponent(table)}&pk=${encodeURIComponent(JSON.stringify(row._rowKey))}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Trace foreign-key lineage from this row"
+
+            <div className={styles.toolbarSpacer} aria-hidden="true" />
+
+            <div className={styles.toolbarGroup}>
+              <SortPopover
+                columns={columns}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onChangeSortBy={onChangeSortBy}
+                onChangeSortOrder={onChangeSortOrder}
+              />
+            </div>
+
+            <div className={styles.toolbarGroup}>
+              <FilterPopover
+                columns={columns}
+                filterColumn={filterColumn}
+                filterMode={filterMode}
+                filterValue={filterValue}
+                filterValueEnd={filterValueEnd}
+                totalRows={totalRows}
+                filterValueInputRef={filterValueInputRef}
+                onChangeFilterColumn={onChangeFilterColumn}
+                onChangeFilterMode={onChangeFilterMode}
+                onChangeFilterValue={onChangeFilterValue}
+                onChangeFilterValueEnd={onChangeFilterValueEnd}
+                onClearFilters={onClearFilters}
+              />
+            </div>
+
+            <div className={styles.toolbarGroup}>
+              <span className={styles.toolbarGroupLabel}>Rows</span>
+              <select
+                className={styles.toolbarPageSize}
+                value={String(pageSize)}
+                onChange={(e) => onChangePageSize(Number(e.target.value) || 50)}
+                aria-label="Rows per page"
+              >
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="250">250</option>
+                <option value="500">500</option>
+              </select>
+            </div>
+
+            {!readOnlyTable ? (
+              <div className={styles.toolbarGroup}>
+                <button
+                  className="btn small primary"
+                  onClick={() => setShowInsertRow(true)}
+                  disabled={columns.length === 0}
+                >
+                  Add row
+                </button>
+              </div>
+            ) : null}
+          </div>
+          <div className={styles.tableScrollArea}>
+            <table className={styles.tableGridTable}>
+              <thead>
+                <tr>
+                  {displayColumns.map((col) => (
+                    <th key={col.name}>
+                      {col.name}
+                      {col.foreignKey ? (
+                        <span
+                          className={styles.columnFkIcon}
+                          title={formatForeignKeyHeaderTitle(col.foreignKey)}
+                          aria-hidden
                         >
-                          Trace
-                        </a>
+                          ↗
+                        </span>
                       ) : null}
-                      {!readOnlyTable ? (
-                        <button
-                          className="btn small danger"
-                          onClick={() => {
-                            const rowPreview = truncate(previewValue(row), 500)
-                            setDialog({
-                              title: 'Preview row delete',
-                              lines: [`Row: ${formatRowKey(row._rowKey)}`, `Data: ${rowPreview}`],
-                              confirmLabel: 'Delete row',
-                              cancelLabel: 'Cancel',
-                              onConfirm: () => onDeleteRow(row._rowKey),
-                            })
+                    </th>
+                  ))}
+                  <th className={styles.tableActionsCol}>actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rowIndex) => (
+                  <tr key={row._rowKey ? formatRowKey(row._rowKey) : `row-${rowIndex}`}>
+                    {displayColumns.map((col) => {
+                      const readOnly = readOnlyTable || !editableColumns.some((c) => c.name === col.name)
+                      const editorKind = getEditorKind(col.dataType)
+                      const cellValue = row[col.name]
+                      const isViewable = canOpenCellViewer(col.dataType, cellValue)
+                      const isViewing = viewingCellKey === getCellViewKey(row, col)
+                      return (
+                        <td
+                          key={col.name}
+                          className={
+                            `${isViewable ? styles.tableCellViewable : ''} ${isViewing ? styles.tableCellViewing : ''}`.trim() ||
+                            undefined
+                          }
+                          title={isViewable ? 'Double-click to view full content' : undefined}
+                          onDoubleClick={() => {
+                            if (isViewable) openCellView(row, col)
                           }}
                         >
-                          Delete
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className={styles.tablePagination}>
-          <span className="history-meta">
-            {totalRows} rows total · page {page + 1} / {Math.max(1, Math.ceil(totalRows / pageSize))}
-          </span>
-          <div className="history-actions">
-            <button className="btn small" disabled={page === 0} onClick={onPrevPage}>
-              Prev
-            </button>
-            <button className="btn small" disabled={(page + 1) * pageSize >= totalRows} onClick={onNextPage}>
-              Next
-            </button>
+                          {wrapFkCell(
+                            col,
+                            row,
+                            readOnly ? (
+                              <CopyableCellValue
+                                {...copyableCellDisplayProps(row[col.name], { dataType: col.dataType })}
+                              />
+                            ) : isBooleanColumn(col.dataType) ? (
+                              <div className={styles.tableCellEditor}>
+                                <button
+                                  className={`${styles.tableBoolToggle} ${row[col.name] === true ? styles.tableBoolToggleOn : ''}`}
+                                  onClick={() => {
+                                    commitRowChange(row, col.name, row[col.name] !== true, col.dataType)
+                                  }}
+                                  title={`Toggle ${col.name}`}
+                                >
+                                  {row[col.name] === true ? 'TRUE' : 'FALSE'}
+                                </button>
+                              </div>
+                            ) : isDateColumn(col.dataType) ? (
+                              <div className={styles.tableCellEditor}>
+                                <input
+                                  className={`${styles.cellInput} ${styles.tableTypedInput}`}
+                                  type="date"
+                                  defaultValue={toDateInputValue(row[col.name])}
+                                  onBlur={(e) => {
+                                    const target = e.currentTarget
+                                    const raw = target.value
+                                    const nextValue = raw || null
+                                    const result = commitRowChange(
+                                      row,
+                                      col.name,
+                                      nextValue,
+                                      col.dataType,
+                                      () => {
+                                        target.value = toDateInputValue(row[col.name])
+                                      }
+                                    )
+                                    if (result === 'unchanged') target.value = toDateInputValue(row[col.name])
+                                  }}
+                                />
+                              </div>
+                            ) : isDateTimeColumn(col.dataType) ? (
+                              <div className={styles.tableCellEditor}>
+                                <input
+                                  className={`${styles.cellInput} ${styles.tableTypedInput}`}
+                                  type="datetime-local"
+                                  defaultValue={toDateTimeInputValue(row[col.name])}
+                                  onBlur={(e) => {
+                                    const target = e.currentTarget
+                                    const raw = target.value
+                                    const nextValue = raw || null
+                                    const result = commitRowChange(
+                                      row,
+                                      col.name,
+                                      nextValue,
+                                      col.dataType,
+                                      () => {
+                                        target.value = toDateTimeInputValue(row[col.name])
+                                      }
+                                    )
+                                    if (result === 'unchanged')
+                                      target.value = toDateTimeInputValue(row[col.name])
+                                  }}
+                                />
+                              </div>
+                            ) : isJsonColumn(col.dataType) ? (
+                              <div className={styles.tableCellEditor}>
+                                <span className={styles.tableCellKind}>JSON</span>
+                                <button
+                                  type="button"
+                                  className={styles.jsonbPreviewButton}
+                                  onClick={() => openCellView(row, col)}
+                                  title="Click to view JSON (double-click cell)"
+                                >
+                                  <code className={styles.jsonbPreviewText}>
+                                    {truncate(formatJsonbPreview(row[col.name]), 150)}
+                                  </code>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className={styles.tableCellEditor}>
+                                {editorKind ? (
+                                  <span className={styles.tableCellKind}>{editorKind.toUpperCase()}</span>
+                                ) : null}
+                                <input
+                                  className={`${styles.cellInput} ${styles.tableTypedInput}`}
+                                  defaultValue={String(row[col.name] ?? '')}
+                                  onBlur={(e) => {
+                                    const target = e.currentTarget
+                                    const nextValue = target.value
+                                    const result = commitRowChange(
+                                      row,
+                                      col.name,
+                                      nextValue,
+                                      col.dataType,
+                                      () => {
+                                        target.value = String(row[col.name] ?? '')
+                                      }
+                                    )
+                                    if (result === 'unchanged') target.value = String(row[col.name] ?? '')
+                                  }}
+                                />
+                              </div>
+                            )
+                          )}
+                        </td>
+                      )
+                    })}
+                    <td className={styles.tableActionsCol}>
+                      <div className="history-actions">
+                        {row._rowKey ? (
+                          <a
+                            className="btn small"
+                            href={`/trace?schema=${encodeURIComponent(schema)}&table=${encodeURIComponent(table)}&pk=${encodeURIComponent(JSON.stringify(row._rowKey))}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Trace foreign-key lineage from this row"
+                          >
+                            Trace
+                          </a>
+                        ) : null}
+                        {!readOnlyTable ? (
+                          <button
+                            className="btn small danger"
+                            onClick={() => {
+                              const rowPreview = truncate(previewValue(row), 500)
+                              setDialog({
+                                title: 'Preview row delete',
+                                lines: [`Row: ${formatRowKey(row._rowKey)}`, `Data: ${rowPreview}`],
+                                confirmLabel: 'Delete row',
+                                cancelLabel: 'Cancel',
+                                onConfirm: () => onDeleteRow(row._rowKey),
+                              })
+                            }}
+                          >
+                            Delete
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className={styles.tablePagination}>
+            <span className="history-meta">
+              {totalRows} rows total · page {page + 1} / {Math.max(1, Math.ceil(totalRows / pageSize))}
+            </span>
+            <div className="history-actions">
+              <button className="btn small" disabled={page === 0} onClick={onPrevPage}>
+                Prev
+              </button>
+              <button
+                className="btn small"
+                disabled={(page + 1) * pageSize >= totalRows}
+                onClick={onNextPage}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {cellView ? (
-        <CellContentPanel
-          columnName={cellView.column.name}
-          dataType={cellView.column.dataType}
-          value={cellView.row[cellView.column.name]}
-          contextLabel={formatRowKey(cellView.row._rowKey)}
-          onClose={() => setCellView(null)}
-          onEdit={
-            canEditViewedJson
-              ? () => {
-                  openJsonbEditor(cellView.row, cellView.column.name)
-                  setCellView(null)
-                }
-              : undefined
-          }
-        />
-      ) : null}
+        {cellView ? (
+          <CellContentPanel
+            columnName={cellView.column.name}
+            dataType={cellView.column.dataType}
+            value={cellView.row[cellView.column.name]}
+            contextLabel={formatRowKey(cellView.row._rowKey)}
+            onClose={() => setCellView(null)}
+            onEdit={
+              canEditViewedJson
+                ? () => {
+                    openJsonbEditor(cellView.row, cellView.column.name)
+                    setCellView(null)
+                  }
+                : undefined
+            }
+          />
+        ) : null}
       </div>
 
       {dialog ? (

@@ -20,9 +20,11 @@ function getResTargetOutputName(target: ParseNode): string | null {
 
   const valType = getNodeType(resTarget.val)
   if (valType === 'ColumnRef') {
-    const fields = (resTarget.val.ColumnRef as {
-      fields?: Array<{ String?: { str?: string; sval?: string }; sval?: string }>
-    })?.fields
+    const fields = (
+      resTarget.val.ColumnRef as {
+        fields?: Array<{ String?: { str?: string; sval?: string }; sval?: string }>
+      }
+    )?.fields
     const last = fields?.[fields.length - 1]
     return last?.String?.str ?? last?.String?.sval ?? last?.sval ?? null
   }
@@ -81,9 +83,7 @@ export function narrowResultToSelectList(
   }
   return {
     fields: narrowedFields,
-    rows: rows.map((row) =>
-      Object.fromEntries(narrowedFields.map((name) => [name, row[name] ?? null])),
-    ),
+    rows: rows.map((row) => Object.fromEntries(narrowedFields.map((name) => [name, row[name] ?? null]))),
   }
 }
 
