@@ -84,14 +84,7 @@ export function useTableEditorEffects({
       setFilterValue,
       setFilterValueEnd,
     })
-  }, [
-    activeTable,
-    connectionName,
-    setFilterColumn,
-    setFilterValue,
-    setFilterValueEnd,
-    setFilterMode,
-  ])
+  }, [activeTable, connectionName, setFilterColumn, setFilterValue, setFilterValueEnd, setFilterMode])
 
   useEffect(() => {
     if (!activeTable || !connectionName) return

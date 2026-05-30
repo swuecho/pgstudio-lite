@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { ColumnForeignKey, ColumnInfo } from './types'
+import type { ColumnInfo } from './types'
 import { buildForeignKeyMatch } from './foreignKeyUtils'
 import { ForeignKeyPopover } from './ForeignKeyPopover'
 import { useForeignKeyLookup } from './useForeignKeyLookup'

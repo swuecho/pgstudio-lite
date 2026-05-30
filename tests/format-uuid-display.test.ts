@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  copyableCellDisplayProps,
-  formatUuidDisplay,
-  looksLikeUuid,
-} from '../lib/format-uuid-display'
+import { copyableCellDisplayProps, formatUuidDisplay, looksLikeUuid } from '../lib/format-uuid-display'
 
 describe('formatUuidDisplay', () => {
   it('returns the first segment of a standard UUID', () => {

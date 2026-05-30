@@ -52,19 +52,13 @@ function tableMarkdownHeader(table: TableInfo, columns: TableColumn[]): string {
     lines.push('| --- | --- | --- | --- |')
     for (const column of columns) {
       const key = column.isPrimaryKey ? 'PK' : column.foreignKey ? 'FK' : ''
-      lines.push(
-        `| \`${column.name}\` | ${column.dataType} | ${column.isNullable ? 'YES' : 'NO'} | ${key} |`
-      )
+      lines.push(`| \`${column.name}\` | ${column.dataType} | ${column.isNullable ? 'YES' : 'NO'} | ${key} |`)
     }
   }
   return lines.join('\n')
 }
 
-function fkJoinExample(
-  table: TableInfo,
-  fk: ForeignKeyConstraint,
-  columns: TableColumn[]
-): string | null {
+function fkJoinExample(table: TableInfo, fk: ForeignKeyConstraint, columns: TableColumn[]): string | null {
   if (fk.columns.length === 0 || fk.columns.length !== fk.referencedColumns.length) return null
   const localQualified = qualified(table.schema, table.table)
   const refQualified = qualified(fk.referencedSchema, fk.referencedTable)

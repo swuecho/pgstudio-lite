@@ -54,18 +54,12 @@ function formatDuration(seconds: number): string {
 
 function formatWait(session: ActivitySession): string {
   if (!session.wait_event_type && !session.wait_event) return ''
-  if (session.wait_event_type && session.wait_event)
-    return `${session.wait_event_type}:${session.wait_event}`
+  if (session.wait_event_type && session.wait_event) return `${session.wait_event_type}:${session.wait_event}`
   return session.wait_event_type || session.wait_event || ''
 }
 
 export default function ActivityPage() {
-  const {
-    connections,
-    connectionName,
-    setConnectionName,
-    connectionReadOnly,
-  } = useActiveConnection()
+  const { connections, connectionName, setConnectionName, connectionReadOnly } = useActiveConnection()
 
   const [tab, setTab] = useState<Tab>('sessions')
   const [intervalMs, setIntervalMs] = useState<number>(2000)
@@ -107,15 +101,9 @@ export default function ActivityPage() {
   const control = useControlBackend(connectionName || '')
   const statementsActionMutation = useStatementsAction(connectionName || '')
 
-  const sessions = useMemo(
-    () => sessionsQuery.data?.sessions ?? [],
-    [sessionsQuery.data?.sessions]
-  )
+  const sessions = useMemo(() => sessionsQuery.data?.sessions ?? [], [sessionsQuery.data?.sessions])
   const locks = useMemo(() => locksQuery.data?.locks ?? [], [locksQuery.data?.locks])
-  const statements = useMemo(
-    () => statementsQuery.data?.statements ?? [],
-    [statementsQuery.data?.statements]
-  )
+  const statements = useMemo(() => statementsQuery.data?.statements ?? [], [statementsQuery.data?.statements])
   const statementsInstalled = statementsQuery.data?.installed ?? true
 
   const blockingPids = useMemo(() => {
@@ -128,12 +116,8 @@ export default function ActivityPage() {
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((session) => {
-      if (filterUser && !(session.user || '').toLowerCase().includes(filterUser.toLowerCase()))
-        return false
-      if (
-        filterApp &&
-        !(session.application_name || '').toLowerCase().includes(filterApp.toLowerCase())
-      )
+      if (filterUser && !(session.user || '').toLowerCase().includes(filterUser.toLowerCase())) return false
+      if (filterApp && !(session.application_name || '').toLowerCase().includes(filterApp.toLowerCase()))
         return false
       if (filterState !== 'all' && session.state !== filterState) return false
       if (onlyBlocked && session.blocked_by.length === 0) return false
@@ -141,8 +125,7 @@ export default function ActivityPage() {
     })
   }, [sessions, filterUser, filterApp, filterState, onlyBlocked])
 
-  const activeQuery =
-    tab === 'sessions' ? sessionsQuery : tab === 'locks' ? locksQuery : statementsQuery
+  const activeQuery = tab === 'sessions' ? sessionsQuery : tab === 'locks' ? locksQuery : statementsQuery
   const fetchedAt = activeQuery.data?.fetchedAt
   const isLoading = activeQuery.isLoading
   const error = activeQuery.error
@@ -152,11 +135,7 @@ export default function ActivityPage() {
     if (errorMessage) return `error: ${errorMessage}`
     if (isLoading && !fetchedAt) return 'loading...'
     const count =
-      tab === 'sessions'
-        ? filteredSessions.length
-        : tab === 'locks'
-          ? locks.length
-          : statements.length
+      tab === 'sessions' ? filteredSessions.length : tab === 'locks' ? locks.length : statements.length
     const time = fetchedAt ? new Date(fetchedAt).toLocaleTimeString() : ''
     const label = tab === 'sessions' ? 'sessions' : tab === 'locks' ? 'locks' : 'statements'
     return `${count} ${label}${time ? ` · ${time}` : ''}${paused ? ' · paused' : ''}`
@@ -206,10 +185,7 @@ export default function ActivityPage() {
             <button className="btn small" onClick={() => setPaused((value) => !value)}>
               {paused ? 'Resume' : 'Pause'}
             </button>
-            <select
-              value={connectionName || ''}
-              onChange={(event) => setConnectionName(event.target.value)}
-            >
+            <select value={connectionName || ''} onChange={(event) => setConnectionName(event.target.value)}>
               {connections.map((c) => (
                 <option key={c.name} value={c.name}>
                   {c.name}
@@ -247,9 +223,7 @@ export default function ActivityPage() {
               <>
                 <select
                   value={statementsOrderBy}
-                  onChange={(event) =>
-                    setStatementsOrderBy(event.target.value as StatementsOrderBy)
-                  }
+                  onChange={(event) => setStatementsOrderBy(event.target.value as StatementsOrderBy)}
                   title="Sort"
                 >
                   <option value="total">total time</option>
@@ -266,9 +240,7 @@ export default function ActivityPage() {
                 </button>
               </>
             ) : null}
-            {connectionReadOnly ? (
-              <span className="history-meta">connection is read-only</span>
-            ) : null}
+            {connectionReadOnly ? <span className="history-meta">connection is read-only</span> : null}
           </div>
         </div>
 
@@ -318,9 +290,7 @@ export default function ActivityPage() {
           <StatementsTable
             statements={statements}
             expandedQueryid={expandedQueryid}
-            onToggleExpand={(queryid) =>
-              setExpandedQueryid((prev) => (prev === queryid ? null : queryid))
-            }
+            onToggleExpand={(queryid) => setExpandedQueryid((prev) => (prev === queryid ? null : queryid))}
             onOpenInEditor={(key, query) => openInEditor(query, `stmt ${key.slice(0, 8)}`)}
           />
         ) : (
@@ -328,9 +298,7 @@ export default function ActivityPage() {
             readOnly={connectionReadOnly}
             installing={statementsActionMutation.isPending}
             installError={
-              statementsActionMutation.error instanceof Error
-                ? statementsActionMutation.error.message
-                : null
+              statementsActionMutation.error instanceof Error ? statementsActionMutation.error.message : null
             }
             onInstall={() => statementsActionMutation.mutate('install')}
           />
@@ -482,8 +450,8 @@ function StatementsNotInstalled({
       </p>
       <p style={{ marginTop: 8 }}>
         Run <code>CREATE EXTENSION pg_stat_statements;</code> (and add{' '}
-        <code>shared_preload_libraries = &apos;pg_stat_statements&apos;</code> to{' '}
-        <code>postgresql.conf</code>, then restart) to enable per-query timing stats.
+        <code>shared_preload_libraries = &apos;pg_stat_statements&apos;</code> to <code>postgresql.conf</code>
+        , then restart) to enable per-query timing stats.
       </p>
       <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
         <button
@@ -495,9 +463,7 @@ function StatementsNotInstalled({
           {installing ? 'Installing...' : 'Install extension'}
         </button>
       </div>
-      {installError ? (
-        <p style={{ marginTop: 12, color: 'var(--danger, #e54d4d)' }}>{installError}</p>
-      ) : null}
+      {installError ? <p style={{ marginTop: 12, color: 'var(--danger, #e54d4d)' }}>{installError}</p> : null}
     </div>
   )
 }
@@ -545,16 +511,10 @@ function SessionsTable({
           {sessions.map((session) => {
             const isBlocker = blockingPids.has(session.pid)
             const isBlocked = session.blocked_by.length > 0
-            const rowClass = isBlocker
-              ? styles.rowBlocker
-              : isBlocked
-                ? styles.rowBlocked
-                : ''
+            const rowClass = isBlocker ? styles.rowBlocker : isBlocked ? styles.rowBlocked : ''
             const expanded = expandedPid === session.pid
             const queryPreview =
-              session.query.length > 200 && !expanded
-                ? session.query.slice(0, 200) + '…'
-                : session.query
+              session.query.length > 200 && !expanded ? session.query.slice(0, 200) + '…' : session.query
             return (
               <tr key={session.pid} className={rowClass}>
                 <td>{session.pid}</td>
@@ -569,10 +529,7 @@ function SessionsTable({
                   <div className={expanded ? '' : styles.queryTruncated}>{queryPreview}</div>
                   <div className={styles.cellLinks}>
                     {session.query.length > 200 ? (
-                      <button
-                        className={styles.expandBtn}
-                        onClick={() => onToggleExpand(session.pid)}
-                      >
+                      <button className={styles.expandBtn} onClick={() => onToggleExpand(session.pid)}>
                         {expanded ? 'collapse' : 'expand'}
                       </button>
                     ) : null}
@@ -640,10 +597,7 @@ function LocksTable({ locks }: { locks: ActivityLock[] }) {
         </thead>
         <tbody>
           {locks.map((lock, index) => (
-            <tr
-              key={`${lock.pid ?? 'null'}-${index}`}
-              className={lock.granted ? '' : styles.rowBlocked}
-            >
+            <tr key={`${lock.pid ?? 'null'}-${index}`} className={lock.granted ? '' : styles.rowBlocked}>
               <td>{lock.pid ?? ''}</td>
               <td>{lock.granted ? 'yes' : 'no'}</td>
               <td>{lock.mode ?? ''}</td>

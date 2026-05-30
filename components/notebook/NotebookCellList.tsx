@@ -671,9 +671,7 @@ const CellResult = memo(function CellResult({ result }: { result: QueryResult })
                     <tr key={rowIndex}>
                       {statement.fields.map((field) => (
                         <td key={`${rowIndex}-${field}`}>
-                          <CopyableCellValue
-                            {...copyableCellDisplayProps(formatCell(row[field]))}
-                          />
+                          <CopyableCellValue {...copyableCellDisplayProps(formatCell(row[field]))} />
                         </td>
                       ))}
                     </tr>

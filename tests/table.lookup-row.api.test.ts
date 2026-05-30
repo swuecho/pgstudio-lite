@@ -14,10 +14,7 @@ type ApiResult = {
   payload: unknown
 }
 
-async function invokeApi(input: {
-  table?: string
-  body?: unknown
-}): Promise<ApiResult> {
+async function invokeApi(input: { table?: string; body?: unknown }): Promise<ApiResult> {
   let statusCode = 200
   let payload: unknown = null
 

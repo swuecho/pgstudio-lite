@@ -27,11 +27,7 @@ function clearFilter(setters: FilterSetters) {
   setters.setFilterMode('contains')
 }
 
-export function restoreTableFilters(
-  connectionName: string,
-  activeTable: string,
-  setters: FilterSetters
-) {
+export function restoreTableFilters(connectionName: string, activeTable: string, setters: FilterSetters) {
   const local = useTableEditorLocalStore.getState()
   if (local.skipFilterRestore) {
     useTableEditorLocalStore.setState({ skipFilterRestore: false })

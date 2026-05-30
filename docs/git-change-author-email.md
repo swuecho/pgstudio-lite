@@ -31,6 +31,7 @@ git config user.name "Your Name"
 ```
 
 Verify:
+
 ```bash
 git config user.email
 git config user.name
@@ -49,6 +50,7 @@ git commit --amend --author="Your Name <new@email.com>" --no-edit
 The `--no-edit` flag keeps the existing commit message. Omit it to edit the message too.
 
 If the commit was already pushed:
+
 ```bash
 git push --force
 ```
@@ -97,11 +99,11 @@ fi
 
 **Options explained:**
 
-| Flag | Purpose |
-|------|---------|
+| Flag           | Purpose                                                        |
+| -------------- | -------------------------------------------------------------- |
 | `--env-filter` | Runs a shell script for each commit to modify author/committer |
-| `-- --all` | Processes all refs (branches, remotes, tags, stashes) |
-| `-f` | Force re-run if a previous filter-branch left backup refs |
+| `-- --all`     | Processes all refs (branches, remotes, tags, stashes)          |
+| `-f`           | Force re-run if a previous filter-branch left backup refs      |
 
 ---
 
@@ -181,6 +183,7 @@ git push --force --tags origin
 ## 7. Troubleshooting
 
 ### filter-branch says a ref is "unchanged" but it still has old emails
+
 This can happen with remote-tracking branches. Run filter-branch again specifically on that ref with `-f` (force):
 
 ```bash
@@ -188,6 +191,7 @@ git filter-branch -f --env-filter '...' refs/remotes/origin/problem-branch
 ```
 
 ### "cannot lock ref" when deleting backup refs
+
 A previous filter-branch run may have already moved the backup. Run `git for-each-ref refs/original/` to see what remains, then delete them individually:
 
 ```bash
@@ -195,6 +199,7 @@ git update-ref -d refs/original/refs/heads/some-branch
 ```
 
 ### How to revert if something goes wrong
+
 If you haven't deleted the backup refs yet, you can restore the original history:
 
 ```bash
@@ -210,12 +215,12 @@ If backup refs are already deleted, you'll need to re-clone from the remote (ass
 
 ## Quick Reference
 
-| Goal | Command |
-|------|---------|
-| Future commits only | `git config user.email "new@email.com"` |
-| Amend last commit | `git commit --amend --author="Name <new@email.com>"` |
-| Rewrite current branch | `git filter-branch --env-filter '...' HEAD` |
-| Rewrite all branches | `git filter-branch --env-filter '...' -- --all` |
-| Force push | `git push --force --all origin` |
-| Clean up backups | `git for-each-ref refs/original/ --format='%(refname)' \| xargs -r git update-ref -d` |
-| Garbage collect | `git reflog expire --expire=now --all && git gc --prune=now --aggressive` |
+| Goal                   | Command                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| Future commits only    | `git config user.email "new@email.com"`                                               |
+| Amend last commit      | `git commit --amend --author="Name <new@email.com>"`                                  |
+| Rewrite current branch | `git filter-branch --env-filter '...' HEAD`                                           |
+| Rewrite all branches   | `git filter-branch --env-filter '...' -- --all`                                       |
+| Force push             | `git push --force --all origin`                                                       |
+| Clean up backups       | `git for-each-ref refs/original/ --format='%(refname)' \| xargs -r git update-ref -d` |
+| Garbage collect        | `git reflog expire --expire=now --all && git gc --prune=now --aggressive`             |

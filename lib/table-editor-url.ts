@@ -32,9 +32,7 @@ export function parseTableEditorUrlQuery(query: ParsedUrlQuery): TableEditorUrlS
     activeTable,
     filter: {
       filterColumn,
-      filterMode: filterModeRaw
-        ? parseFilterMode(filterModeRaw, getColumnKind('text'))
-        : 'equals',
+      filterMode: filterModeRaw ? parseFilterMode(filterModeRaw, getColumnKind('text')) : 'equals',
       filterValue: takeFirstQueryParam(query.filterValue),
       filterValueEnd: takeFirstQueryParam(query.filterValueEnd),
     },

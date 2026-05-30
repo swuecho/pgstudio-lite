@@ -26,10 +26,7 @@ export function deriveTableAlias(tableName: string): string {
   return words.map((word) => word[0].toLowerCase()).join('')
 }
 
-export function resolveAvailableAlias(
-  tableName: string,
-  usedAliases: Iterable<string>
-): string {
+export function resolveAvailableAlias(tableName: string, usedAliases: Iterable<string>): string {
   const used = new Set([...usedAliases].map((alias) => alias.toLowerCase()))
   let base = deriveTableAlias(tableName)
   if (!base) base = 't'
@@ -44,10 +41,7 @@ export function resolveAvailableAlias(
 }
 
 export function isFromJoinTableContext(textBeforeCursor: string): boolean {
-  return (
-    /\bfrom\s+[\w."]*$/i.test(textBeforeCursor) ||
-    /\b\w*join\s+[\w."]*$/i.test(textBeforeCursor)
-  )
+  return /\bfrom\s+[\w."]*$/i.test(textBeforeCursor) || /\b\w*join\s+[\w."]*$/i.test(textBeforeCursor)
 }
 
 export function getTextBeforeCursor(
@@ -96,10 +90,7 @@ function normalizeTableToken(raw: string): string {
   return raw.replace(/"/g, '').trim()
 }
 
-function resolveTableRef(
-  raw: string,
-  schemaTables: SchemaTableRef[]
-): TableRef | null {
+function resolveTableRef(raw: string, schemaTables: SchemaTableRef[]): TableRef | null {
   const cleaned = normalizeTableToken(raw)
   if (!cleaned) return null
 
@@ -124,18 +115,11 @@ function resolveTableRef(
   return { schema: 'public', table: cleaned }
 }
 
-function registerAlias(
-  map: Record<string, TableRef>,
-  alias: string,
-  ref: TableRef
-) {
+function registerAlias(map: Record<string, TableRef>, alias: string, ref: TableRef) {
   map[alias.toLowerCase()] = ref
 }
 
-export function buildAliasMap(
-  sql: string,
-  schemaTables: SchemaTableRef[]
-): Record<string, TableRef> {
+export function buildAliasMap(sql: string, schemaTables: SchemaTableRef[]): Record<string, TableRef> {
   const map: Record<string, TableRef> = {}
 
   const clauseRe =
@@ -263,10 +247,7 @@ export function buildMergedColumnSuggestions(
   return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
-export function aliasByTableKey(
-  sql: string,
-  schemaTables: SchemaTableRef[]
-): Record<string, string> {
+export function aliasByTableKey(sql: string, schemaTables: SchemaTableRef[]): Record<string, string> {
   const result: Record<string, string> = {}
   for (const [alias, ref] of Object.entries(buildAliasMap(sql, schemaTables))) {
     const key = `${ref.schema}.${ref.table}`

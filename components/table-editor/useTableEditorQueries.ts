@@ -77,8 +77,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     enabled: Boolean(state.connectionName && selectedTarget.table && state.rowsQueryEnabled !== false),
   })
   const columns = useMemo(() => rowsQuery.data?.columns || [], [rowsQuery.data?.columns])
-  const rows =
-    state.hideRowsWhileLoading && rowsQuery.isLoading ? [] : rowsQuery.data?.rows || []
+  const rows = state.hideRowsWhileLoading && rowsQuery.isLoading ? [] : rowsQuery.data?.rows || []
   const totalRows = Number(rowsQuery.data?.total || 0)
   const activeRelation = useMemo(
     () =>

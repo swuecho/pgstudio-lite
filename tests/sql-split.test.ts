@@ -56,11 +56,11 @@ describe('splitStatements', () => {
   })
 
   it('preserves semicolon inside dollar-quoted string ($$)', async () => {
-    expect(await splitStatements("select $$hello;world$$")).toEqual(['select $$hello;world$$'])
+    expect(await splitStatements('select $$hello;world$$')).toEqual(['select $$hello;world$$'])
   })
 
   it('preserves semicolon inside named dollar-quoted string', async () => {
-    expect(await splitStatements("select $body$begin; end;$body$")).toEqual([
+    expect(await splitStatements('select $body$begin; end;$body$')).toEqual([
       'select $body$begin; end;$body$',
     ])
   })
@@ -99,9 +99,10 @@ $$;`
   })
 
   it('handles nested block comments', async () => {
-    expect(
-      await splitStatements('select /* outer /* inner */ still; comment */ 1; select 2'),
-    ).toEqual(['select /* outer /* inner */ still; comment */ 1', 'select 2'])
+    expect(await splitStatements('select /* outer /* inner */ still; comment */ 1; select 2')).toEqual([
+      'select /* outer /* inner */ still; comment */ 1',
+      'select 2',
+    ])
   })
 
   it('handles multiline statements', async () => {
@@ -154,7 +155,7 @@ insert into users (name) values ('alice');`
     const sql = `select $tag$hello;$tag$, 'world;'; select 2;`
     const result = await splitStatements(sql)
     expect(result).toHaveLength(2)
-    expect(result[0]).toContain("$tag$hello;$tag$")
+    expect(result[0]).toContain('$tag$hello;$tag$')
     expect(result[1]).toBe('select 2')
   })
 

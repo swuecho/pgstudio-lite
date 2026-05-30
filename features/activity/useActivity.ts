@@ -53,8 +53,7 @@ export function useActivityStatements(
 export function useStatementsAction(connectionName: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (action: 'install' | 'reset') =>
-      statementsAction({ action, connectionName }),
+    mutationFn: (action: 'install' | 'reset') => statementsAction({ action, connectionName }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity', 'statements', connectionName] })
     },

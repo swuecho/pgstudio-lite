@@ -14,10 +14,7 @@ describe('narrowResultToSelectList', () => {
       },
     ]
 
-    const narrowed = narrowResultToSelectList(pgFields, rows, [
-      'jikeyun_warehouse_name',
-      'current_quantity',
-    ])
+    const narrowed = narrowResultToSelectList(pgFields, rows, ['jikeyun_warehouse_name', 'current_quantity'])
 
     expect(narrowed.fields).toEqual(['jikeyun_warehouse_name', 'current_quantity'])
     expect(narrowed.rows[0]).toEqual({

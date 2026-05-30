@@ -274,9 +274,7 @@ export const EditorPane = memo(function EditorPane({
                 const clauseRange = {
                   startLineNumber: position.lineNumber,
                   endLineNumber: position.lineNumber,
-                  startColumn: clauseContext.prefix
-                    ? word.startColumn
-                    : Math.max(1, position.column),
+                  startColumn: clauseContext.prefix ? word.startColumn : Math.max(1, position.column),
                   endColumn: position.column,
                 }
 
@@ -301,9 +299,7 @@ export const EditorPane = memo(function EditorPane({
               }
 
               const inFromJoin = isFromJoinTableContext(textBeforeCursor)
-              const usedAliases = inFromJoin
-                ? Object.keys(buildAliasMap(sql, schemaTables))
-                : []
+              const usedAliases = inFromJoin ? Object.keys(buildAliasMap(sql, schemaTables)) : []
               const tableSuggestions = schemaTables.map((item) => {
                 const label = `${item.schema}.${item.table}`
                 if (!inFromJoin) {
