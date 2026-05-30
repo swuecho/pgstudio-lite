@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run tests/pg.integration.test.ts",
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
