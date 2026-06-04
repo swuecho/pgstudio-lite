@@ -1,0 +1,40 @@
+.ddlModal {
+  width: min(920px, 96vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ddlModalActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ddlModal :global(.modal-body) {
+  overflow: auto;
+  min-height: 0;
+}
+
+.ddlPre {
+  margin: 0;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ddlStatus,
+.ddlError {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ddlError {
+  color: var(--danger, #c44);
+}

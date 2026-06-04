@@ -22,6 +22,16 @@ export async function getTables(connectionName: string) {
   )
 }
 
+export async function getTableDdl(args: { connectionName: string; schema?: string; table: string }) {
+  const params = new URLSearchParams({
+    connectionName: args.connectionName,
+    schema: args.schema || 'public',
+  })
+  return fetchJson<{ ddl: string }>(
+    `/api/tables/${encodeURIComponent(args.table)}/ddl?${params.toString()}`
+  )
+}
+
 export async function getRows(args: {
   schema?: string
   table: string

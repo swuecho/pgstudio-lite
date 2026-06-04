@@ -8,6 +8,7 @@ import { FilterPopover } from './FilterPopover'
 import { SortPopover } from './SortPopover'
 import { JsonbCellEditor } from './JsonbCellEditor'
 import { InsertRowModal } from './InsertRowModal'
+import { TableDdlModal } from './TableDdlModal'
 import { CellContentPanel } from '../shared/CellContentPanel'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import { canOpenCellViewer } from '../../lib/format-cell-content'
@@ -103,6 +104,7 @@ export function TableGridPanel({
   const [jsonbEditCell, setJsonbEditCell] = useState<{ row: RowData; column: string } | null>(null)
   const [cellView, setCellView] = useState<{ row: RowData; column: ColumnInfo } | null>(null)
   const [showInsertRow, setShowInsertRow] = useState(false)
+  const [showTableDdl, setShowTableDdl] = useState(false)
 
   function wrapFkCell(column: ColumnInfo, row: RowData, content: ReactNode) {
     if (!column.foreignKey || !connectionName) return content
@@ -317,6 +319,18 @@ export function TableGridPanel({
             <div className={styles.toolbarSpacer} aria-hidden="true" />
 
             <div className={styles.toolbarGroup}>
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => setShowTableDdl(true)}
+                disabled={!table}
+                title="View CREATE TABLE / VIEW DDL with keys and indexes"
+              >
+                DDL
+              </button>
+            </div>
+
+            <div className={styles.toolbarGroup}>
               <SortPopover
                 columns={columns}
                 sortBy={sortBy}
@@ -378,6 +392,11 @@ export function TableGridPanel({
                   {displayColumns.map((col) => (
                     <th key={col.name}>
                       {col.name}
+                      {col.isPrimaryKey ? (
+                        <span className={styles.columnPkIcon} title="Primary key" aria-hidden>
+                          PK
+                        </span>
+                      ) : null}
                       {col.foreignKey ? (
                         <span
                           className={styles.columnFkIcon}
@@ -645,6 +664,15 @@ export function TableGridPanel({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {showTableDdl ? (
+        <TableDdlModal
+          connectionName={connectionName}
+          schema={schema}
+          table={table}
+          onClose={() => setShowTableDdl(false)}
+        />
       ) : null}
 
       {showInsertRow ? (

@@ -46,6 +46,8 @@ export {
   fetchRowsByMatch,
 } from './db/tables'
 
+export { getTableDdl } from './db/table-ddl'
+
 export { splitStatements, executeQuery } from './db/query'
 
 export {
