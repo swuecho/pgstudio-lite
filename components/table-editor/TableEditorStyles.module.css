@@ -609,12 +609,22 @@
   text-underline-offset: 2px;
 }
 
+.columnPkIcon,
 .columnFkIcon {
   margin-left: 4px;
   font-size: 10px;
+  vertical-align: middle;
+}
+
+.columnPkIcon {
+  color: var(--text);
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.columnFkIcon {
   color: var(--accent);
   opacity: 0.9;
-  vertical-align: middle;
 }
 
 :global(.layout-nav-controls).viewsNavControls {

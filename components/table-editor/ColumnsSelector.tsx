@@ -71,7 +71,11 @@ export function ColumnsSelector({
                 checked={visibleColumns.includes(col.name)}
                 onChange={() => onToggleColumn(col.name)}
               />
-              <span className={styles.columnName}>{col.name}</span>
+              <span className={styles.columnName}>
+                {col.name}
+                {col.isPrimaryKey ? <span className={styles.columnBadge}>PK</span> : null}
+                {col.foreignKey ? <span className={`${styles.columnBadge} ${styles.columnBadgeFk}`}>FK</span> : null}
+              </span>
               <span className={styles.columnType}>{col.dataType}</span>
             </label>
           ))}
