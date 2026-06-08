@@ -86,6 +86,7 @@ export function useTableEditorData(state: TableEditorState) {
     loadRows: queries.loadRows,
     updateCell: queries.updateCell,
     insertRow: queries.insertRow,
+    importRows: queries.importRows,
     deleteRow: queries.deleteRow,
     loadingRows: queries.loadingRows,
     loadingTables: queries.loadingTables,

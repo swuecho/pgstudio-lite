@@ -1,0 +1,136 @@
+.importModal {
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.hint {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.fileInput {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.sourceMeta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pasteArea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.sectionLabel {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mapGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px 16px;
+}
+
+.mapRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.targetCol {
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+}
+
+.targetType {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.mapRow select {
+  flex: 1;
+  max-width: 55%;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.previewWrap {
+  overflow: auto;
+  max-height: 220px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.previewTable th,
+.previewTable td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.previewTable th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.nullCell {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.alert {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--btn-danger-bg);
+  color: var(--status-error-text);
+  font-size: 12px;
+}
+
+.success {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+  font-size: 12px;
+}

@@ -8,6 +8,7 @@ import { FilterPopover } from './FilterPopover'
 import { SortPopover } from './SortPopover'
 import { JsonbCellEditor } from './JsonbCellEditor'
 import { InsertRowModal } from './InsertRowModal'
+import { ImportRowsModal } from './ImportRowsModal'
 import { TableDdlModal } from './TableDdlModal'
 import { CellContentPanel } from '../shared/CellContentPanel'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
@@ -47,6 +48,7 @@ type TableGridPanelProps = {
   onUpdateCell: (rowKey: RowKey | null, column: string, value: unknown) => void
   onDeleteRow: (rowKey: RowKey | null) => void
   onInsertRow: (values: Record<string, unknown>) => Promise<boolean>
+  onImportRows: (columns: string[], rows: unknown[][]) => Promise<{ inserted: number }>
   onPrevPage: () => void
   onNextPage: () => void
   onToggleVisibleColumn: (columnName: string) => void
@@ -94,6 +96,7 @@ export function TableGridPanel({
   onUpdateCell,
   onDeleteRow,
   onInsertRow,
+  onImportRows,
   onPrevPage,
   onNextPage,
   onToggleVisibleColumn,
@@ -104,6 +107,7 @@ export function TableGridPanel({
   const [jsonbEditCell, setJsonbEditCell] = useState<{ row: RowData; column: string } | null>(null)
   const [cellView, setCellView] = useState<{ row: RowData; column: ColumnInfo } | null>(null)
   const [showInsertRow, setShowInsertRow] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [showTableDdl, setShowTableDdl] = useState(false)
 
   function wrapFkCell(column: ColumnInfo, row: RowData, content: ReactNode) {
@@ -375,6 +379,13 @@ export function TableGridPanel({
 
             {!readOnlyTable ? (
               <div className={styles.toolbarGroup}>
+                <button
+                  className="btn small"
+                  onClick={() => setShowImport(true)}
+                  disabled={columns.length === 0}
+                >
+                  Import
+                </button>
                 <button
                   className="btn small primary"
                   onClick={() => setShowInsertRow(true)}
@@ -684,6 +695,14 @@ export function TableGridPanel({
               if (ok) setShowInsertRow(false)
             })
           }}
+        />
+      ) : null}
+
+      {showImport ? (
+        <ImportRowsModal
+          columns={columns}
+          onClose={() => setShowImport(false)}
+          onImport={onImportRows}
         />
       ) : null}
 

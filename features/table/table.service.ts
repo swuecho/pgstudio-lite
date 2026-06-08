@@ -80,6 +80,17 @@ export async function createRow(
   })
 }
 
+export async function importRows(
+  table: string,
+  payload: { connectionName: string; schema?: string; columns: string[]; rows: unknown[][] }
+) {
+  const body = { ...payload, schema: payload.schema || 'public' }
+  return fetchJson<{ inserted: number }>(`/api/tables/${encodeURIComponent(table)}/import`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
 export async function patchRow(
   table: string,
   payload: { connectionName: string; schema?: string; rowKey: RowKey; patch: Record<string, unknown> }

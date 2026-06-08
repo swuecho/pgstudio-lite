@@ -2,13 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EChartsType } from 'echarts'
 import styles from './ResultChart.module.css'
 import { useThemeMode } from '../../hooks/useThemeMode'
+import type { ResultChartType } from '../../lib/notebook-chart-config'
+
+export type ResultChartConfig = {
+  chartType: ResultChartType
+  xField: string
+  yFields: string[]
+}
 
 type ResultChartProps = {
   fields: string[]
   rows: Record<string, unknown>[]
+  initialConfig?: Partial<ResultChartConfig>
+  onConfigChange?: (config: ResultChartConfig) => void
 }
 
-type ChartType = 'bar' | 'line' | 'area' | 'scatter' | 'pie'
+type ChartType = ResultChartType
 
 const CHART_TYPES: { value: ChartType; label: string }[] = [
   { value: 'bar', label: 'Bar' },
@@ -94,7 +103,7 @@ function buildOption(
   }
 }
 
-export function ResultChart({ fields, rows }: ResultChartProps) {
+export function ResultChart({ fields, rows, initialConfig, onConfigChange }: ResultChartProps) {
   const theme = useThemeMode()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<EChartsType | null>(null)
@@ -105,13 +114,27 @@ export function ResultChart({ fields, rows }: ResultChartProps) {
     [fields, rows]
   )
 
-  const [chartType, setChartType] = useState<ChartType>('bar')
-  const [xField, setXField] = useState(
-    () => fields.find((field) => !numericFields.includes(field)) ?? fields[0] ?? ''
+  const [chartType, setChartType] = useState<ChartType>(() => initialConfig?.chartType ?? 'bar')
+  const [xField, setXField] = useState(() =>
+    initialConfig?.xField && fields.includes(initialConfig.xField)
+      ? initialConfig.xField
+      : (fields.find((field) => !numericFields.includes(field)) ?? fields[0] ?? '')
   )
-  const [yFields, setYFields] = useState<string[]>(() =>
-    numericFields.length > 0 ? [numericFields[0]] : []
-  )
+  const [yFields, setYFields] = useState<string[]>(() => {
+    const stored = (initialConfig?.yFields ?? []).filter((field) => numericFields.includes(field))
+    if (stored.length > 0) return stored
+    return numericFields.length > 0 ? [numericFields[0]] : []
+  })
+
+  // Report config changes upward (e.g. for persistence) without forcing the
+  // callback's identity into the dependency list.
+  const onConfigChangeRef = useRef(onConfigChange)
+  useEffect(() => {
+    onConfigChangeRef.current = onConfigChange
+  })
+  useEffect(() => {
+    onConfigChangeRef.current?.({ chartType, xField, yFields })
+  }, [chartType, xField, yFields])
 
   // Re-init the chart instance when the theme changes (echarts theme is baked
   // in at init time), and tear it down on unmount.

@@ -9,6 +9,7 @@ export type NotebookPageController = ReturnType<typeof useNotebookPageState>
 
 export function useNotebookPageState() {
   const [status, setStatus] = useState('Notebook ready')
+  const [dashboardMode, setDashboardMode] = useState(false)
   const [selectedWidgetPreset, setSelectedWidgetPreset] = useState<NotebookWidgetPresetId>('text-search')
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
 
@@ -72,6 +73,8 @@ export function useNotebookPageState() {
   return {
     ...crud,
     ...cells,
+    dashboardMode,
+    setDashboardMode,
     handleWidthResizerMouseDown,
     notebookImport,
     setActiveNotebookId,
