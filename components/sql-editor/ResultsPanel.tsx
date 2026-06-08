@@ -16,6 +16,7 @@ import {
 } from '../../lib/result-export'
 import { formatExplainPlan } from './utils'
 import { ExplainPlanTree } from './ExplainPlanTree'
+import { ResultChart } from './ResultChart'
 
 type StatementResult = QueryResult['statements'][number]
 
@@ -96,6 +97,7 @@ type SqlCellView = {
 
 export function SqlResultsPanel({ result, formatCell, connectionName, style }: SqlResultsPanelProps) {
   const [cellView, setCellView] = useState<SqlCellView | null>(null)
+  const [viewModes, setViewModes] = useState<Record<number, 'table' | 'chart'>>({})
 
   return (
     <div
@@ -126,6 +128,24 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                   statement.rows.length > 0 &&
                   !isExplainStatement(statement) ? (
                     <div className={styles.resultExportActions}>
+                      <span className="result-view-toggle">
+                        <button
+                          type="button"
+                          className="btn small"
+                          aria-pressed={(viewModes[index] ?? 'table') === 'table'}
+                          onClick={() => setViewModes((modes) => ({ ...modes, [index]: 'table' }))}
+                        >
+                          Table
+                        </button>
+                        <button
+                          type="button"
+                          className="btn small"
+                          aria-pressed={viewModes[index] === 'chart'}
+                          onClick={() => setViewModes((modes) => ({ ...modes, [index]: 'chart' }))}
+                        >
+                          Chart
+                        </button>
+                      </span>
                       <button
                         type="button"
                         className="btn small"
@@ -175,6 +195,8 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                     value={getExplainPlanValue(statement)}
                     fallbackText={getExplainPlanText(statement)}
                   />
+                ) : statement.fields.length > 0 && viewModes[index] === 'chart' ? (
+                  <ResultChart fields={statement.fields} rows={statement.rows} />
                 ) : statement.fields.length > 0 ? (
                   (() => {
                     const traceTarget = getTraceTarget(statement)
