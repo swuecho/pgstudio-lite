@@ -1,9 +1,10 @@
-import { memo, useCallback, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { SqlCellEditor } from './SqlCellEditor'
+import { ResultChart } from '../sql-editor/ResultChart'
 import { WidgetCellEditor } from './WidgetCellEditor'
 import { ErrorBoundary } from '../shared/ErrorBoundary'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
@@ -645,6 +646,7 @@ const MarkdownCellBody = memo(function MarkdownCellBody({
 // --- Shared sub-components ---
 
 const CellResult = memo(function CellResult({ result }: { result: QueryResult }) {
+  const [viewModes, setViewModes] = useState<Record<number, 'table' | 'chart'>>({})
   return (
     <div className="results-stack">
       {result.statements.map((statement, index) => (
@@ -653,9 +655,31 @@ const CellResult = memo(function CellResult({ result }: { result: QueryResult })
             <span>#{index + 1}</span>
             <span>{statement.command}</span>
             <span>{statement.rowCount} rows</span>
+            {statement.fields.length > 0 && statement.rows.length > 0 ? (
+              <span className="result-view-toggle">
+                <button
+                  type="button"
+                  className="btn small"
+                  aria-pressed={(viewModes[index] ?? 'table') === 'table'}
+                  onClick={() => setViewModes((modes) => ({ ...modes, [index]: 'table' }))}
+                >
+                  Table
+                </button>
+                <button
+                  type="button"
+                  className="btn small"
+                  aria-pressed={viewModes[index] === 'chart'}
+                  onClick={() => setViewModes((modes) => ({ ...modes, [index]: 'chart' }))}
+                >
+                  Chart
+                </button>
+              </span>
+            ) : null}
           </div>
           {statement.fields.length === 0 ? (
             <div className="empty-state">Command executed successfully.</div>
+          ) : viewModes[index] === 'chart' ? (
+            <ResultChart fields={statement.fields} rows={statement.rows} />
           ) : (
             <div className="table-wrap">
               <table>

@@ -567,6 +567,27 @@ body.resizing-cell-panel {
   padding: 0 8px;
 }
 
+.result-view-toggle {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* Neutralize the result-block-head pill chrome and right-align the toggle.
+   Higher specificity than `.result-block-head > span`. */
+.result-block-head > .result-view-toggle {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+}
+
+.result-view-toggle .btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .table-wrap {
   overflow: auto;
 }
