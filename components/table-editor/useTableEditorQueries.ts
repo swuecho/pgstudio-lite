@@ -4,6 +4,7 @@ import {
   createRow,
   getRows as getRowsService,
   getTables as getTablesService,
+  importRows as importRowsService,
   patchRow,
   removeRow,
 } from '../../features/table/table.service'
@@ -202,6 +203,34 @@ export function useTableEditorQueries(state: TableEditorState) {
     }
   }
 
+  const importRowsMutation = useMutation({
+    mutationFn: (payload: { columns: string[]; rows: unknown[][] }) =>
+      importRowsService(selectedTarget.table, {
+        connectionName: state.connectionName,
+        schema: selectedTarget.schema,
+        columns: payload.columns,
+        rows: payload.rows,
+      }),
+    onSuccess: invalidateRows,
+  })
+
+  async function importRows(payload: { columns: string[]; rows: unknown[][] }) {
+    if (rowMutationsReadOnly) {
+      const reason = rowMutationsDisabledReason || 'Imports are disabled'
+      state.setStatus(reason)
+      throw new Error(reason)
+    }
+    state.setStatus(`Importing ${payload.rows.length} rows...`)
+    try {
+      const result = await importRowsMutation.mutateAsync(payload)
+      state.setStatus(`Imported ${result.inserted} rows`)
+      return result
+    } catch (error) {
+      state.setStatus(error instanceof Error ? error.message : 'Failed to import rows')
+      throw error
+    }
+  }
+
   async function deleteRow(rowKey: RowKey | null) {
     if (rowMutationsReadOnly || !rowKey) {
       state.setStatus(rowMutationsDisabledReason || 'Row edits are disabled')
@@ -229,6 +258,7 @@ export function useTableEditorQueries(state: TableEditorState) {
     loadRows,
     updateCell,
     insertRow,
+    importRows,
     deleteRow,
     loadingRows: rowsQuery.isFetching,
     loadingTables: tablesQuery.isFetching,

@@ -6,6 +6,7 @@ import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
 import { ConfirmDialog, PromptDialog } from '../components/shared/Dialog'
 import { NotebookCellList } from '../components/notebook/NotebookCellList'
+import { NotebookDashboard } from '../components/notebook/NotebookDashboard'
 import { NotebookHelpPanel } from '../components/notebook/NotebookHelpPanel'
 import { NotebookImportModal } from '../components/notebook/NotebookImportModal'
 import { NotebookParameterPanel } from '../components/notebook/NotebookParameterPanel'
@@ -111,6 +112,15 @@ export default function NotebookPage() {
             </button>
             <button
               className={`btn small ${styles.actionButton}`}
+              aria-pressed={controller.dashboardMode}
+              disabled={!controller.activeNotebookId}
+              title="Toggle a read-only dashboard view of results and charts"
+              onClick={() => controller.setDashboardMode((prev) => !prev)}
+            >
+              {controller.dashboardMode ? 'Edit' : 'Dashboard'}
+            </button>
+            <button
+              className={`btn small ${styles.actionButton}`}
               onClick={() => controller.notebookImport.setShowHelp((prev) => !prev)}
             >
               {controller.notebookImport.showHelp ? 'Hide Help' : 'Help'}
@@ -118,6 +128,7 @@ export default function NotebookPage() {
           </div>
         </div>
 
+        {!controller.dashboardMode ? (
         <div className={styles.toolbar}>
           <div className={styles.cellCount}>
             <span className="history-meta">
@@ -182,6 +193,7 @@ export default function NotebookPage() {
             </button>
           </div>
         </div>
+        ) : null}
 
         {controller.notebookImport.showHelp ? (
           <NotebookHelpPanel
@@ -201,7 +213,11 @@ export default function NotebookPage() {
 
         <NotebookParameterPanel controller={controller} />
 
-        <NotebookCellList controller={controller} />
+        {controller.dashboardMode ? (
+          <NotebookDashboard controller={controller} />
+        ) : (
+          <NotebookCellList controller={controller} />
+        )}
       </main>
 
       <SettingsPanel />

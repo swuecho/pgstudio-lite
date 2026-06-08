@@ -41,6 +41,7 @@ export {
   listSchemaObjects,
   updateTableRowByPrimaryKey,
   insertTableRow,
+  importTableRows,
   deleteTableRowByPrimaryKey,
   getIncomingForeignKeys,
   fetchRowsByMatch,

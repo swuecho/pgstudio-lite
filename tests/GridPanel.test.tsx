@@ -45,6 +45,7 @@ function makeProps(overrides: Partial<React.ComponentProps<typeof TableGridPanel
     onUpdateCell: vi.fn(),
     onDeleteRow: vi.fn(),
     onInsertRow: vi.fn().mockResolvedValue(true),
+    onImportRows: vi.fn().mockResolvedValue({ inserted: 0 }),
     onPrevPage: vi.fn(),
     onNextPage: vi.fn(),
     onToggleVisibleColumn: vi.fn(),
