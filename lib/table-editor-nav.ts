@@ -134,27 +134,26 @@ export function partitionPinnedRecent(
   visibleTables: TableInfo[] = allTables
 ) {
   const byKey = new Map(allTables.map((table) => [toTableKey(table.schema, table.table), table]))
-  const used = new Set<string>()
+  const pinnedSet = new Set<string>()
 
   const pinned: TableInfo[] = []
   for (const key of pinnedKeys) {
     const table = byKey.get(key)
     if (!table) continue
     pinned.push(table)
-    used.add(key)
+    pinnedSet.add(key)
   }
 
   const recent: TableInfo[] = []
   for (const key of recentKeys.slice(0, MAX_RECENT_TABLES)) {
-    if (!key || used.has(key)) continue
+    if (!key || pinnedSet.has(key)) continue
     const table = byKey.get(key)
     if (!table) continue
     recent.push(table)
-    used.add(key)
   }
   recent.sort(compareTablesByName)
 
-  const rest = visibleTables.filter((table) => !used.has(toTableKey(table.schema, table.table)))
+  const rest = visibleTables.filter((table) => !pinnedSet.has(toTableKey(table.schema, table.table)))
   return { pinned, recent, rest }
 }
 
