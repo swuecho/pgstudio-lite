@@ -61,16 +61,16 @@ describe('table-editor-nav', () => {
     expect(groups.map((g) => g.id)).toEqual(['table', 'view', 'materialized_view'])
   })
 
-  it('partitions pinned and recent without duplicates', () => {
+  it('keeps pinned distinct while leaving recent tables in the main list', () => {
     const usersKey = toTableKey('public', 'users')
     const ordersKey = toTableKey('public', 'orders_mv')
     const result = partitionPinnedRecent(sampleTables, [ordersKey], [usersKey, ordersKey])
     expect(result.pinned.map((t) => t.table)).toEqual(['orders_mv'])
     expect(result.recent.map((t) => t.table)).toEqual(['users'])
-    expect(result.rest.map((t) => t.table)).toEqual(['summary'])
+    expect(result.rest.map((t) => t.table)).toEqual(['users', 'summary'])
   })
 
-  it('includes the active table in recent so five items can show above the divider', () => {
+  it('includes recent tables without removing them from the current table list', () => {
     const tables: TableInfo[] = [
       { schema: 'public', table: 'item1', estimatedRows: 1, kind: 'table' },
       { schema: 'public', table: 'item2', estimatedRows: 1, kind: 'table' },
@@ -81,7 +81,7 @@ describe('table-editor-nav', () => {
     const recentKeys = tables.map((table) => toTableKey(table.schema, table.table))
     const result = partitionPinnedRecent(tables, [], recentKeys)
     expect(result.recent.map((t) => t.table)).toEqual(['item1', 'item2', 'item3', 'item4', 'item5'])
-    expect(result.rest).toHaveLength(0)
+    expect(result.rest.map((t) => t.table)).toEqual(['item1', 'item2', 'item3', 'item4', 'item5'])
   })
 
   it('sorts recent tables alphanumerically and keeps at most five', () => {

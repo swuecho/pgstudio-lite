@@ -61,6 +61,10 @@ type TableListSection = {
   tables: TableInfo[]
 }
 
+function tableItemKey(sectionId: string, tableKey: string) {
+  return `${sectionId}:${tableKey}`
+}
+
 export function TableSidebar({
   connectionName,
   tables,
@@ -103,6 +107,7 @@ export function TableSidebar({
   const [viewsSearch, setViewsSearch] = useState('')
   const [sortMode, setSortMode] = useState<TableListSortMode>('name')
   const [focusedKey, setFocusedKey] = useState('')
+  const [activeTableItemKey, setActiveTableItemKey] = useState('')
   const [renamingBookmarkId, setRenamingBookmarkId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
 
@@ -169,6 +174,16 @@ export function TableSidebar({
 
   const flatTables = useMemo(() => flattenTableListSections(listSections), [listSections])
   const matchCount = flatTables.length
+  const visibleTableItemKeys = useMemo(
+    () =>
+      listSections.flatMap((section) =>
+        section.tables.map((table) => {
+          const tableKey = toTableKey(table.schema, table.table)
+          return { itemKey: tableItemKey(section.id, tableKey), tableKey }
+        })
+      ),
+    [listSections]
+  )
 
   const { pinned: pinnedBookmarks, unpinned: unpinnedBookmarks } = useMemo(
     () => partitionViewBookmarks(bookmarks),
@@ -189,7 +204,8 @@ export function TableSidebar({
     filteredPinnedBookmarks.length + filteredBookmarks.length + filteredRecentViews.length
 
   const handleSelectTable = useCallback(
-    (tableKey: string) => {
+    (tableKey: string, itemKey: string) => {
+      setActiveTableItemKey(itemKey)
       onSelectTable(tableKey)
       setFocusedKey(tableKey)
     },
@@ -209,9 +225,10 @@ export function TableSidebar({
 
   const scrollActiveIntoView = useCallback(() => {
     if (!activeTable) return
-    const node = itemRefs.current[activeTable]
+    const fallbackKey = visibleTableItemKeys.find((item) => item.tableKey === activeTable)?.itemKey
+    const node = itemRefs.current[activeTableItemKey] ?? (fallbackKey ? itemRefs.current[fallbackKey] : null)
     node?.scrollIntoView({ block: 'nearest' })
-  }, [activeTable])
+  }, [activeTable, activeTableItemKey, visibleTableItemKeys])
 
   useEffect(() => {
     scrollActiveIntoView()
@@ -221,6 +238,21 @@ export function TableSidebar({
     if (!activeTable) return
     setFocusedKey(activeTable)
   }, [activeTable])
+
+  useEffect(() => {
+    if (!activeTable) {
+      setActiveTableItemKey('')
+      return
+    }
+
+    const activeItemStillVisible = visibleTableItemKeys.some(
+      (item) => item.itemKey === activeTableItemKey && item.tableKey === activeTable
+    )
+    if (activeItemStillVisible) return
+
+    const nextActiveItem = visibleTableItemKeys.find((item) => item.tableKey === activeTable)
+    setActiveTableItemKey(nextActiveItem?.itemKey ?? '')
+  }, [activeTable, activeTableItemKey, visibleTableItemKeys])
 
   const moveFocus = useCallback(
     (delta: number) => {
@@ -233,10 +265,11 @@ export function TableSidebar({
       const nextTable = flatTables[nextIndex]
       const nextKey = toTableKey(nextTable.schema, nextTable.table)
       setFocusedKey(nextKey)
-      itemRefs.current[nextKey]?.focus()
-      itemRefs.current[nextKey]?.scrollIntoView({ block: 'nearest' })
+      const nextItemKey = visibleTableItemKeys.find((item) => item.tableKey === nextKey)?.itemKey
+      itemRefs.current[nextItemKey ?? nextKey]?.focus()
+      itemRefs.current[nextItemKey ?? nextKey]?.scrollIntoView({ block: 'nearest' })
     },
-    [activeTable, flatTables, focusedKey]
+    [activeTable, flatTables, focusedKey, visibleTableItemKeys]
   )
 
   const handleListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -257,8 +290,9 @@ export function TableSidebar({
       const first = flatTables[0]
       if (!first) return
       const key = toTableKey(first.schema, first.table)
+      const itemKey = visibleTableItemKeys.find((item) => item.tableKey === key)?.itemKey
       setFocusedKey(key)
-      itemRefs.current[key]?.focus()
+      itemRefs.current[itemKey ?? key]?.focus()
       return
     }
     if (event.key === 'End') {
@@ -266,34 +300,36 @@ export function TableSidebar({
       const last = flatTables[flatTables.length - 1]
       if (!last) return
       const key = toTableKey(last.schema, last.table)
+      const itemKey = visibleTableItemKeys.find((item) => item.tableKey === key)?.itemKey
       setFocusedKey(key)
-      itemRefs.current[key]?.focus()
+      itemRefs.current[itemKey ?? key]?.focus()
     }
   }
 
-  const renderTableButton = (table: TableInfo, options?: { showSchema?: boolean }) => {
+  const renderTableButton = (table: TableInfo, options: { sectionId: string; showSchema?: boolean }) => {
     const tableKey = toTableKey(table.schema, table.table)
-    const isActive = activeTable === tableKey
+    const itemKey = tableItemKey(options.sectionId, tableKey)
+    const isActive = activeTable === tableKey && activeTableItemKey === itemKey
     const isPinned = pinnedKeys.includes(tableKey)
     const showSchema = options?.showSchema ?? searchAllSchemas
 
     return (
       <div
-        key={tableKey}
+        key={itemKey}
         ref={(node) => {
-          itemRefs.current[tableKey] = node
+          itemRefs.current[itemKey] = node
         }}
         role="option"
         tabIndex={0}
         aria-selected={isActive}
         aria-current={isActive ? 'true' : undefined}
         className={`${styles.tableCard} ${isActive ? styles.tableCardActive : ''}`}
-        onClick={() => handleSelectTable(tableKey)}
+        onClick={() => handleSelectTable(tableKey, itemKey)}
         onFocus={() => setFocusedKey(tableKey)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            handleSelectTable(tableKey)
+            handleSelectTable(tableKey, itemKey)
           }
         }}
       >
@@ -646,7 +682,7 @@ export function TableSidebar({
                       <div className={styles.tableCardSectionLabel}>{section.label}</div>
                     ) : null}
                     {section.tables.map((table) =>
-                      renderTableButton(table, { showSchema: searchAllSchemas })
+                      renderTableButton(table, { sectionId: section.id, showSchema: searchAllSchemas })
                     )}
                   </div>
                   {showDividerAfter ? (
