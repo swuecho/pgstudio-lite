@@ -121,7 +121,7 @@ async function getRelationIndexDefinitions(
   const { rows } = await client.query(sql, [schema, table])
   return rows
     .map((row: Record<string, unknown>) => (row.definition ? String(row.definition) : ''))
-    .filter((definition) => definition.length > 0)
+    .filter((definition: string) => definition.length > 0)
 }
 
 async function getViewDefinition(client: PoolClient, schema: string, table: string, kind: RelationKind) {
