@@ -11,10 +11,7 @@ type ApiResult = {
   payload: unknown
 }
 
-async function invokeApi(input: {
-  table?: string
-  query?: Record<string, unknown>
-}): Promise<ApiResult> {
+async function invokeApi(input: { table?: string; query?: Record<string, unknown> }): Promise<ApiResult> {
   let statusCode = 200
   let payload: unknown = null
 

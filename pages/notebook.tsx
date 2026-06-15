@@ -129,70 +129,70 @@ export default function NotebookPage() {
         </div>
 
         {!controller.dashboardMode ? (
-        <div className={styles.toolbar}>
-          <div className={styles.cellCount}>
-            <span className="history-meta">
-              {controller.sortedCells.length} {controller.sortedCells.length === 1 ? 'cell' : 'cells'}
-            </span>
-            {controller.pendingSaveCount ? (
-              <span className="history-meta"> · {controller.pendingSaveCount} unsaved</span>
-            ) : null}
+          <div className={styles.toolbar}>
+            <div className={styles.cellCount}>
+              <span className="history-meta">
+                {controller.sortedCells.length} {controller.sortedCells.length === 1 ? 'cell' : 'cells'}
+              </span>
+              {controller.pendingSaveCount ? (
+                <span className="history-meta"> · {controller.pendingSaveCount} unsaved</span>
+              ) : null}
+            </div>
+            <div className={styles.toolbarActions}>
+              <button
+                className="btn small"
+                disabled={!controller.activeNotebookId || controller.runningAll}
+                onClick={() => controller.addCellMutation.mutate('sql')}
+              >
+                Add SQL
+              </button>
+              <button
+                className="btn small"
+                disabled={!controller.activeNotebookId || controller.runningAll}
+                onClick={() => controller.addCellMutation.mutate('markdown')}
+              >
+                Add Markdown
+              </button>
+              <select
+                className={styles.presetSelect}
+                value={controller.selectedWidgetPreset}
+                disabled={!controller.activeNotebookId || controller.runningAll}
+                onChange={(event) =>
+                  controller.setSelectedWidgetPreset(
+                    event.target.value as typeof controller.selectedWidgetPreset
+                  )
+                }
+                title="Widget preset"
+              >
+                {NOTEBOOK_WIDGET_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn small"
+                disabled={!controller.activeNotebookId || controller.runningAll}
+                onClick={() => controller.addWidgetPresetMutation.mutate(controller.selectedWidgetPreset)}
+              >
+                Add Preset
+              </button>
+              <button
+                className="btn small"
+                disabled={!controller.activeNotebookId || controller.runningAll}
+                onClick={() => controller.addCellMutation.mutate('widget')}
+              >
+                Add Widget
+              </button>
+              <button
+                className="btn small primary"
+                disabled={!controller.activeNotebookId || controller.runningAll}
+                onClick={() => void controller.runAllSqlCells()}
+              >
+                {controller.runningAll ? 'Running All...' : 'Run All'}
+              </button>
+            </div>
           </div>
-          <div className={styles.toolbarActions}>
-            <button
-              className="btn small"
-              disabled={!controller.activeNotebookId || controller.runningAll}
-              onClick={() => controller.addCellMutation.mutate('sql')}
-            >
-              Add SQL
-            </button>
-            <button
-              className="btn small"
-              disabled={!controller.activeNotebookId || controller.runningAll}
-              onClick={() => controller.addCellMutation.mutate('markdown')}
-            >
-              Add Markdown
-            </button>
-            <select
-              className={styles.presetSelect}
-              value={controller.selectedWidgetPreset}
-              disabled={!controller.activeNotebookId || controller.runningAll}
-              onChange={(event) =>
-                controller.setSelectedWidgetPreset(
-                  event.target.value as typeof controller.selectedWidgetPreset
-                )
-              }
-              title="Widget preset"
-            >
-              {NOTEBOOK_WIDGET_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
-            <button
-              className="btn small"
-              disabled={!controller.activeNotebookId || controller.runningAll}
-              onClick={() => controller.addWidgetPresetMutation.mutate(controller.selectedWidgetPreset)}
-            >
-              Add Preset
-            </button>
-            <button
-              className="btn small"
-              disabled={!controller.activeNotebookId || controller.runningAll}
-              onClick={() => controller.addCellMutation.mutate('widget')}
-            >
-              Add Widget
-            </button>
-            <button
-              className="btn small primary"
-              disabled={!controller.activeNotebookId || controller.runningAll}
-              onClick={() => void controller.runAllSqlCells()}
-            >
-              {controller.runningAll ? 'Running All...' : 'Run All'}
-            </button>
-          </div>
-        </div>
         ) : null}
 
         {controller.notebookImport.showHelp ? (

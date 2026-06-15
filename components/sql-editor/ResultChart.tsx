@@ -109,10 +109,7 @@ export function ResultChart({ fields, rows, initialConfig, onConfigChange }: Res
   const chartRef = useRef<EChartsType | null>(null)
   const [ready, setReady] = useState(0)
 
-  const numericFields = useMemo(
-    () => fields.filter((field) => isNumericField(field, rows)),
-    [fields, rows]
-  )
+  const numericFields = useMemo(() => fields.filter((field) => isNumericField(field, rows)), [fields, rows])
 
   const [chartType, setChartType] = useState<ChartType>(() => initialConfig?.chartType ?? 'bar')
   const [xField, setXField] = useState(() =>

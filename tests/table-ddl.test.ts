@@ -61,9 +61,7 @@ describe('table-ddl', () => {
     )
 
     expect(ddl).toContain('CREATE TABLE "orders"')
-    expect(ddl).toContain(
-      'CREATE INDEX orders_created_at_idx ON public.orders USING btree (created_at);'
-    )
+    expect(ddl).toContain('CREATE INDEX orders_created_at_idx ON public.orders USING btree (created_at);')
   })
 
   it('builds CREATE VIEW DDL with indexes', () => {
