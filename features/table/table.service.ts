@@ -27,9 +27,7 @@ export async function getTableDdl(args: { connectionName: string; schema?: strin
     connectionName: args.connectionName,
     schema: args.schema || 'public',
   })
-  return fetchJson<{ ddl: string }>(
-    `/api/tables/${encodeURIComponent(args.table)}/ddl?${params.toString()}`
-  )
+  return fetchJson<{ ddl: string }>(`/api/tables/${encodeURIComponent(args.table)}/ddl?${params.toString()}`)
 }
 
 export async function getRows(args: {

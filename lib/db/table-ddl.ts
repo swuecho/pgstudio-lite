@@ -77,7 +77,11 @@ export function buildViewDdl(
   return appendDdlStatements(createView, indexes)
 }
 
-async function getRelationKindForDdl(client: PoolClient, schema: string, table: string): Promise<RelationKind> {
+async function getRelationKindForDdl(
+  client: PoolClient,
+  schema: string,
+  table: string
+): Promise<RelationKind> {
   const sql = `
     select c.relkind
     from pg_class c
@@ -97,7 +101,11 @@ async function getRelationKindForDdl(client: PoolClient, schema: string, table: 
   return mapPgRelkind(String(relkind))
 }
 
-async function getRelationIndexDefinitions(client: PoolClient, schema: string, table: string): Promise<string[]> {
+async function getRelationIndexDefinitions(
+  client: PoolClient,
+  schema: string,
+  table: string
+): Promise<string[]> {
   const sql = `
     select pg_get_indexdef(ix.oid) as definition
     from pg_class t
@@ -137,7 +145,9 @@ async function getTableDdlWithClient(client: PoolClient, schema: string, table: 
   if (kind === 'view' || kind === 'materialized_view') {
     const definition = await getViewDefinition(client, schema, table, kind)
     if (!definition) {
-      const error = new Error(`definition for '${schema}.${table}' not found`) as Error & { statusCode?: number }
+      const error = new Error(`definition for '${schema}.${table}' not found`) as Error & {
+        statusCode?: number
+      }
       error.statusCode = 404
       throw error
     }

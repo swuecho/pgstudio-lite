@@ -158,8 +158,8 @@ export function ImportRowsModal({ columns, onClose, onImport }: ImportRowsModalP
         </div>
         <div className="modal-body">
           <p className={styles.hint}>
-            Paste CSV or JSON, or choose a file. The first CSV line is treated as the header. Blank
-            cells import as NULL.
+            Paste CSV or JSON, or choose a file. The first CSV line is treated as the header. Blank cells
+            import as NULL.
           </p>
 
           <div className={styles.sourceRow}>

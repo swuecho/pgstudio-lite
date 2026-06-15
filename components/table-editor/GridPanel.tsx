@@ -699,11 +699,7 @@ export function TableGridPanel({
       ) : null}
 
       {showImport ? (
-        <ImportRowsModal
-          columns={columns}
-          onClose={() => setShowImport(false)}
-          onImport={onImportRows}
-        />
+        <ImportRowsModal columns={columns} onClose={() => setShowImport(false)} onImport={onImportRows} />
       ) : null}
 
       {jsonbEditCell ? (
