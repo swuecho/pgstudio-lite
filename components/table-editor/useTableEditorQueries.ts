@@ -183,23 +183,26 @@ export function useTableEditorQueries(state: TableEditorState) {
     }
   }
 
-  async function insertRow(values: Record<string, unknown>) {
+  async function insertRow(values: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
     if (rowMutationsReadOnly) {
-      state.setStatus(rowMutationsDisabledReason || 'Row inserts are disabled')
-      return false
+      const error = rowMutationsDisabledReason || 'Row inserts are disabled'
+      state.setStatus(error)
+      return { ok: false, error }
     }
     if (Object.keys(values).length === 0) {
-      state.setStatus('Provide at least one column value')
-      return false
+      const error = 'Provide at least one column value'
+      state.setStatus(error)
+      return { ok: false, error }
     }
     state.setStatus('Inserting...')
     try {
       await insertRowMutation.mutateAsync(values)
       state.setStatus('Row inserted')
-      return true
+      return { ok: true }
     } catch (error) {
-      state.setStatus(error instanceof Error ? error.message : 'Failed to insert row')
-      return false
+      const message = error instanceof Error ? error.message : 'Failed to insert row'
+      state.setStatus(message)
+      return { ok: false, error: message }
     }
   }
 

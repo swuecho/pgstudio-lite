@@ -120,6 +120,28 @@ export async function lookupReferencedRow(args: {
   )
 }
 
+export type ForeignKeyOption = { value: unknown; label: string }
+
+export async function getForeignKeyOptions(args: {
+  connectionName: string
+  schema?: string
+  table: string
+  column: string
+  search?: string
+  limit?: number
+}) {
+  const params = new URLSearchParams({
+    connectionName: args.connectionName,
+    schema: args.schema || 'public',
+    column: args.column,
+  })
+  if (args.search?.trim()) params.set('search', args.search.trim())
+  if (args.limit) params.set('limit', String(args.limit))
+  return fetchJson<{ options: ForeignKeyOption[]; truncated: boolean }>(
+    `/api/tables/${encodeURIComponent(args.table)}/fk-options?${params.toString()}`
+  )
+}
+
 export async function removeRow(
   table: string,
   payload: { connectionName: string; schema?: string; rowKey: RowKey }

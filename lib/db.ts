@@ -45,6 +45,8 @@ export {
   deleteTableRowByPrimaryKey,
   getIncomingForeignKeys,
   fetchRowsByMatch,
+  type ForeignKeyOption,
+  getForeignKeyOptions,
 } from './db/tables'
 
 export { getTableDdl } from './db/table-ddl'

@@ -12,11 +12,13 @@ import {
   type TableFilterMode,
 } from '../../lib/table-filter'
 import type { ColumnInfo } from './types'
+import { ForeignKeyCombobox } from './ForeignKeyCombobox'
 import { isOutsideToolbarPopover, useToolbarPopoverPosition } from './useToolbarPopover'
 import styles from './FilterPopover.module.css'
 
 type FilterPopoverProps = {
   columns: ColumnInfo[]
+  connectionName: string
   filterColumn: string
   filterMode: TableFilterMode
   filterValue: string
@@ -43,6 +45,7 @@ function isEditableTarget(target: EventTarget | null) {
 
 export function FilterPopover({
   columns,
+  connectionName,
   filterColumn,
   filterMode,
   filterValue,
@@ -68,6 +71,8 @@ export function FilterPopover({
   const filterEndRequired = filterModeNeedsEndValue(filterMode)
   const hasFilters = hasActiveTableFilter(filterColumn, filterMode, filterValue, filterValueEnd)
   const showBooleanFilterValue = filterColumnKind === 'boolean' && filterValueRequired
+  const showForeignKeyFilterValue =
+    Boolean(filterColumnMeta?.foreignKey) && filterValueRequired && !showBooleanFilterValue && !filterEndRequired
   const filterSummary = formatTableFilterSummary(filterColumn, filterMode, filterValue, filterValueEnd)
   const showSlowFilterWarning = isSlowFilterMode(filterMode) && totalRows > 1000
 
@@ -194,6 +199,13 @@ export function FilterPopover({
                 <option value="true">true</option>
                 <option value="false">false</option>
               </select>
+            ) : showForeignKeyFilterValue && filterColumnMeta ? (
+              <ForeignKeyCombobox
+                column={filterColumnMeta}
+                connectionName={connectionName}
+                value={filterValue}
+                onChange={onChangeFilterValue}
+              />
             ) : (
               <input
                 ref={filterValueInputRef}
