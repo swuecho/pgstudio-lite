@@ -24,6 +24,7 @@ export type ColumnInfo = {
   isNullable: boolean
   isIdentity: boolean
   isPrimaryKey: boolean
+  hasDefault?: boolean
   foreignKey?: ColumnForeignKey
 }
 

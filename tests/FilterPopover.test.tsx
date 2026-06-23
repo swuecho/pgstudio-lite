@@ -13,6 +13,7 @@ const columns: ColumnInfo[] = [
 function makeProps(overrides: Partial<React.ComponentProps<typeof FilterPopover>> = {}) {
   return {
     columns,
+    connectionName: 'test',
     filterColumn: '',
     filterMode: 'contains' as const,
     filterValue: '',

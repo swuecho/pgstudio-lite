@@ -39,6 +39,7 @@ export type TableColumn = {
   isNullable: boolean
   isIdentity: boolean
   isPrimaryKey: boolean
+  hasDefault: boolean
   foreignKey?: ColumnForeignKey
 }
 
@@ -228,7 +229,8 @@ async function getTableColumnsWithClient(
       column_name,
       data_type,
       is_nullable,
-      is_identity
+      is_identity,
+      column_default
     from information_schema.columns
     where table_schema = $1
       and table_name = $2
@@ -241,7 +243,8 @@ async function getTableColumnsWithClient(
         a.attname as column_name,
         pg_catalog.format_type(a.atttypid, a.atttypmod) as data_type,
         not a.attnotnull as is_nullable,
-        false as is_identity
+        false as is_identity,
+        a.atthasdef as column_default
       from pg_attribute a
       join pg_class c on c.oid = a.attrelid
       join pg_namespace n on n.oid = c.relnamespace
@@ -264,6 +267,7 @@ async function getTableColumnsWithClient(
       isNullable: r.is_nullable === true || r.is_nullable === 'YES',
       isIdentity: r.is_identity === true || r.is_identity === 'YES',
       isPrimaryKey: primaryKeySet.has(name),
+      hasDefault: r.column_default !== null && r.column_default !== undefined && r.column_default !== false,
       ...(foreignKey ? { foreignKey } : {}),
     }
   })
@@ -660,6 +664,74 @@ export async function getIncomingForeignKeys(
       childColumns: parsePgStringArray(row.child_columns),
       parentColumns: parsePgStringArray(row.parent_columns),
     }))
+  })
+}
+
+const FK_LABEL_TYPE_HINTS = ['char', 'text', 'name', 'citext']
+
+function isLabelLikeType(dataType: string): boolean {
+  const type = dataType.toLowerCase()
+  return FK_LABEL_TYPE_HINTS.some((hint) => type.includes(hint))
+}
+
+export type ForeignKeyOption = {
+  value: unknown
+  label: string
+}
+
+/**
+ * Lists candidate values for a foreign-key column by reading the referenced
+ * table's key column (plus a best-effort human-readable label column). Used by
+ * the insert-row form so a FK field can be picked from existing values.
+ */
+export async function getForeignKeyOptions(
+  connectionName: string | undefined,
+  schema: string,
+  table: string,
+  column: string,
+  search: string,
+  limit: number
+): Promise<{ options: ForeignKeyOption[]; truncated: boolean }> {
+  const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50))
+  return withClient(connectionName, async (client) => {
+    const columns = await getTableColumnsWithClient(client, schema, table)
+    if (!columns.some((c) => c.name === column)) {
+      const error = new Error(`unknown column '${column}'`) as Error & { statusCode?: number }
+      error.statusCode = 400
+      throw error
+    }
+    const labelColumn = columns.find((c) => c.name !== column && isLabelLikeType(c.dataType))?.name
+
+    const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
+    const qValue = sqlIdent(column)
+    const qLabel = labelColumn ? sqlIdent(labelColumn) : null
+    const selectList = qLabel ? `${qValue} as value, ${qLabel} as label` : `${qValue} as value`
+
+    const params: unknown[] = []
+    const whereParts = [`${qValue} is not null`]
+    const trimmed = search.trim()
+    if (trimmed) {
+      const searchTargets = qLabel ? [`${qValue}::text`, `${qLabel}::text`] : [`${qValue}::text`]
+      params.push(`%${trimmed}%`)
+      whereParts.push(`(${searchTargets.map((target) => `${target} ilike $${params.length}`).join(' or ')})`)
+    }
+
+    const sql = `
+      select distinct ${selectList}
+      from ${qTable}
+      where ${whereParts.join(' and ')}
+      order by ${qLabel ? 'label, value' : 'value'}
+      limit ${safeLimit + 1}
+    `
+    const { rows } = await client.query(sql, params)
+    const truncated = rows.length > safeLimit
+    const options = rows.slice(0, safeLimit).map((row: Record<string, unknown>) => {
+      const value = row.value
+      const label =
+        qLabel && row.label !== null && row.label !== undefined ? String(row.label) : String(value)
+      return { value, label }
+    })
+    return { options, truncated }
   })
 }
 

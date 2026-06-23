@@ -15,6 +15,7 @@ import { CopyableCellValue } from '../shared/CopyableCellValue'
 import { canOpenCellViewer } from '../../lib/format-cell-content'
 import type { TableFilterMode } from '../../lib/table-filter'
 import { ForeignKeyCell } from './ForeignKeyCell'
+import { CellForeignKeyEditor } from './CellForeignKeyEditor'
 import { formatForeignKeyHeaderTitle } from './foreignKeyUtils'
 import styles from './TableEditorStyles.module.css'
 
@@ -47,7 +48,7 @@ type TableGridPanelProps = {
   onChangePageSize: (value: number) => void
   onUpdateCell: (rowKey: RowKey | null, column: string, value: unknown) => void
   onDeleteRow: (rowKey: RowKey | null) => void
-  onInsertRow: (values: Record<string, unknown>) => Promise<boolean>
+  onInsertRow: (values: Record<string, unknown>) => Promise<{ ok: boolean; error?: string }>
   onImportRows: (columns: string[], rows: unknown[][]) => Promise<{ inserted: number }>
   onPrevPage: () => void
   onNextPage: () => void
@@ -347,6 +348,7 @@ export function TableGridPanel({
             <div className={styles.toolbarGroup}>
               <FilterPopover
                 columns={columns}
+                connectionName={connectionName}
                 filterColumn={filterColumn}
                 filterMode={filterMode}
                 filterValue={filterValue}
@@ -443,14 +445,22 @@ export function TableGridPanel({
                             if (isViewable) openCellView(row, col)
                           }}
                         >
-                          {wrapFkCell(
-                            col,
-                            row,
-                            readOnly ? (
+                          {readOnly ? (
+                            wrapFkCell(
+                              col,
+                              row,
                               <CopyableCellValue
                                 {...copyableCellDisplayProps(row[col.name], { dataType: col.dataType })}
                               />
-                            ) : isBooleanColumn(col.dataType) ? (
+                            )
+                          ) : col.foreignKey ? (
+                            <CellForeignKeyEditor
+                              connectionName={connectionName}
+                              column={col}
+                              row={row}
+                              onCommit={commitRowChange}
+                            />
+                          ) : isBooleanColumn(col.dataType) ? (
                               <div className={styles.tableCellEditor}>
                                 <button
                                   className={`${styles.tableBoolToggle} ${row[col.name] === true ? styles.tableBoolToggleOn : ''}`}
@@ -548,7 +558,7 @@ export function TableGridPanel({
                                 />
                               </div>
                             )
-                          )}
+                          }
                         </td>
                       )
                     })}
@@ -689,12 +699,9 @@ export function TableGridPanel({
       {showInsertRow ? (
         <InsertRowModal
           columns={columns}
+          connectionName={connectionName}
           onClose={() => setShowInsertRow(false)}
-          onSubmit={(values) => {
-            void onInsertRow(values).then((ok) => {
-              if (ok) setShowInsertRow(false)
-            })
-          }}
+          onSubmit={onInsertRow}
         />
       ) : null}
 
