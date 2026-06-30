@@ -106,6 +106,70 @@ describe('CellForeignKeyEditor', () => {
     expect(screen.getByText('Current value')).toBeInTheDocument()
   })
 
+  it('shows a trace shortcut for the referenced row in the picker', async () => {
+    vi.mocked(getForeignKeyOptions).mockResolvedValue({
+      options: [{ value: 'u-4', label: 'Traceable User', selected: true }],
+      truncated: false,
+    })
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(
+      <CellForeignKeyEditor
+        connectionName="local"
+        column={userColumn}
+        row={{ ...row, user_id: 'u-4' }}
+        onCommit={onCommit}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /Traceable User/i }))
+
+    const traceLink = screen.getByRole('link', { name: 'Trace' })
+    expect(traceLink).toHaveAttribute(
+      'href',
+      `/trace?schema=public&table=users&pk=${encodeURIComponent(JSON.stringify({ id: 'u-4' }))}`
+    )
+  })
+
+  it('keeps the popover mounted when pressing the trace shortcut', async () => {
+    vi.mocked(getForeignKeyOptions).mockResolvedValue({
+      options: [{ value: 'u-5', label: 'Traceable User', selected: true }],
+      truncated: false,
+    })
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(
+      <CellForeignKeyEditor
+        connectionName="local"
+        column={userColumn}
+        row={{ ...row, user_id: 'u-5' }}
+        onCommit={onCommit}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /Traceable User/i }))
+    const traceLink = screen.getByRole('link', { name: 'Trace' })
+    fireEvent.mouseDown(traceLink)
+
+    expect(screen.getByRole('link', { name: 'Trace' })).toBeInTheDocument()
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+  })
+
+  it('omits the trace shortcut when the FK value is empty', async () => {
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(
+      <CellForeignKeyEditor
+        connectionName="local"
+        column={userColumn}
+        row={row}
+        onCommit={onCommit}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /null/i }))
+
+    await waitFor(() => expect(screen.getByRole('listbox')).toBeInTheDocument())
+    expect(screen.queryByRole('link', { name: 'Trace' })).not.toBeInTheDocument()
+  })
+
   it('resolves and displays the FK label before editing', async () => {
     vi.mocked(getForeignKeyOptions).mockResolvedValue({
       options: [{ value: 'u-3', label: 'Resolved User', selected: true }],
