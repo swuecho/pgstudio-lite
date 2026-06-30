@@ -1,4 +1,5 @@
-import { useState, type FocusEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { getForeignKeyOptions, type ForeignKeyOption } from '../../features/table/table.service'
 import { ForeignKeyCombobox } from './ForeignKeyCombobox'
 import type { ColumnInfo, RowData } from './types'
 import styles from './TableEditorStyles.module.css'
@@ -18,34 +19,159 @@ type CellForeignKeyEditorProps = {
   onCommit: CommitFn
 }
 
+const FK_CELL_EDIT_EVENT = 'pgstudio:fk-cell-edit'
+const fkLabelCache = new Map<string, Promise<ForeignKeyOption | null>>()
+
+function getForeignKeyLabelCacheKey(connectionName: string, column: ColumnInfo, value: string) {
+  const foreignKey = column.foreignKey!
+  return [
+    connectionName,
+    foreignKey.referencedSchema,
+    foreignKey.referencedTable,
+    foreignKey.referencedColumn,
+    value,
+  ].join('\u001f')
+}
+
+function loadSelectedForeignKeyOption(connectionName: string, column: ColumnInfo, value: string) {
+  const cacheKey = getForeignKeyLabelCacheKey(connectionName, column, value)
+  const cached = fkLabelCache.get(cacheKey)
+  if (cached) return cached
+
+  const foreignKey = column.foreignKey!
+  const request = getForeignKeyOptions({
+    connectionName,
+    schema: foreignKey.referencedSchema,
+    table: foreignKey.referencedTable,
+    column: foreignKey.referencedColumn,
+    selectedValue: value,
+    limit: 1,
+  })
+    .then((result) => {
+      return (
+        result.options.find((option) => option.selected) ??
+        result.options.find((option) => String(option.value) === value) ??
+        null
+      )
+    })
+    .catch(() => null)
+
+  fkLabelCache.set(cacheKey, request)
+  return request
+}
+
 /**
- * Inline editor for a foreign-key cell: lets the user pick an existing value
- * from the referenced table via the combobox and commits on focus-out, matching
- * the blur-to-save behaviour of the grid's other typed inputs.
+ * Compact foreign-key cell editor. The grid stays readable until the user opens
+ * the picker; selecting an option commits the raw key explicitly.
  */
 export function CellForeignKeyEditor({ connectionName, column, row, onCommit }: CellForeignKeyEditorProps) {
   const initial = row[column.name]
   const initialText = initial === null || initial === undefined ? '' : String(initial)
-  const [value, setValue] = useState(initialText)
+  const [draftValue, setDraftValue] = useState(initialText)
+  const [editing, setEditing] = useState(false)
+  const [resolvedSelection, setResolvedSelection] = useState<{ value: string; label: string } | null>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const editorId = useMemo(() => {
+    try {
+      return `${column.name}:${JSON.stringify(row._rowKey)}`
+    } catch {
+      return `${column.name}:${String(row._rowKey)}`
+    }
+  }, [column.name, row._rowKey])
 
-  function handleBlur(event: FocusEvent<HTMLDivElement>) {
-    // Only commit when focus leaves the editor entirely, not when moving between
-    // its internal elements (the combobox input and its portaled dropdown both
-    // keep focus within the field while interacting).
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
-    const next = value === '' ? null : value
-    const result = onCommit(row, column.name, next, column.dataType, () => setValue(initialText))
-    if (result === 'unchanged') setValue(initialText)
+  useEffect(() => {
+    setDraftValue(initialText)
+    setResolvedSelection((current) => (current && current.value === initialText ? current : null))
+  }, [initialText])
+
+  useEffect(() => {
+    if (!initialText || !column.foreignKey || !connectionName) return
+
+    let cancelled = false
+    void loadSelectedForeignKeyOption(connectionName, column, initialText).then((option) => {
+      if (cancelled || !option) return
+      setResolvedSelection({ value: String(option.value), label: option.label })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [column, connectionName, initialText])
+
+  useEffect(() => {
+    function handleForeignKeyCellEdit(event: Event) {
+      const activeEditorId = event instanceof CustomEvent ? event.detail : null
+      if (activeEditorId === editorId) return
+      setEditing(false)
+      setDraftValue(initialText)
+    }
+
+    window.addEventListener(FK_CELL_EDIT_EVENT, handleForeignKeyCellEdit)
+    return () => window.removeEventListener(FK_CELL_EDIT_EVENT, handleForeignKeyCellEdit)
+  }, [editorId, initialText])
+
+  function commitValue(nextText: string, label?: string) {
+    const next = nextText === '' ? null : nextText
+    const result = onCommit(row, column.name, next, column.dataType, () => {
+      setDraftValue(initialText)
+      setResolvedSelection(null)
+    })
+    if (result === 'unchanged') {
+      setDraftValue(initialText)
+      setResolvedSelection(null)
+      setEditing(false)
+      return
+    }
+    setDraftValue(nextText)
+    setResolvedSelection(label ? { value: nextText, label } : null)
+    setEditing(false)
   }
 
+  function openEditor() {
+    window.dispatchEvent(new CustomEvent(FK_CELL_EDIT_EVENT, { detail: editorId }))
+    setDraftValue(displayedRawValue)
+    setEditing(true)
+  }
+
+  function cancelEditing() {
+    setDraftValue(initialText)
+    setEditing(false)
+  }
+
+  const displayedRawValue = resolvedSelection?.value ?? initialText
+  const displayValue = resolvedSelection?.label || displayedRawValue
+
   return (
-    <div className={styles.tableCellEditor} onBlur={handleBlur}>
-      <ForeignKeyCombobox
-        column={column}
-        connectionName={connectionName}
-        value={value}
-        onChange={setValue}
-      />
+    <div className={styles.tableCellEditor} ref={anchorRef}>
+      <button
+        type="button"
+        className={styles.fkCellEditorButton}
+        title={`Edit ${column.name}`}
+        aria-expanded={editing}
+        onClick={openEditor}
+      >
+        <span className={styles.fkCellEditorIcon} aria-hidden>
+          ↗
+        </span>
+        <span className={styles.fkCellEditorText}>{displayValue || 'NULL'}</span>
+        {resolvedSelection && resolvedSelection.label !== resolvedSelection.value ? (
+          <span className={styles.fkCellEditorValue}>{resolvedSelection.value}</span>
+        ) : null}
+      </button>
+      {editing ? (
+        <ForeignKeyCombobox
+          column={column}
+          connectionName={connectionName}
+          value={draftValue}
+          onChange={setDraftValue}
+          onCommit={commitValue}
+          onCancel={cancelEditing}
+          autoFocus
+          selectedValue={displayedRawValue}
+          variant="cell"
+          popoverAnchorRef={anchorRef}
+        />
+      ) : null}
     </div>
   )
 }

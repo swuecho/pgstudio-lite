@@ -117,6 +117,28 @@ describe('table service', () => {
     expect(calls[0].path.includes('filterMode=')).toBe(false)
   })
 
+  it('getForeignKeyOptions includes selected value', async () => {
+    const calls = installFetchMock([{ ok: true, status: 200, payload: { options: [], truncated: false } }])
+
+    await tableService.getForeignKeyOptions({
+      connectionName: 'default',
+      schema: 'public',
+      table: 'orders',
+      column: 'user_id',
+      search: 'ali',
+      selectedValue: '42',
+      limit: 25,
+    })
+
+    expect(calls[0].path).toContain('/api/tables/orders/fk-options?')
+    expect(calls[0].path).toContain('connectionName=default')
+    expect(calls[0].path).toContain('schema=public')
+    expect(calls[0].path).toContain('column=user_id')
+    expect(calls[0].path).toContain('search=ali')
+    expect(calls[0].path).toContain('selectedValue=42')
+    expect(calls[0].path).toContain('limit=25')
+  })
+
   it('createRow sends POST with values', async () => {
     const calls = installFetchMock([{ ok: true, status: 200, payload: { row: { id: 3, name: 'new' } } }])
 

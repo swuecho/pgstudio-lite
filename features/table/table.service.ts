@@ -120,7 +120,7 @@ export async function lookupReferencedRow(args: {
   )
 }
 
-export type ForeignKeyOption = { value: unknown; label: string }
+export type ForeignKeyOption = { value: unknown; label: string; selected?: boolean }
 
 export async function getForeignKeyOptions(args: {
   connectionName: string
@@ -129,6 +129,7 @@ export async function getForeignKeyOptions(args: {
   column: string
   search?: string
   limit?: number
+  selectedValue?: string
 }) {
   const params = new URLSearchParams({
     connectionName: args.connectionName,
@@ -137,6 +138,7 @@ export async function getForeignKeyOptions(args: {
   })
   if (args.search?.trim()) params.set('search', args.search.trim())
   if (args.limit) params.set('limit', String(args.limit))
+  if (args.selectedValue?.trim()) params.set('selectedValue', args.selectedValue.trim())
   return fetchJson<{ options: ForeignKeyOption[]; truncated: boolean }>(
     `/api/tables/${encodeURIComponent(args.table)}/fk-options?${params.toString()}`
   )
