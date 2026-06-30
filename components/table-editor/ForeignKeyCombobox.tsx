@@ -6,7 +6,9 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ChangeEvent,
   type KeyboardEvent,
+  type RefObject,
 } from 'react'
 import { createPortal } from 'react-dom'
 import { getForeignKeyOptions, type ForeignKeyOption } from '../../features/table/table.service'
@@ -16,12 +18,22 @@ import styles from './TableEditorStyles.module.css'
 const SEARCH_DEBOUNCE_MS = 200
 const OPTION_LIMIT = 50
 const MIN_DROPDOWN_WIDTH = 320
+const DROPDOWN_GAP = 4
+const DROPDOWN_MAX_HEIGHT = 280
+const VIEWPORT_MARGIN = 8
 
 type ForeignKeyComboboxProps = {
   column: ColumnInfo
   connectionName: string
   value: string
   onChange: (value: string) => void
+  onCommit?: (value: string, label?: string) => void
+  onCancel?: () => void
+  onReady?: () => void
+  autoFocus?: boolean
+  selectedValue?: string
+  variant?: 'field' | 'cell'
+  popoverAnchorRef?: RefObject<HTMLElement | null>
 }
 
 /**
@@ -30,15 +42,28 @@ type ForeignKeyComboboxProps = {
  * <datalist>, the human-readable label stays visible after selection while the
  * committed value remains the raw key sent to the database.
  */
-export function ForeignKeyCombobox({ column, connectionName, value, onChange }: ForeignKeyComboboxProps) {
+export function ForeignKeyCombobox({
+  column,
+  connectionName,
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+  onReady,
+  autoFocus = false,
+  selectedValue,
+  variant = 'field',
+  popoverAnchorRef,
+}: ForeignKeyComboboxProps) {
   const foreignKey = column.foreignKey!
   const anchorRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const listboxId = useId()
   const requestIdRef = useRef(0)
 
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(autoFocus)
   const [query, setQuery] = useState('')
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(autoFocus)
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
   const [options, setOptions] = useState<ForeignKeyOption[]>([])
   const [loading, setLoading] = useState(false)
@@ -47,22 +72,35 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({})
 
   const displayValue = editing ? query : (selectedLabel ?? value)
+  const isCellVariant = variant === 'cell'
+  const usePopover = isCellVariant && Boolean(popoverAnchorRef)
+  const pinnedValue = selectedValue ?? value
 
   // Anchor the dropdown under the input, at least as wide as the field but never
   // narrower than MIN_DROPDOWN_WIDTH so labels and ids stay readable in narrow
   // grid cells. Keep it within the viewport.
   useLayoutEffect(() => {
-    if (!open || !anchorRef.current) return
+    const anchorElement = popoverAnchorRef?.current ?? anchorRef.current
+    if (!open || !anchorElement) return
     const update = () => {
-      const rect = anchorRef.current!.getBoundingClientRect()
-      const width = Math.min(Math.max(rect.width, MIN_DROPDOWN_WIDTH), window.innerWidth - 16)
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))
+      const rect = anchorElement.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const width = Math.min(Math.max(rect.width, isCellVariant ? 420 : MIN_DROPDOWN_WIDTH), window.innerWidth - 16)
+      const left = Math.max(VIEWPORT_MARGIN, Math.min(rect.left, window.innerWidth - width - VIEWPORT_MARGIN))
+      const spaceBelow = viewportHeight - rect.bottom - VIEWPORT_MARGIN
+      const spaceAbove = rect.top - VIEWPORT_MARGIN
+      const shouldOpenAbove = spaceBelow < 180 && spaceAbove > spaceBelow
+      const maxHeight = Math.max(120, Math.min(DROPDOWN_MAX_HEIGHT, shouldOpenAbove ? spaceAbove : spaceBelow))
+      const top = shouldOpenAbove
+        ? Math.max(VIEWPORT_MARGIN, rect.top - maxHeight - DROPDOWN_GAP)
+        : Math.min(rect.bottom + DROPDOWN_GAP, viewportHeight - maxHeight - VIEWPORT_MARGIN)
       setDropdownStyle({
         position: 'fixed',
-        top: rect.bottom + 4,
+        top,
         left,
         width,
-        zIndex: 1000,
+        maxHeight,
+        zIndex: 10000,
       })
     }
     update()
@@ -72,7 +110,7 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
     }
-  }, [open])
+  }, [isCellVariant, open, popoverAnchorRef])
 
   useEffect(() => {
     if (!open) return
@@ -86,12 +124,14 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
         column: foreignKey.referencedColumn,
         search: query,
         limit: OPTION_LIMIT,
+        selectedValue: pinnedValue,
       })
         .then((result) => {
           if (requestId !== requestIdRef.current) return
           setOptions(result.options)
           setTruncated(result.truncated)
-          setActiveIndex(result.options.length > 0 ? 0 : -1)
+          const selectedIndex = result.options.findIndex((option) => option.selected)
+          setActiveIndex(selectedIndex >= 0 ? selectedIndex : result.options.length > 0 ? 0 : -1)
         })
         .catch(() => {
           if (requestId !== requestIdRef.current) return
@@ -108,6 +148,7 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
   }, [
     open,
     query,
+    pinnedValue,
     connectionName,
     foreignKey.referencedSchema,
     foreignKey.referencedTable,
@@ -120,6 +161,12 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
     setOpen(true)
   }, [])
 
+  useEffect(() => {
+    if (!autoFocus) return
+    inputRef.current?.focus()
+    onReady?.()
+  }, [autoFocus, onReady])
+
   const closeDropdown = useCallback(() => {
     setOpen(false)
     setEditing(false)
@@ -127,27 +174,32 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
 
   const commitOption = useCallback(
     (option: ForeignKeyOption) => {
-      onChange(String(option.value))
+      const nextValue = String(option.value)
+      onChange(nextValue)
       setSelectedLabel(option.label)
       setOpen(false)
       setEditing(false)
+      onCommit?.(nextValue, option.label)
     },
-    [onChange]
+    [onChange, onCommit]
   )
 
   useEffect(() => {
     if (!open) return
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node
-      if (anchorRef.current?.contains(target)) return
+      const anchorElement = popoverAnchorRef?.current ?? anchorRef.current
+      if (anchorElement?.contains(target)) return
       if (document.getElementById(listboxId)?.contains(target)) return
       closeDropdown()
+      onCancel?.()
     }
     window.addEventListener('mousedown', handlePointerDown)
     return () => window.removeEventListener('mousedown', handlePointerDown)
-  }, [open, closeDropdown, listboxId])
+  }, [open, closeDropdown, listboxId, onCancel, popoverAnchorRef])
 
-  function handleInputChange(text: string) {
+  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const text = event.target.value
     setEditing(true)
     setQuery(text)
     setSelectedLabel(null)
@@ -176,17 +228,24 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
       if (option) {
         event.preventDefault()
         commitOption(option)
+      } else if (onCommit) {
+        event.preventDefault()
+        const nextValue = query.trim()
+        setOpen(false)
+        setEditing(false)
+        onCommit(nextValue)
       }
     } else if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
       closeDropdown()
+      onCancel?.()
     }
   }
 
-  return (
-    <div className={styles.fkCombobox} ref={anchorRef}>
+  const input = (
       <input
+        ref={inputRef}
         className={styles.cellInput}
         type="text"
         role="combobox"
@@ -196,45 +255,75 @@ export function ForeignKeyCombobox({ column, connectionName, value, onChange }: 
         value={displayValue}
         placeholder={`→ ${foreignKey.referencedTable}.${foreignKey.referencedColumn}`}
         onFocus={openDropdown}
-        onChange={(event) => handleInputChange(event.target.value)}
+        onChange={handleInputChange}
         onKeyDown={handleKeyDown}
       />
+  )
+
+  const optionList = (
+    <>
+      {loading ? (
+        <div className={styles.fkComboboxEmpty}>Loading...</div>
+      ) : options.length === 0 ? (
+        <div className={styles.fkComboboxEmpty}>No matching rows</div>
+      ) : (
+        options.map((option, index) => (
+          <button
+            type="button"
+            key={String(option.value)}
+            role="option"
+            aria-selected={index === activeIndex}
+            className={`${styles.fkComboboxOption} ${
+              index === activeIndex ? styles.fkComboboxOptionActive : ''
+            } ${option.selected ? styles.fkComboboxOptionSelected : ''}`}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              commitOption(option)
+            }}
+            onMouseEnter={() => setActiveIndex(index)}
+          >
+            <span className={styles.fkComboboxOptionText}>
+              <span className={styles.fkComboboxOptionLabel}>{option.label}</span>
+              <span className={styles.fkComboboxOptionTarget}>
+                {option.selected ? 'Current value' : `${foreignKey.referencedTable}.${foreignKey.referencedColumn}`}
+              </span>
+            </span>
+            {option.label !== String(option.value) ? (
+              <span className={styles.fkComboboxOptionValue}>{String(option.value)}</span>
+            ) : null}
+          </button>
+        ))
+      )}
+      {truncated ? (
+        <div className={styles.fkComboboxFooter}>Showing first {options.length} - type to search</div>
+      ) : null}
+    </>
+  )
+
+  if (usePopover) {
+    return open
+      ? createPortal(
+          <div className={styles.fkComboboxPopover} style={dropdownStyle}>
+            <div className={styles.fkComboboxPopoverHeader}>{input}</div>
+            <div id={listboxId} role="listbox" className={styles.fkComboboxPopoverList}>
+              {optionList}
+            </div>
+          </div>,
+          document.body
+        )
+      : null
+  }
+
+  return (
+    <div className={`${styles.fkCombobox} ${isCellVariant ? styles.fkComboboxCell : ''}`} ref={anchorRef}>
+      {input}
       {value && !editing && selectedLabel && selectedLabel !== value ? (
         <span className={styles.insertRowHint}>{`= ${value}`}</span>
       ) : null}
       {open
         ? createPortal(
             <div id={listboxId} role="listbox" className={styles.fkComboboxDropdown} style={dropdownStyle}>
-              {loading ? (
-                <div className={styles.fkComboboxEmpty}>Loading…</div>
-              ) : options.length === 0 ? (
-                <div className={styles.fkComboboxEmpty}>No matching rows</div>
-              ) : (
-                options.map((option, index) => (
-                  <button
-                    type="button"
-                    key={String(option.value)}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    className={`${styles.fkComboboxOption} ${
-                      index === activeIndex ? styles.fkComboboxOptionActive : ''
-                    }`}
-                    onMouseDown={(event) => {
-                      event.preventDefault()
-                      commitOption(option)
-                    }}
-                    onMouseEnter={() => setActiveIndex(index)}
-                  >
-                    <span className={styles.fkComboboxOptionLabel}>{option.label}</span>
-                    {option.label !== String(option.value) ? (
-                      <span className={styles.fkComboboxOptionValue}>{String(option.value)}</span>
-                    ) : null}
-                  </button>
-                ))
-              )}
-              {truncated ? (
-                <div className={styles.fkComboboxFooter}>Showing first {options.length} — type to search</div>
-              ) : null}
+              {optionList}
             </div>,
             document.body
           )

@@ -17,6 +17,7 @@ const querySchema = z.object({
   schema: optionalSchemaNameSchema.default('public'),
   column: nonEmptyStringSchema,
   search: z.string().optional().default(''),
+  selectedValue: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
 })
 
@@ -28,8 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { table } = parseWithSchema(tableParamSchema, req.query)
     const connectionName = getRequestConnectionName(req)
-    const { schema, column, search, limit } = parseWithSchema(querySchema, req.query)
-    const result = await getForeignKeyOptions(connectionName, schema, table, column, search, limit)
+    const { schema, column, search, selectedValue, limit } = parseWithSchema(querySchema, req.query)
+    const result = await getForeignKeyOptions(connectionName, schema, table, column, search, limit, selectedValue)
     return res.status(200).json(result)
   } catch (error) {
     return sendApiError(res, error)

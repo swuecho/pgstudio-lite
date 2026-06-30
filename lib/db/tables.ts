@@ -677,6 +677,14 @@ function isLabelLikeType(dataType: string): boolean {
 export type ForeignKeyOption = {
   value: unknown
   label: string
+  selected?: boolean
+}
+
+function toForeignKeyOption(row: Record<string, unknown>, hasLabelColumn: boolean): ForeignKeyOption {
+  const value = row.value
+  const label =
+    hasLabelColumn && row.label !== null && row.label !== undefined ? String(row.label) : String(value)
+  return { value, label }
 }
 
 /**
@@ -690,7 +698,8 @@ export async function getForeignKeyOptions(
   table: string,
   column: string,
   search: string,
-  limit: number
+  limit: number,
+  selectedValue?: string
 ): Promise<{ options: ForeignKeyOption[]; truncated: boolean }> {
   const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50))
   return withClient(connectionName, async (client) => {
@@ -706,6 +715,7 @@ export async function getForeignKeyOptions(
     const qValue = sqlIdent(column)
     const qLabel = labelColumn ? sqlIdent(labelColumn) : null
     const selectList = qLabel ? `${qValue} as value, ${qLabel} as label` : `${qValue} as value`
+    const hasLabelColumn = Boolean(qLabel)
 
     const params: unknown[] = []
     const whereParts = [`${qValue} is not null`]
@@ -725,12 +735,33 @@ export async function getForeignKeyOptions(
     `
     const { rows } = await client.query(sql, params)
     const truncated = rows.length > safeLimit
-    const options = rows.slice(0, safeLimit).map((row: Record<string, unknown>) => {
-      const value = row.value
-      const label =
-        qLabel && row.label !== null && row.label !== undefined ? String(row.label) : String(value)
-      return { value, label }
-    })
+    const options: ForeignKeyOption[] = rows
+      .slice(0, safeLimit)
+      .map((row: Record<string, unknown>) => toForeignKeyOption(row, hasLabelColumn))
+    const trimmedSelectedValue = selectedValue?.trim()
+
+    if (trimmedSelectedValue) {
+      const selectedResult = await client.query(
+        `
+          select ${selectList}
+          from ${qTable}
+          where ${qValue}::text = $1
+          limit 1
+        `,
+        [trimmedSelectedValue]
+      )
+      const selectedRow = selectedResult.rows[0]
+      if (selectedRow) {
+        const selectedOption = {
+          ...toForeignKeyOption(selectedRow, hasLabelColumn),
+          selected: true,
+        }
+        const selectedOptionValue = String(selectedOption.value)
+        const remainingOptions = options.filter((option) => String(option.value) !== selectedOptionValue)
+        return { options: [selectedOption, ...remainingOptions], truncated }
+      }
+    }
+
     return { options, truncated }
   })
 }
