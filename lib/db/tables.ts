@@ -668,10 +668,39 @@ export async function getIncomingForeignKeys(
 }
 
 const FK_LABEL_TYPE_HINTS = ['char', 'text', 'name', 'citext']
+const FK_LABEL_NAME_RANKS = [
+  ['display_name', 'displayname', 'display'],
+  ['full_name', 'fullname'],
+  ['name'],
+  ['email'],
+  ['username', 'user_name'],
+  ['title'],
+  ['label'],
+  ['slug'],
+  ['code'],
+  ['description'],
+]
 
 function isLabelLikeType(dataType: string): boolean {
   const type = dataType.toLowerCase()
   return FK_LABEL_TYPE_HINTS.some((hint) => type.includes(hint))
+}
+
+function normalizeLabelColumnName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+export function pickForeignKeyLabelColumn(columns: TableColumn[], valueColumn: string): string | undefined {
+  const candidates = columns.filter((column) => column.name !== valueColumn && isLabelLikeType(column.dataType))
+  if (candidates.length === 0) return undefined
+
+  for (const rank of FK_LABEL_NAME_RANKS) {
+    const rankedNames = new Set(rank.map(normalizeLabelColumnName))
+    const match = candidates.find((column) => rankedNames.has(normalizeLabelColumnName(column.name)))
+    if (match) return match.name
+  }
+
+  return candidates[0]?.name
 }
 
 export type ForeignKeyOption = {
@@ -709,7 +738,7 @@ export async function getForeignKeyOptions(
       error.statusCode = 400
       throw error
     }
-    const labelColumn = columns.find((c) => c.name !== column && isLabelLikeType(c.dataType))?.name
+    const labelColumn = pickForeignKeyLabelColumn(columns, column)
 
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const qValue = sqlIdent(column)

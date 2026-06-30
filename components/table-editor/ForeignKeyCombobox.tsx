@@ -22,6 +22,15 @@ const DROPDOWN_GAP = 4
 const DROPDOWN_MAX_HEIGHT = 280
 const VIEWPORT_MARGIN = 8
 
+function buildTraceHref(schema: string, table: string, pk: Record<string, unknown>) {
+  const params = new URLSearchParams({
+    schema,
+    table,
+    pk: JSON.stringify(pk),
+  })
+  return `/trace?${params.toString()}`
+}
+
 type ForeignKeyComboboxProps = {
   column: ColumnInfo
   connectionName: string
@@ -59,6 +68,7 @@ export function ForeignKeyCombobox({
   const anchorRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listboxId = useId()
+  const popoverId = useId()
   const requestIdRef = useRef(0)
 
   const [open, setOpen] = useState(autoFocus)
@@ -75,6 +85,11 @@ export function ForeignKeyCombobox({
   const isCellVariant = variant === 'cell'
   const usePopover = isCellVariant && Boolean(popoverAnchorRef)
   const pinnedValue = selectedValue ?? value
+  const traceHref = pinnedValue
+    ? buildTraceHref(foreignKey.referencedSchema, foreignKey.referencedTable, {
+        [foreignKey.referencedColumn]: pinnedValue,
+      })
+    : null
 
   // Anchor the dropdown under the input, at least as wide as the field but never
   // narrower than MIN_DROPDOWN_WIDTH so labels and ids stay readable in narrow
@@ -190,13 +205,14 @@ export function ForeignKeyCombobox({
       const target = event.target as Node
       const anchorElement = popoverAnchorRef?.current ?? anchorRef.current
       if (anchorElement?.contains(target)) return
+      if (document.getElementById(popoverId)?.contains(target)) return
       if (document.getElementById(listboxId)?.contains(target)) return
       closeDropdown()
       onCancel?.()
     }
     window.addEventListener('mousedown', handlePointerDown)
     return () => window.removeEventListener('mousedown', handlePointerDown)
-  }, [open, closeDropdown, listboxId, onCancel, popoverAnchorRef])
+  }, [open, closeDropdown, listboxId, onCancel, popoverAnchorRef, popoverId])
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const text = event.target.value
@@ -303,8 +319,21 @@ export function ForeignKeyCombobox({
   if (usePopover) {
     return open
       ? createPortal(
-          <div className={styles.fkComboboxPopover} style={dropdownStyle}>
-            <div className={styles.fkComboboxPopoverHeader}>{input}</div>
+          <div id={popoverId} className={styles.fkComboboxPopover} style={dropdownStyle}>
+            <div className={styles.fkComboboxPopoverHeader}>
+              {input}
+              {traceHref ? (
+                <a
+                  className={styles.fkComboboxTraceLink}
+                  href={traceHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Trace ${foreignKey.referencedTable}.${foreignKey.referencedColumn}`}
+                >
+                  Trace
+                </a>
+              ) : null}
+            </div>
             <div id={listboxId} role="listbox" className={styles.fkComboboxPopoverList}>
               {optionList}
             </div>
