@@ -147,11 +147,10 @@ export async function generateTourNotebook(input: {
 }): Promise<NotebookSpecV1> {
   const maxTables = Math.max(1, Math.min(200, input.maxTables ?? MAX_TABLES))
   const { tables, truncated: tablesTruncated } = await listTables(input.connectionName)
-  const filteredBySchema = input.schema
-    ? tables.filter((table) => table.schema === input.schema)
-    : tables.filter((table) => table.schema === 'public')
+  const requestedSchema = input.schema || 'public'
+  const filteredBySchema = tables.filter((table) => table.schema === requestedSchema)
   const candidates =
-    filteredBySchema.length > 0
+    input.schema || filteredBySchema.length > 0
       ? filteredBySchema
       : tables.filter((table) => !['pg_catalog', 'information_schema'].includes(table.schema))
   const sorted = [...candidates]
@@ -161,12 +160,16 @@ export async function generateTourNotebook(input: {
   const selected = sorted.slice(0, maxTables)
 
   const cells: NotebookSpecV1Cell[] = []
+  const scopeLabel = input.schema
+    ? `in schema \`${input.schema}\``
+    : filteredBySchema.length > 0
+      ? 'in schema `public`'
+      : 'across non-system schemas'
   const introLines = [
     '# Database tour',
     '',
     `Auto-generated overview of **${selected.length}** ${selected.length === 1 ? 'relation' : 'relations'}` +
-      (input.schema ? ` in schema \`${input.schema}\`` : ' in schema `public`') +
-      `, ordered by estimated row count.`,
+      ` ${scopeLabel}, ordered by estimated row count.`,
     '',
     'Each section contains a count, a 5-row sample, timestamp ranges (if any), and a join example through the first foreign key. Run the cells you care about — nothing executes automatically.',
   ]
@@ -185,7 +188,7 @@ export async function generateTourNotebook(input: {
     position += tableCells.length
   }
 
-  const titleSchema = input.schema || 'public'
+  const titleSchema = input.schema || (filteredBySchema.length > 0 ? 'public' : 'all schemas')
   const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ')
   return {
     spec_version: '1.0',
