@@ -138,7 +138,7 @@ describe('CellForeignKeyEditor', () => {
     const traceLink = screen.getByRole('link', { name: 'Trace' })
     expect(traceLink).toHaveAttribute(
       'href',
-      `/trace?schema=public&table=users&pk=${encodeURIComponent(JSON.stringify({ id: 'u-4' }))}`
+      `/trace?connectionName=local&schema=public&table=users&pk=${encodeURIComponent(JSON.stringify({ id: 'u-4' }))}`
     )
   })
 

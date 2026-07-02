@@ -17,6 +17,7 @@ import {
   type ForeignKeyLabelColumn,
   type ForeignKeyOption,
 } from '../../features/table/table.service'
+import { buildTraceHref } from '../../lib/trace-url'
 import type { ColumnInfo } from './types'
 import styles from './TableEditorStyles.module.css'
 
@@ -28,15 +29,6 @@ const DROPDOWN_MAX_HEIGHT = 280
 const VIEWPORT_MARGIN = 8
 
 export const FK_DISPLAY_CONFIG_CHANGED_EVENT = 'pgstudio:fk-display-config-changed'
-
-function buildTraceHref(schema: string, table: string, pk: Record<string, unknown>) {
-  const params = new URLSearchParams({
-    schema,
-    table,
-    pk: JSON.stringify(pk),
-  })
-  return `/trace?${params.toString()}`
-}
 
 function buildTableEditorForeignKeyHref(args: {
   connectionName: string
@@ -118,8 +110,11 @@ export function ForeignKeyCombobox({
   const usePopover = isCellVariant && Boolean(popoverAnchorRef)
   const pinnedValue = selectedValue ?? value
   const traceHref = pinnedValue
-    ? buildTraceHref(foreignKey.referencedSchema, foreignKey.referencedTable, {
-        [foreignKey.referencedColumn]: pinnedValue,
+    ? buildTraceHref({
+        connectionName,
+        schema: foreignKey.referencedSchema,
+        table: foreignKey.referencedTable,
+        pk: { [foreignKey.referencedColumn]: pinnedValue },
       })
     : null
   const openTableHref = buildTableEditorForeignKeyHref({

@@ -13,6 +13,7 @@ import { TableDdlModal } from './TableDdlModal'
 import { CellContentPanel } from '../shared/CellContentPanel'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import { canOpenCellViewer } from '../../lib/format-cell-content'
+import { buildTraceHref } from '../../lib/trace-url'
 import type { TableFilterMode } from '../../lib/table-filter'
 import { ForeignKeyCell } from './ForeignKeyCell'
 import { CellForeignKeyEditor } from './CellForeignKeyEditor'
@@ -567,7 +568,7 @@ export function TableGridPanel({
                         {row._rowKey ? (
                           <a
                             className="btn small"
-                            href={`/trace?schema=${encodeURIComponent(schema)}&table=${encodeURIComponent(table)}&pk=${encodeURIComponent(JSON.stringify(row._rowKey))}`}
+                            href={buildTraceHref({ connectionName, schema, table, pk: row._rowKey })}
                             target="_blank"
                             rel="noreferrer"
                             title="Trace foreign-key lineage from this row"
