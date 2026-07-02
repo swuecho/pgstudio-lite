@@ -51,4 +51,25 @@ describe('generateTourNotebook', () => {
     expect(notebook.cells[0].content).toContain('**1** relation across non-system schemas')
     expect(notebook.cells.some((cell) => cell.content.includes('analytics.events'))).toBe(true)
   })
+
+  it('escapes markdown table metacharacters in column summaries', async () => {
+    vi.mocked(listTables).mockResolvedValue({
+      truncated: false,
+      tables: [{ schema: 'public', table: 'weird_columns', estimatedRows: 1, kind: 'table' }],
+    })
+    vi.mocked(getTableColumns).mockResolvedValue([
+      {
+        name: 'a|b`c',
+        dataType: 'USER-DEFINED|custom',
+        isNullable: true,
+        isIdentity: false,
+        isPrimaryKey: false,
+        hasDefault: false,
+      },
+    ])
+
+    const notebook = await generateTourNotebook({ connectionName: 'local' })
+
+    expect(notebook.cells[1].content).toContain('| `a\\|b\\`c` | USER-DEFINED\\|custom | YES |  |')
+  })
 })

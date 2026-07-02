@@ -28,6 +28,14 @@ function qualified(schema: string, table: string): string {
   return `${sqlIdent(schema)}.${sqlIdent(table)}`
 }
 
+function markdownTableCell(value: string): string {
+  return value.replaceAll('\\', '\\\\').replaceAll('|', '\\|').replaceAll('`', '\\`')
+}
+
+function markdownCode(value: string): string {
+  return `\`${markdownTableCell(value)}\``
+}
+
 function makeCell(input: {
   type: 'sql' | 'markdown'
   content: string
@@ -52,7 +60,11 @@ function tableMarkdownHeader(table: TableInfo, columns: TableColumn[]): string {
     lines.push('| --- | --- | --- | --- |')
     for (const column of columns) {
       const key = column.isPrimaryKey ? 'PK' : column.foreignKey ? 'FK' : ''
-      lines.push(`| \`${column.name}\` | ${column.dataType} | ${column.isNullable ? 'YES' : 'NO'} | ${key} |`)
+      lines.push(
+        `| ${markdownCode(column.name)} | ${markdownTableCell(column.dataType)} | ${
+          column.isNullable ? 'YES' : 'NO'
+        } | ${key} |`
+      )
     }
   }
   return lines.join('\n')
