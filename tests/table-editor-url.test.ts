@@ -29,6 +29,24 @@ describe('table-editor-url', () => {
     })
   })
 
+  it('preserves non-text filter modes from query params', () => {
+    expect(
+      parseTableEditorUrlQuery({
+        connectionName: 'default',
+        schema: 'public',
+        table: 'orders',
+        filterColumn: 'total',
+        filterValue: '100',
+        filterMode: 'gt',
+      }).filter
+    ).toEqual({
+      filterColumn: 'total',
+      filterMode: 'gt',
+      filterValue: '100',
+      filterValueEnd: '',
+    })
+  })
+
   it('builds href for foreign-key navigation', () => {
     expect(
       buildTableEditorHref({

@@ -1,6 +1,5 @@
 import type { ParsedUrlQuery } from 'querystring'
-import { getColumnKind } from './table-column-kind'
-import { parseFilterMode, type TableFilterMode } from './table-filter'
+import { TABLE_FILTER_MODES, type TableFilterMode } from './table-filter'
 import { parseActiveTableKey } from '../components/table-editor/tableEditorContracts'
 import type { TableEditorFilter } from '../components/table-editor/stores/tableEditorFilterStore'
 
@@ -32,11 +31,16 @@ export function parseTableEditorUrlQuery(query: ParsedUrlQuery): TableEditorUrlS
     activeTable,
     filter: {
       filterColumn,
-      filterMode: filterModeRaw ? parseFilterMode(filterModeRaw, getColumnKind('text')) : 'equals',
+      filterMode: parseUrlFilterMode(filterModeRaw),
       filterValue: takeFirstQueryParam(query.filterValue),
       filterValueEnd: takeFirstQueryParam(query.filterValueEnd),
     },
   }
+}
+
+function parseUrlFilterMode(value: string): TableFilterMode {
+  if (TABLE_FILTER_MODES.includes(value as TableFilterMode)) return value as TableFilterMode
+  return 'equals'
 }
 
 export function buildTableEditorUrlQuery(args: {
