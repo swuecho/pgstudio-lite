@@ -120,7 +120,21 @@ export async function lookupReferencedRow(args: {
   )
 }
 
+export type ForeignKeyLabelColumn = {
+  name: string
+  selected: boolean
+  source: 'configured' | 'heuristic' | 'none'
+}
+
 export type ForeignKeyOption = { value: unknown; label: string; selected?: boolean }
+
+export type ForeignKeyOptionsResponse = {
+  options: ForeignKeyOption[]
+  truncated: boolean
+  labelColumn?: string | null
+  labelColumnSource?: 'configured' | 'heuristic' | 'none'
+  availableLabelColumns?: ForeignKeyLabelColumn[]
+}
 
 export async function getForeignKeyOptions(args: {
   connectionName: string
@@ -139,8 +153,38 @@ export async function getForeignKeyOptions(args: {
   if (args.search?.trim()) params.set('search', args.search.trim())
   if (args.limit) params.set('limit', String(args.limit))
   if (args.selectedValue?.trim()) params.set('selectedValue', args.selectedValue.trim())
-  return fetchJson<{ options: ForeignKeyOption[]; truncated: boolean }>(
+  return fetchJson<ForeignKeyOptionsResponse>(
     `/api/tables/${encodeURIComponent(args.table)}/fk-options?${params.toString()}`
+  )
+}
+
+export type ForeignKeyDisplayConfig = {
+  connectionName: string
+  schema: string
+  table: string
+  displayColumns: string[]
+  displayTemplate: string | null
+  updatedAt: string
+}
+
+export async function saveForeignKeyDisplayConfig(args: {
+  connectionName: string
+  schema?: string
+  table: string
+  displayColumns: string[]
+  displayTemplate?: string | null
+}) {
+  return fetchJson<{ config: ForeignKeyDisplayConfig }>(
+    `/api/tables/${encodeURIComponent(args.table)}/fk-display`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        connectionName: args.connectionName,
+        schema: args.schema || 'public',
+        displayColumns: args.displayColumns,
+        displayTemplate: args.displayTemplate ?? null,
+      }),
+    }
   )
 }
 

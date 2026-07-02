@@ -551,10 +551,33 @@
 
 .fkComboboxPopoverHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 6px;
   padding-bottom: 6px;
+}
+
+.fkComboboxLabelControl {
+  display: inline-grid;
+  grid-template-columns: auto minmax(88px, 128px);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.fkComboboxLabelControl select {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 3px 24px 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--control-bg);
+  color: var(--text);
+  font-size: 11px;
 }
 
 .fkComboboxTraceLink {

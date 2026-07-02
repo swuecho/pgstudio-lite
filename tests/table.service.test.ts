@@ -139,6 +139,43 @@ describe('table service', () => {
     expect(calls[0].path).toContain('limit=25')
   })
 
+  it('saveForeignKeyDisplayConfig sends selected display columns', async () => {
+    const calls = installFetchMock([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          config: {
+            connectionName: 'default',
+            schema: 'public',
+            table: 'users',
+            displayColumns: ['email'],
+            displayTemplate: null,
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        },
+      },
+    ])
+
+    await tableService.saveForeignKeyDisplayConfig({
+      connectionName: 'default',
+      schema: 'public',
+      table: 'users',
+      displayColumns: ['email'],
+    })
+
+    expect(calls[0].path).toBe('/api/tables/users/fk-display')
+    expect(calls[0].options?.method).toBe('PATCH')
+    expect(calls[0].options?.body).toBe(
+      JSON.stringify({
+        connectionName: 'default',
+        schema: 'public',
+        displayColumns: ['email'],
+        displayTemplate: null,
+      })
+    )
+  })
+
   it('createRow sends POST with values', async () => {
     const calls = installFetchMock([{ ok: true, status: 200, payload: { row: { id: 3, name: 'new' } } }])
 

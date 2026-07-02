@@ -2,6 +2,7 @@ import { isMutableRelationKind, mapPgRelkind, type RelationKind } from '../relat
 import { buildTableRowFilter, hasActiveTableFilter, type TableFilterMode } from '../table-filter'
 import { parsePgStringArray } from '../pg-array'
 import { sanitizeRowsQueryOptions } from '../table-query-options'
+import { getForeignKeyDisplayConfig } from './foreign-key-display'
 import { getConnectionByName } from './connections'
 import { withClient } from './client'
 import { sqlIdent } from './sql'
@@ -709,6 +710,12 @@ export type ForeignKeyOption = {
   selected?: boolean
 }
 
+export type ForeignKeyLabelColumn = {
+  name: string
+  selected: boolean
+  source: 'configured' | 'heuristic' | 'none'
+}
+
 function toForeignKeyOption(row: Record<string, unknown>, hasLabelColumn: boolean): ForeignKeyOption {
   const value = row.value
   const label =
@@ -729,7 +736,13 @@ export async function getForeignKeyOptions(
   search: string,
   limit: number,
   selectedValue?: string
-): Promise<{ options: ForeignKeyOption[]; truncated: boolean }> {
+): Promise<{
+  options: ForeignKeyOption[]
+  truncated: boolean
+  labelColumn: string | null
+  labelColumnSource: 'configured' | 'heuristic' | 'none'
+  availableLabelColumns: ForeignKeyLabelColumn[]
+}> {
   const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50))
   return withClient(connectionName, async (client) => {
     const columns = await getTableColumnsWithClient(client, schema, table)
@@ -738,7 +751,26 @@ export async function getForeignKeyOptions(
       error.statusCode = 400
       throw error
     }
-    const labelColumn = pickForeignKeyLabelColumn(columns, column)
+    const configuredDisplayColumns =
+      getForeignKeyDisplayConfig({ connectionName, schema, table })?.displayColumns ?? []
+    const configuredLabelColumn = configuredDisplayColumns.find((configuredColumn) =>
+      columns.some((candidate) => candidate.name === configuredColumn && candidate.name !== column)
+    )
+    const heuristicLabelColumn = pickForeignKeyLabelColumn(columns, column)
+    const labelColumn = configuredLabelColumn ?? heuristicLabelColumn
+    const labelColumnSource = configuredLabelColumn ? 'configured' : heuristicLabelColumn ? 'heuristic' : 'none'
+    const availableLabelColumns = columns
+      .filter((candidate) => candidate.name !== column)
+      .map((candidate) => ({
+        name: candidate.name,
+        selected: candidate.name === labelColumn,
+        source:
+          candidate.name === configuredLabelColumn
+            ? ('configured' as const)
+            : candidate.name === heuristicLabelColumn
+              ? ('heuristic' as const)
+              : ('none' as const),
+      }))
 
     const qTable = `${sqlIdent(schema)}.${sqlIdent(table)}`
     const qValue = sqlIdent(column)
@@ -787,11 +819,23 @@ export async function getForeignKeyOptions(
         }
         const selectedOptionValue = String(selectedOption.value)
         const remainingOptions = options.filter((option) => String(option.value) !== selectedOptionValue)
-        return { options: [selectedOption, ...remainingOptions], truncated }
+        return {
+          options: [selectedOption, ...remainingOptions],
+          truncated,
+          labelColumn: labelColumn ?? null,
+          labelColumnSource,
+          availableLabelColumns,
+        }
       }
     }
 
-    return { options, truncated }
+    return {
+      options,
+      truncated,
+      labelColumn: labelColumn ?? null,
+      labelColumnSource,
+      availableLabelColumns,
+    }
   })
 }
 

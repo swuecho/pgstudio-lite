@@ -77,6 +77,21 @@ export function ensureMetaDbReady() {
     )
   }
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS table_foreign_key_display (
+      id text PRIMARY KEY NOT NULL,
+      connection_name text NOT NULL,
+      schema_name text NOT NULL,
+      table_name text NOT NULL,
+      display_columns_json text NOT NULL,
+      display_template text,
+      created_at text NOT NULL,
+      updated_at text NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_table_foreign_key_display_target
+      ON table_foreign_key_display (connection_name, schema_name, table_name);
+  `)
+
   if (hasTable('query_snippets')) {
     if (!hasColumn('query_snippets', 'connection_name')) {
       sqlite.exec(`ALTER TABLE query_snippets ADD COLUMN connection_name text;`)
@@ -198,5 +213,18 @@ function ensureBaseTables() {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_table_editor_recent_views_connection_view_key ON table_editor_recent_views (connection_name, view_key);
     CREATE INDEX IF NOT EXISTS idx_table_editor_recent_views_connection_visited ON table_editor_recent_views (connection_name, visited_at);
+
+    CREATE TABLE IF NOT EXISTS table_foreign_key_display (
+      id text PRIMARY KEY NOT NULL,
+      connection_name text NOT NULL,
+      schema_name text NOT NULL,
+      table_name text NOT NULL,
+      display_columns_json text NOT NULL,
+      display_template text,
+      created_at text NOT NULL,
+      updated_at text NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_table_foreign_key_display_target
+      ON table_foreign_key_display (connection_name, schema_name, table_name);
   `)
 }

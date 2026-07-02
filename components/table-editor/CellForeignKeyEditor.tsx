@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getForeignKeyOptions, type ForeignKeyOption } from '../../features/table/table.service'
-import { ForeignKeyCombobox } from './ForeignKeyCombobox'
+import { FK_DISPLAY_CONFIG_CHANGED_EVENT, ForeignKeyCombobox } from './ForeignKeyCombobox'
 import type { ColumnInfo, RowData } from './types'
 import styles from './TableEditorStyles.module.css'
 
@@ -21,6 +21,7 @@ type CellForeignKeyEditorProps = {
 
 const FK_CELL_EDIT_EVENT = 'pgstudio:fk-cell-edit'
 const fkLabelCache = new Map<string, Promise<ForeignKeyOption | null>>()
+const FK_CACHE_KEY_SEPARATOR = '\u001f'
 
 function getForeignKeyLabelCacheKey(connectionName: string, column: ColumnInfo, value: string) {
   const foreignKey = column.foreignKey!
@@ -30,7 +31,14 @@ function getForeignKeyLabelCacheKey(connectionName: string, column: ColumnInfo, 
     foreignKey.referencedTable,
     foreignKey.referencedColumn,
     value,
-  ].join('\u001f')
+  ].join(FK_CACHE_KEY_SEPARATOR)
+}
+
+function clearForeignKeyLabelCache(args: { connectionName: string; schema: string; table: string }) {
+  const prefix = [args.connectionName, args.schema, args.table].join(FK_CACHE_KEY_SEPARATOR) + FK_CACHE_KEY_SEPARATOR
+  for (const key of fkLabelCache.keys()) {
+    if (key.startsWith(prefix)) fkLabelCache.delete(key)
+  }
 }
 
 function loadSelectedForeignKeyOption(connectionName: string, column: ColumnInfo, value: string) {
@@ -69,6 +77,7 @@ export function CellForeignKeyEditor({ connectionName, column, row, onCommit }: 
   const initialText = initial === null || initial === undefined ? '' : String(initial)
   const [draftValue, setDraftValue] = useState(initialText)
   const [editing, setEditing] = useState(false)
+  const [labelRefreshVersion, setLabelRefreshVersion] = useState(0)
   const [resolvedSelection, setResolvedSelection] = useState<{ value: string; label: string } | null>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const editorId = useMemo(() => {
@@ -96,7 +105,33 @@ export function CellForeignKeyEditor({ connectionName, column, row, onCommit }: 
     return () => {
       cancelled = true
     }
-  }, [column, connectionName, initialText])
+  }, [column, connectionName, initialText, labelRefreshVersion])
+
+  useEffect(() => {
+    function handleForeignKeyDisplayConfigChanged(event: Event) {
+      if (!(event instanceof CustomEvent) || !column.foreignKey) return
+      const detail = event.detail as { connectionName?: string; schema?: string; table?: string } | null
+      const foreignKey = column.foreignKey
+      if (
+        detail?.connectionName !== connectionName ||
+        detail.schema !== foreignKey.referencedSchema ||
+        detail.table !== foreignKey.referencedTable
+      ) {
+        return
+      }
+
+      clearForeignKeyLabelCache({
+        connectionName,
+        schema: foreignKey.referencedSchema,
+        table: foreignKey.referencedTable,
+      })
+      setResolvedSelection(null)
+      setLabelRefreshVersion((version) => version + 1)
+    }
+
+    window.addEventListener(FK_DISPLAY_CONFIG_CHANGED_EVENT, handleForeignKeyDisplayConfigChanged)
+    return () => window.removeEventListener(FK_DISPLAY_CONFIG_CHANGED_EVENT, handleForeignKeyDisplayConfigChanged)
+  }, [column.foreignKey, connectionName])
 
   useEffect(() => {
     function handleForeignKeyCellEdit(event: Event) {

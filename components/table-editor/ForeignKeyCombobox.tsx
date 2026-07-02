@@ -11,7 +11,12 @@ import {
   type RefObject,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { getForeignKeyOptions, type ForeignKeyOption } from '../../features/table/table.service'
+import {
+  getForeignKeyOptions,
+  saveForeignKeyDisplayConfig,
+  type ForeignKeyLabelColumn,
+  type ForeignKeyOption,
+} from '../../features/table/table.service'
 import type { ColumnInfo } from './types'
 import styles from './TableEditorStyles.module.css'
 
@@ -22,6 +27,8 @@ const DROPDOWN_GAP = 4
 const DROPDOWN_MAX_HEIGHT = 280
 const VIEWPORT_MARGIN = 8
 
+export const FK_DISPLAY_CONFIG_CHANGED_EVENT = 'pgstudio:fk-display-config-changed'
+
 function buildTraceHref(schema: string, table: string, pk: Record<string, unknown>) {
   const params = new URLSearchParams({
     schema,
@@ -29,6 +36,26 @@ function buildTraceHref(schema: string, table: string, pk: Record<string, unknow
     pk: JSON.stringify(pk),
   })
   return `/trace?${params.toString()}`
+}
+
+function buildTableEditorForeignKeyHref(args: {
+  connectionName: string
+  schema: string
+  table: string
+  column: string
+  value: string
+}) {
+  const params = new URLSearchParams({
+    connectionName: args.connectionName,
+    schema: args.schema,
+    table: args.table,
+  })
+  if (args.value) {
+    params.set('filterColumn', args.column)
+    params.set('filterMode', 'equals')
+    params.set('filterValue', args.value)
+  }
+  return `/table-editor?${params.toString()}`
 }
 
 type ForeignKeyComboboxProps = {
@@ -76,10 +103,15 @@ export function ForeignKeyCombobox({
   const [editing, setEditing] = useState(autoFocus)
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
   const [options, setOptions] = useState<ForeignKeyOption[]>([])
+  const [availableLabelColumns, setAvailableLabelColumns] = useState<ForeignKeyLabelColumn[]>([])
+  const [labelColumn, setLabelColumn] = useState<string | null>(null)
+  const [labelColumnSource, setLabelColumnSource] = useState<'configured' | 'heuristic' | 'none'>('none')
   const [loading, setLoading] = useState(false)
+  const [savingLabelColumn, setSavingLabelColumn] = useState(false)
   const [truncated, setTruncated] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({})
+  const [displayConfigVersion, setDisplayConfigVersion] = useState(0)
 
   const displayValue = editing ? query : (selectedLabel ?? value)
   const isCellVariant = variant === 'cell'
@@ -90,6 +122,13 @@ export function ForeignKeyCombobox({
         [foreignKey.referencedColumn]: pinnedValue,
       })
     : null
+  const openTableHref = buildTableEditorForeignKeyHref({
+    connectionName,
+    schema: foreignKey.referencedSchema,
+    table: foreignKey.referencedTable,
+    column: foreignKey.referencedColumn,
+    value: pinnedValue,
+  })
 
   // Anchor the dropdown under the input, at least as wide as the field but never
   // narrower than MIN_DROPDOWN_WIDTH so labels and ids stay readable in narrow
@@ -144,6 +183,9 @@ export function ForeignKeyCombobox({
         .then((result) => {
           if (requestId !== requestIdRef.current) return
           setOptions(result.options)
+          setAvailableLabelColumns(result.availableLabelColumns ?? [])
+          setLabelColumn(result.labelColumn ?? null)
+          setLabelColumnSource(result.labelColumnSource ?? 'none')
           setTruncated(result.truncated)
           const selectedIndex = result.options.findIndex((option) => option.selected)
           setActiveIndex(selectedIndex >= 0 ? selectedIndex : result.options.length > 0 ? 0 : -1)
@@ -151,6 +193,9 @@ export function ForeignKeyCombobox({
         .catch(() => {
           if (requestId !== requestIdRef.current) return
           setOptions([])
+          setAvailableLabelColumns([])
+          setLabelColumn(null)
+          setLabelColumnSource('none')
           setTruncated(false)
           setActiveIndex(-1)
         })
@@ -168,6 +213,7 @@ export function ForeignKeyCombobox({
     foreignKey.referencedSchema,
     foreignKey.referencedTable,
     foreignKey.referencedColumn,
+    displayConfigVersion,
   ])
 
   const openDropdown = useCallback(() => {
@@ -259,6 +305,36 @@ export function ForeignKeyCombobox({
     }
   }
 
+  function handleLabelColumnChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextColumn = event.target.value
+    if (!nextColumn || nextColumn === labelColumn) return
+    setSavingLabelColumn(true)
+    saveForeignKeyDisplayConfig({
+      connectionName,
+      schema: foreignKey.referencedSchema,
+      table: foreignKey.referencedTable,
+      displayColumns: [nextColumn],
+    })
+      .then(() => {
+        setLabelColumn(nextColumn)
+        setLabelColumnSource('configured')
+        window.dispatchEvent(
+          new CustomEvent(FK_DISPLAY_CONFIG_CHANGED_EVENT, {
+            detail: {
+              connectionName,
+              schema: foreignKey.referencedSchema,
+              table: foreignKey.referencedTable,
+            },
+          })
+        )
+        setDisplayConfigVersion((version) => version + 1)
+      })
+      .catch(() => {
+        setDisplayConfigVersion((version) => version + 1)
+      })
+      .finally(() => setSavingLabelColumn(false))
+  }
+
   const input = (
       <input
         ref={inputRef}
@@ -316,12 +392,42 @@ export function ForeignKeyCombobox({
     </>
   )
 
+  const labelColumnControl =
+    availableLabelColumns.length > 0 ? (
+      <label className={styles.fkComboboxLabelControl}>
+        <span>Label</span>
+        <select
+          value={labelColumn ?? ''}
+          onChange={handleLabelColumnChange}
+          disabled={savingLabelColumn}
+          title="Choose the display column for this referenced table"
+        >
+          {availableLabelColumns.map((candidate) => (
+            <option key={candidate.name} value={candidate.name}>
+              {candidate.name}
+              {candidate.source === 'heuristic' && labelColumnSource !== 'configured' ? ' (auto)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : null
+
   if (usePopover) {
     return open
       ? createPortal(
           <div id={popoverId} className={styles.fkComboboxPopover} style={dropdownStyle}>
             <div className={styles.fkComboboxPopoverHeader}>
               {input}
+              {labelColumnControl}
+              <a
+                className={styles.fkComboboxTraceLink}
+                href={openTableHref}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open ${foreignKey.referencedTable}`}
+              >
+                Open
+              </a>
               {traceHref ? (
                 <a
                   className={styles.fkComboboxTraceLink}
@@ -349,6 +455,7 @@ export function ForeignKeyCombobox({
       {value && !editing && selectedLabel && selectedLabel !== value ? (
         <span className={styles.insertRowHint}>{`= ${value}`}</span>
       ) : null}
+      {open ? labelColumnControl : null}
       {open
         ? createPortal(
             <div id={listboxId} role="listbox" className={styles.fkComboboxDropdown} style={dropdownStyle}>
