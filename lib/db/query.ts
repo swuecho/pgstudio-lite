@@ -124,7 +124,19 @@ async function isWriteStatement(sql: string): Promise<boolean> {
   return WRITE_STMT_TYPES.has(nodeType)
 }
 
-async function extractPrimaryTableTarget(sql: string): Promise<QueryTableTarget | null> {
+function getSelectCteNames(node: Record<string, unknown>): Set<string> {
+  const withClause = node.withClause as
+    | { ctes?: Array<{ CommonTableExpr?: { ctename?: string } }> }
+    | undefined
+  const names = new Set<string>()
+  for (const cte of withClause?.ctes ?? []) {
+    const name = cte.CommonTableExpr?.ctename
+    if (name) names.add(name)
+  }
+  return names
+}
+
+export async function extractPrimaryTableTarget(sql: string): Promise<QueryTableTarget | null> {
   await getSqlParser()
   const { stmts } = await parseSql(sql)
   if (!stmts || stmts.length === 0) return null
@@ -155,6 +167,10 @@ async function extractPrimaryTableTarget(sql: string): Promise<QueryTableTarget 
       | undefined
     if (fromClause?.[0]?.RangeVar) {
       rangeVar = fromClause[0].RangeVar
+      const cteNames = getSelectCteNames(node)
+      if (!rangeVar.schemaname && rangeVar.relname && cteNames.has(rangeVar.relname)) {
+        return null
+      }
     }
   }
 
