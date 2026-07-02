@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import ThemeToggle from '../components/theme-toggle'
 import { useActiveConnection } from '../components/shared/hooks/useActiveConnection'
 import { fetchRowTrace, type TraceEdge, type TraceNode } from '../features/trace/trace.service'
+import { buildTraceHref } from '../lib/trace-url'
 import styles from '../components/trace/TracePage.module.css'
 
 const MAX_FIELDS_PREVIEW = 6
@@ -21,10 +22,6 @@ function decodePk(raw: unknown): Record<string, unknown> | null {
     return null
   }
   return null
-}
-
-function encodePk(pk: Record<string, unknown>): string {
-  return JSON.stringify(pk)
 }
 
 function formatValue(value: unknown): string {
@@ -175,12 +172,20 @@ function Cell({ label, value }: { label: string; value: unknown }) {
 export default function TracePage() {
   const router = useRouter()
   const { connectionName, connections, setConnectionName } = useActiveConnection()
+  const requestedConnectionName =
+    typeof router.query.connectionName === 'string' ? router.query.connectionName : ''
   const schema = typeof router.query.schema === 'string' ? router.query.schema : ''
   const table = typeof router.query.table === 'string' ? router.query.table : ''
   const pk = useMemo(() => decodePk(router.query.pk), [router.query.pk])
   const maxDepth = Number(router.query.depth) || 3
 
-  const enabled = Boolean(connectionName && schema && table && pk)
+  useEffect(() => {
+    if (!router.isReady || !requestedConnectionName || requestedConnectionName === connectionName) return
+    setConnectionName(requestedConnectionName)
+  }, [connectionName, requestedConnectionName, router.isReady, setConnectionName])
+
+  const connectionMatchesUrl = !requestedConnectionName || requestedConnectionName === connectionName
+  const enabled = Boolean(connectionName && connectionMatchesUrl && schema && table && pk)
   const query = useQuery({
     queryKey: ['trace', connectionName, schema, table, JSON.stringify(pk), maxDepth],
     queryFn: () =>
@@ -197,13 +202,13 @@ export default function TracePage() {
 
   const rerootHref = (node: TraceNode): string | null => {
     if (!node.pk) return null
-    const params = new URLSearchParams({
+    return buildTraceHref({
+      connectionName,
       schema: node.schema,
       table: node.table,
-      pk: encodePk(node.pk),
-      depth: String(maxDepth),
+      pk: node.pk,
+      depth: maxDepth,
     })
-    return `/trace?${params.toString()}`
   }
 
   const errorMessage = query.error instanceof Error ? query.error.message : null

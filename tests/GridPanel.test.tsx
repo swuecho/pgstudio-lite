@@ -221,4 +221,12 @@ describe('TableGridPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete row/i }))
     expect(onDeleteRow).toHaveBeenCalledWith({ id: 1 })
   })
+
+  it('scopes trace links to the active connection', () => {
+    renderGrid({ connectionName: 'staging' })
+    expect(screen.getAllByRole('link', { name: /^trace$/i })[0]).toHaveAttribute(
+      'href',
+      `/trace?connectionName=staging&schema=public&table=users&pk=${encodeURIComponent(JSON.stringify({ id: 1 }))}`
+    )
+  })
 })

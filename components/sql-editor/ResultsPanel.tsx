@@ -14,6 +14,7 @@ import {
   rowsToJson,
   rowsToTsv,
 } from '../../lib/result-export'
+import { buildTraceHref } from '../../lib/trace-url'
 import { formatExplainPlan } from './utils'
 import { ExplainPlanTree } from './ExplainPlanTree'
 import { ResultChart } from './ResultChart'
@@ -38,7 +39,8 @@ function getTraceTarget(statement: StatementResult) {
   return { schema: target.schema, table: target.table, pkColumns }
 }
 
-function buildTraceHref(
+function buildStatementTraceHref(
+  connectionName: string,
   target: { schema: string; table: string; pkColumns: string[] },
   row: Record<string, unknown>
 ): string | null {
@@ -48,12 +50,12 @@ function buildTraceHref(
     if (value == null) return null
     pk[column] = value
   }
-  const params = new URLSearchParams({
+  return buildTraceHref({
+    connectionName,
     schema: target.schema,
     table: target.table,
-    pk: JSON.stringify(pk),
+    pk,
   })
-  return `/trace?${params.toString()}`
 }
 
 function getExplainPlanValue(statement: StatementResult): unknown {
@@ -247,7 +249,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                                 {traceTarget ? (
                                   <td className={styles.resultTraceCell}>
                                     {(() => {
-                                      const href = buildTraceHref(traceTarget, row)
+                                      const href = buildStatementTraceHref(connectionName, traceTarget, row)
                                       return href ? (
                                         <Link
                                           className={styles.resultTraceLink}
