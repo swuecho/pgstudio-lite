@@ -153,3 +153,24 @@ export const tableEditorRecentViews = sqliteTable(
     ),
   })
 )
+
+export const tableForeignKeyDisplay = sqliteTable(
+  'table_foreign_key_display',
+  {
+    id: text('id').primaryKey(),
+    connectionName: text('connection_name').notNull(),
+    schemaName: text('schema_name').notNull(),
+    tableName: text('table_name').notNull(),
+    displayColumnsJson: text('display_columns_json').notNull(),
+    displayTemplate: text('display_template'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => ({
+    targetUniqueIdx: uniqueIndex('idx_table_foreign_key_display_target').on(
+      table.connectionName,
+      table.schemaName,
+      table.tableName
+    ),
+  })
+)

@@ -3,10 +3,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CellForeignKeyEditor } from '../components/table-editor/CellForeignKeyEditor'
 import type { ColumnInfo, RowData } from '../components/table-editor/types'
-import { getForeignKeyOptions } from '../features/table/table.service'
+import { getForeignKeyOptions, saveForeignKeyDisplayConfig } from '../features/table/table.service'
 
 vi.mock('../features/table/table.service', () => ({
   getForeignKeyOptions: vi.fn(),
+  saveForeignKeyDisplayConfig: vi.fn(),
 }))
 
 const userColumn: ColumnInfo = {
@@ -34,9 +35,20 @@ const row: RowData = {
 describe('CellForeignKeyEditor', () => {
   beforeEach(() => {
     vi.mocked(getForeignKeyOptions).mockReset()
+    vi.mocked(saveForeignKeyDisplayConfig).mockReset()
     vi.mocked(getForeignKeyOptions).mockResolvedValue({
       options: [{ value: 'u-1', label: 'Adam King' }],
       truncated: false,
+    })
+    vi.mocked(saveForeignKeyDisplayConfig).mockResolvedValue({
+      config: {
+        connectionName: 'local',
+        schema: 'public',
+        table: 'users',
+        displayColumns: ['email'],
+        displayTemplate: null,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
     })
   })
 
@@ -130,6 +142,30 @@ describe('CellForeignKeyEditor', () => {
     )
   })
 
+  it('shows an open-table shortcut for the referenced FK row', async () => {
+    vi.mocked(getForeignKeyOptions).mockResolvedValue({
+      options: [{ value: 'u-7', label: 'Openable User', selected: true }],
+      truncated: false,
+    })
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(
+      <CellForeignKeyEditor
+        connectionName="local"
+        column={userColumn}
+        row={{ ...row, user_id: 'u-7' }}
+        onCommit={onCommit}
+      />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /Openable User/i }))
+
+    const openLink = screen.getByRole('link', { name: 'Open' })
+    expect(openLink).toHaveAttribute(
+      'href',
+      '/table-editor?connectionName=local&schema=public&table=users&filterColumn=id&filterMode=equals&filterValue=u-7'
+    )
+  })
+
   it('keeps the popover mounted when pressing the trace shortcut', async () => {
     vi.mocked(getForeignKeyOptions).mockResolvedValue({
       options: [{ value: 'u-5', label: 'Traceable User', selected: true }],
@@ -170,6 +206,23 @@ describe('CellForeignKeyEditor', () => {
     expect(screen.queryByRole('link', { name: 'Trace' })).not.toBeInTheDocument()
   })
 
+  it('shows an open-table shortcut when the FK value is empty', async () => {
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(
+      <CellForeignKeyEditor
+        connectionName="local"
+        column={userColumn}
+        row={row}
+        onCommit={onCommit}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /null/i }))
+
+    const openLink = await screen.findByRole('link', { name: 'Open' })
+    expect(openLink).toHaveAttribute('href', '/table-editor?connectionName=local&schema=public&table=users')
+  })
+
   it('resolves and displays the FK label before editing', async () => {
     vi.mocked(getForeignKeyOptions).mockResolvedValue({
       options: [{ value: 'u-3', label: 'Resolved User', selected: true }],
@@ -190,6 +243,58 @@ describe('CellForeignKeyEditor', () => {
     expect(getForeignKeyOptions).toHaveBeenCalledWith(
       expect.objectContaining({ selectedValue: 'u-3', limit: 1 })
     )
+  })
+
+  it('refreshes the displayed cell label after changing the label column', async () => {
+    let useEmailLabel = false
+    vi.mocked(getForeignKeyOptions).mockImplementation(async () => ({
+      options: [{ value: 'u-6', label: useEmailLabel ? 'user@example.com' : 'User Name', selected: true }],
+      truncated: false,
+      labelColumn: useEmailLabel ? 'email' : 'name',
+      labelColumnSource: useEmailLabel ? 'configured' : 'heuristic',
+      availableLabelColumns: [
+        { name: 'name', selected: !useEmailLabel, source: useEmailLabel ? 'heuristic' : 'heuristic' },
+        { name: 'email', selected: useEmailLabel, source: useEmailLabel ? 'configured' : 'none' },
+      ],
+    }))
+    vi.mocked(saveForeignKeyDisplayConfig).mockImplementation(async () => {
+      useEmailLabel = true
+      return {
+        config: {
+          connectionName: 'local',
+          schema: 'public',
+          table: 'users',
+          displayColumns: ['email'],
+          displayTemplate: null,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      }
+    })
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(
+      <CellForeignKeyEditor
+        connectionName="local"
+        column={userColumn}
+        row={{ ...row, user_id: 'u-6' }}
+        onCommit={onCommit}
+      />
+    )
+
+    expect(await screen.findByRole('button', { name: /User Name/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /User Name/i }))
+    fireEvent.change(await screen.findByTitle('Choose the display column for this referenced table'), {
+      target: { value: 'email' },
+    })
+
+    await waitFor(() => {
+      expect(saveForeignKeyDisplayConfig).toHaveBeenCalledWith({
+        connectionName: 'local',
+        schema: 'public',
+        table: 'users',
+        displayColumns: ['email'],
+      })
+    })
+    expect(await screen.findByRole('button', { name: /user@example.com/i })).toBeInTheDocument()
   })
 
   it('keeps only one FK cell editor open at a time', async () => {

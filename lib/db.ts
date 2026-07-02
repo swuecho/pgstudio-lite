@@ -64,6 +64,12 @@ export {
 } from './db/editor-views'
 
 export {
+  type ForeignKeyDisplayConfig,
+  getForeignKeyDisplayConfig,
+  saveForeignKeyDisplayConfig,
+} from './db/foreign-key-display'
+
+export {
   type ActivitySession,
   type ActivityLock,
   type ActivityStatement,
