@@ -1,6 +1,6 @@
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useState } from 'react'
-import { runQuery } from '../../features/sql/sql.service'
+import { runQuery } from '@/features/sql/sql.service'
 import { buildExplainQuery, detectOS, suffixWithLimit } from './utils'
 import type { SnippetItem } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'

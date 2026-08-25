@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
-import { formatTableFilterSummary } from '../../lib/table-filter'
-import { buildViewState, type TableEditorViewState } from '../../lib/table-editor-views'
+import { formatTableFilterSummary } from '@/lib/table-filter'
+import { buildViewState, type TableEditorViewState } from '@/lib/table-editor-views'
 import { useTableEditorData } from './useTableEditorData'
 import { useTableEditorLocalState } from './useTableEditorLocalState'
 import { parseActiveTableKey } from './tableEditorContracts'

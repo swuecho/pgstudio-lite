@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import type { CSSProperties } from 'react'
-import { buildTableEditorHref } from '../../lib/table-editor-url'
+import { buildTableEditorHref } from '@/lib/table-editor-url'
 import type { ColumnForeignKey, ColumnInfo } from './types'
 import { formatCellDisplayValue, formatForeignKeyTarget } from './foreignKeyUtils'
 import styles from './ForeignKeyPopover.module.css'

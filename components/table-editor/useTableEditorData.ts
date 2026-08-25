@@ -1,4 +1,4 @@
-import type { TableFilterMode } from '../../lib/table-filter'
+import type { TableFilterMode } from '@/lib/table-filter'
 import { useTableEditorEffects } from './useTableEditorEffects'
 import { useTableEditorFilterQuery } from './useTableEditorFilterQuery'
 import { useTableEditorQueries } from './useTableEditorQueries'

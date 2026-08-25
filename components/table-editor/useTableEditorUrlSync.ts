@@ -4,8 +4,8 @@ import {
   parseTableEditorUrlQuery,
   buildTableEditorUrlQuery,
   tableEditorUrlMatches,
-} from '../../lib/table-editor-url'
-import type { TableFilterMode } from '../../lib/table-filter'
+} from '@/lib/table-editor-url'
+import type { TableFilterMode } from '@/lib/table-filter'
 import type { TableEditorFilter } from './stores/tableEditorFilterStore'
 
 type TableEditorUrlSyncState = {

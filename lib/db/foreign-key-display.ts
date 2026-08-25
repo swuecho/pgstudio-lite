@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
-import { tableForeignKeyDisplay } from '../../drizzle/schema'
-import { metaDb } from '../meta-db'
+import { tableForeignKeyDisplay } from '@/drizzle/schema'
+import { getMetaDb } from '../meta-db'
 import { getConnectionByName } from './connections'
 
 export type ForeignKeyDisplayConfig = {
@@ -40,7 +40,7 @@ export function getForeignKeyDisplayConfig(args: {
   table: string
 }): ForeignKeyDisplayConfig | null {
   const resolvedConnectionName = getConnectionByName(args.connectionName).name
-  const row = metaDb
+  const row = getMetaDb()
     .select()
     .from(tableForeignKeyDisplay)
     .where(
@@ -68,7 +68,7 @@ export function saveForeignKeyDisplayConfig(args: {
   }
 
   const now = new Date().toISOString()
-  const existing = metaDb
+  const existing = getMetaDb()
     .select()
     .from(tableForeignKeyDisplay)
     .where(
@@ -87,13 +87,13 @@ export function saveForeignKeyDisplayConfig(args: {
   }
 
   if (existing) {
-    metaDb
+    getMetaDb()
       .update(tableForeignKeyDisplay)
       .set(values)
       .where(eq(tableForeignKeyDisplay.id, existing.id))
       .run()
   } else {
-    metaDb
+    getMetaDb()
       .insert(tableForeignKeyDisplay)
       .values({
         id: randomUUID(),

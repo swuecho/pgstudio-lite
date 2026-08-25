@@ -3,6 +3,9 @@
   "version": "0.3.0",
   "private": true,
   "description": "PostgreSQL SQL + Table Editor (Next.js + TypeScript) inspired by Supabase Studio, with SQLite-backed query history",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
   "scripts": {
     "dev": "next dev -p 4180",
     "build": "next build",

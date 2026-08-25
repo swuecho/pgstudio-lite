@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { MAX_RECENT_TABLES } from '../../../lib/table-editor-nav'
+import { MAX_RECENT_TABLES } from '@/lib/table-editor-nav'
 
 export const EMPTY_TABLE_KEYS: string[] = []
 

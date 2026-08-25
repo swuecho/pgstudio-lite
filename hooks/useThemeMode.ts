@@ -1,24 +1,20 @@
 import { useEffect, useState } from 'react'
+import { THEME_CHANGE_EVENT, type ResolvedTheme, readResolvedTheme } from '@/lib/theme'
 
-export type ThemeMode = 'light' | 'dark'
-
-function resolveTheme(): ThemeMode {
-  if (typeof document === 'undefined') return 'light'
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-}
+export type ThemeMode = ResolvedTheme
 
 /**
- * Tracks the active light/dark theme, staying in sync with the toggle that
- * writes `data-theme` on <html> and dispatches `pgstudio:themechange`.
+ * Tracks the active light/dark theme, staying in sync with the controls that
+ * write `data-theme` on <html> and dispatch `pgstudio:themechange`.
  */
 export function useThemeMode(): ThemeMode {
   const [theme, setTheme] = useState<ThemeMode>('light')
 
   useEffect(() => {
-    const sync = () => setTheme(resolveTheme())
+    const sync = () => setTheme(readResolvedTheme())
     sync()
-    window.addEventListener('pgstudio:themechange', sync)
-    return () => window.removeEventListener('pgstudio:themechange', sync)
+    window.addEventListener(THEME_CHANGE_EVENT, sync)
+    return () => window.removeEventListener(THEME_CHANGE_EVENT, sync)
   }, [])
 
   return theme

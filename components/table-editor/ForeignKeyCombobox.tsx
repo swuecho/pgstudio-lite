@@ -16,8 +16,8 @@ import {
   saveForeignKeyDisplayConfig,
   type ForeignKeyLabelColumn,
   type ForeignKeyOption,
-} from '../../features/table/table.service'
-import { buildTraceHref } from '../../lib/trace-url'
+} from '@/features/table/table.service'
+import { buildTraceHref } from '@/lib/trace-url'
 import type { ColumnInfo } from './types'
 import styles from './TableEditorStyles.module.css'
 
@@ -134,12 +134,18 @@ export function ForeignKeyCombobox({
     const update = () => {
       const rect = anchorElement.getBoundingClientRect()
       const viewportHeight = window.innerHeight
-      const width = Math.min(Math.max(rect.width, isCellVariant ? 420 : MIN_DROPDOWN_WIDTH), window.innerWidth - 16)
+      const width = Math.min(
+        Math.max(rect.width, isCellVariant ? 420 : MIN_DROPDOWN_WIDTH),
+        window.innerWidth - 16
+      )
       const left = Math.max(VIEWPORT_MARGIN, Math.min(rect.left, window.innerWidth - width - VIEWPORT_MARGIN))
       const spaceBelow = viewportHeight - rect.bottom - VIEWPORT_MARGIN
       const spaceAbove = rect.top - VIEWPORT_MARGIN
       const shouldOpenAbove = spaceBelow < 180 && spaceAbove > spaceBelow
-      const maxHeight = Math.max(120, Math.min(DROPDOWN_MAX_HEIGHT, shouldOpenAbove ? spaceAbove : spaceBelow))
+      const maxHeight = Math.max(
+        120,
+        Math.min(DROPDOWN_MAX_HEIGHT, shouldOpenAbove ? spaceAbove : spaceBelow)
+      )
       const top = shouldOpenAbove
         ? Math.max(VIEWPORT_MARGIN, rect.top - maxHeight - DROPDOWN_GAP)
         : Math.min(rect.bottom + DROPDOWN_GAP, viewportHeight - maxHeight - VIEWPORT_MARGIN)
@@ -331,20 +337,20 @@ export function ForeignKeyCombobox({
   }
 
   const input = (
-      <input
-        ref={inputRef}
-        className={styles.cellInput}
-        type="text"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={listboxId}
-        aria-autocomplete="list"
-        value={displayValue}
-        placeholder={`→ ${foreignKey.referencedTable}.${foreignKey.referencedColumn}`}
-        onFocus={openDropdown}
-        onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-      />
+    <input
+      ref={inputRef}
+      className={styles.cellInput}
+      type="text"
+      role="combobox"
+      aria-expanded={open}
+      aria-controls={listboxId}
+      aria-autocomplete="list"
+      value={displayValue}
+      placeholder={`→ ${foreignKey.referencedTable}.${foreignKey.referencedColumn}`}
+      onFocus={openDropdown}
+      onChange={handleInputChange}
+      onKeyDown={handleKeyDown}
+    />
   )
 
   const optionList = (
@@ -372,7 +378,9 @@ export function ForeignKeyCombobox({
             <span className={styles.fkComboboxOptionText}>
               <span className={styles.fkComboboxOptionLabel}>{option.label}</span>
               <span className={styles.fkComboboxOptionTarget}>
-                {option.selected ? 'Current value' : `${foreignKey.referencedTable}.${foreignKey.referencedColumn}`}
+                {option.selected
+                  ? 'Current value'
+                  : `${foreignKey.referencedTable}.${foreignKey.referencedColumn}`}
               </span>
             </span>
             {option.label !== String(option.value) ? (

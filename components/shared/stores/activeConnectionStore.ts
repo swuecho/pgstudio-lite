@@ -9,7 +9,14 @@ type ActiveConnectionStore = {
 export const useActiveConnectionStore = create<ActiveConnectionStore>()(
   persist(
     (set) => ({
-      connectionName: 'default',
+      /**
+       * Empty means "not resolved yet", not a connection named "default".
+       * Connection-scoped queries all guard on `Boolean(connectionName)`, so
+       * this keeps them from firing against a guessed name on first render —
+       * which 400s whenever no connection happens to be called "default".
+       * `useActiveConnection` fills it in once the connection list loads.
+       */
+      connectionName: '',
       setConnectionName: (value) => set({ connectionName: value }),
     }),
     {

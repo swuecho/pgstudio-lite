@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { runNotebookOptionQuery } from '../../../../lib/notebook-db'
-import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
-import { nonEmptyStringSchema, parseWithSchema } from '../../../../lib/api/validation'
+import { runNotebookOptionQuery } from '@/lib/notebook-db'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
+import { nonEmptyStringSchema, parseWithSchema } from '@/lib/api/validation'
 
 const paramsSchema = z.object({ id: nonEmptyStringSchema })
 const optionQueryBodySchema = z.object({

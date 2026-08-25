@@ -1,13 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { getForeignKeyOptions } from '../../../../lib/db'
-import { getRequestConnectionName } from '../../../../lib/api/connection'
-import {
-  nonEmptyStringSchema,
-  optionalSchemaNameSchema,
-  parseWithSchema,
-} from '../../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
+import { getForeignKeyOptions } from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const tableParamSchema = z.object({
   table: nonEmptyStringSchema,
@@ -30,7 +26,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { table } = parseWithSchema(tableParamSchema, req.query)
     const connectionName = getRequestConnectionName(req)
     const { schema, column, search, selectedValue, limit } = parseWithSchema(querySchema, req.query)
-    const result = await getForeignKeyOptions(connectionName, schema, table, column, search, limit, selectedValue)
+    const result = await getForeignKeyOptions(
+      connectionName,
+      schema,
+      table,
+      column,
+      search,
+      limit,
+      selectedValue
+    )
     return res.status(200).json(result)
   } catch (error) {
     return sendApiError(res, error)

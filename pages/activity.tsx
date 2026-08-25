@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PageHead } from '@/components/shared/PageHead'
 import { useRouter } from 'next/router'
 import { useCallback, useMemo, useState } from 'react'
 import ThemeToggle from '../components/theme-toggle'
@@ -166,6 +167,7 @@ export default function ActivityPage() {
         </div>
       </aside>
 
+      <PageHead title="Activity" />
       <main className={styles.layoutMain}>
         <div className={styles.header}>
           <div className={styles.title}>Activity · {connectionName || '-'}</div>

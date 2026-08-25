@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getForeignKeyOptions, type ForeignKeyOption } from '../../features/table/table.service'
+import { getForeignKeyOptions, type ForeignKeyOption } from '@/features/table/table.service'
 import { FK_DISPLAY_CONFIG_CHANGED_EVENT, ForeignKeyCombobox } from './ForeignKeyCombobox'
 import type { ColumnInfo, RowData } from './types'
 import styles from './TableEditorStyles.module.css'
@@ -35,7 +35,8 @@ function getForeignKeyLabelCacheKey(connectionName: string, column: ColumnInfo, 
 }
 
 function clearForeignKeyLabelCache(args: { connectionName: string; schema: string; table: string }) {
-  const prefix = [args.connectionName, args.schema, args.table].join(FK_CACHE_KEY_SEPARATOR) + FK_CACHE_KEY_SEPARATOR
+  const prefix =
+    [args.connectionName, args.schema, args.table].join(FK_CACHE_KEY_SEPARATOR) + FK_CACHE_KEY_SEPARATOR
   for (const key of fkLabelCache.keys()) {
     if (key.startsWith(prefix)) fkLabelCache.delete(key)
   }
@@ -130,7 +131,8 @@ export function CellForeignKeyEditor({ connectionName, column, row, onCommit }: 
     }
 
     window.addEventListener(FK_DISPLAY_CONFIG_CHANGED_EVENT, handleForeignKeyDisplayConfigChanged)
-    return () => window.removeEventListener(FK_DISPLAY_CONFIG_CHANGED_EVENT, handleForeignKeyDisplayConfigChanged)
+    return () =>
+      window.removeEventListener(FK_DISPLAY_CONFIG_CHANGED_EVENT, handleForeignKeyDisplayConfigChanged)
   }, [column.foreignKey, connectionName])
 
   useEffect(() => {

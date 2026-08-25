@@ -6,7 +6,7 @@ import {
   deleteSnippet as deleteSnippetService,
   getSnippets,
   updateSnippet,
-} from '../../features/sql/sql.service'
+} from '@/features/sql/sql.service'
 import { QueryTab, SnippetItem } from './types'
 import { useSqlEditorSnippetsStore } from './stores/sqlEditorSnippetsStore'
 

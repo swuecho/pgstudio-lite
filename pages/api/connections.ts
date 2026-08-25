@@ -6,9 +6,9 @@ import {
   getPublicConnections,
   setDefaultConnection,
   updateConnection,
-} from '../../lib/db'
-import { nonEmptyStringSchema, parseWithSchema } from '../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../lib/api/errors'
+} from '@/lib/db'
+import { nonEmptyStringSchema, parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const createConnectionSchema = z.object({
   name: nonEmptyStringSchema,

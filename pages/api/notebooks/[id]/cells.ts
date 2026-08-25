@@ -5,10 +5,10 @@ import {
   deleteNotebookCell,
   getNotebookById,
   updateNotebookCell,
-} from '../../../../lib/notebook-db'
-import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
-import { nonEmptyStringSchema, parseWithSchema } from '../../../../lib/api/validation'
-import { notebookWidgetMetadataSchema } from '../../../../lib/notebook-widgets'
+} from '@/lib/notebook-db'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
+import { nonEmptyStringSchema, parseWithSchema } from '@/lib/api/validation'
+import { notebookWidgetMetadataSchema } from '@/lib/notebook-widgets'
 
 const paramsSchema = z.object({ id: nonEmptyStringSchema })
 

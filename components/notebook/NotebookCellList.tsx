@@ -10,8 +10,8 @@ import { ErrorBoundary } from '../shared/ErrorBoundary'
 import type { NotebookPageController } from './useNotebookPageState'
 import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell } from './types'
-import type { NotebookWidgetMetadata } from '../../lib/notebook-widgets'
-import { extractTemplateKeys } from '../../lib/notebook-params'
+import type { NotebookWidgetMetadata } from '@/lib/notebook-widgets'
+import { extractTemplateKeys } from '@/lib/notebook-params'
 import styles from './NotebookPage.module.css'
 
 type NotebookCellListProps = {

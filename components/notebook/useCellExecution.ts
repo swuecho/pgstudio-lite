@@ -3,8 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell, NotebookWidgetMetadata } from './types'
-import { buildInputValues } from '../../lib/notebook-reactive'
-import { runCell } from '../../features/notebook/notebook.service'
+import { buildInputValues } from '@/lib/notebook-reactive'
+import { runCell } from '@/features/notebook/notebook.service'
 import { markQueuedCells, clearQueuedCells } from './cellSyncHelpers'
 
 export function useCellExecution(params: {

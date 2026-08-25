@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { importNotebookSpecV1 } from '../../../lib/notebook-db'
-import { methodNotAllowed, sendApiError } from '../../../lib/api/errors'
-import { formatZodIssuesAsApiDetails, importNotebookSchema } from '../../../lib/notebook-spec'
+import { importNotebookSpecV1 } from '@/lib/notebook-db'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
+import { formatZodIssuesAsApiDetails, importNotebookSchema } from '@/lib/notebook-spec'
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { createDebouncedStateStorage } from '../../../lib/debouncedStorage'
+import { createDebouncedStateStorage } from '@/lib/debouncedStorage'
 import type { QueryResult, QueryTab } from '../types'
 
 const debouncedTabsStorage = createDebouncedStateStorage(500)

@@ -1,5 +1,5 @@
-import type { NotebookSpecV1 } from '../../features/notebook/notebook.service'
-import type { NotebookDiffSummary } from '../../lib/notebook-ui'
+import type { NotebookSpecV1 } from '@/features/notebook/notebook.service'
+import type { NotebookDiffSummary } from '@/lib/notebook-ui'
 import styles from './NotebookImportModal.module.css'
 
 type NotebookImportModalProps = {

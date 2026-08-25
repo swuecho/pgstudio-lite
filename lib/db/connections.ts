@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { desc, eq } from 'drizzle-orm'
-import { dbConnections, notebooks, queryHistory, querySnippets } from '../../drizzle/schema'
-import { metaDb } from '../meta-db'
+import { dbConnections, notebooks, queryHistory, querySnippets } from '@/drizzle/schema'
+import { getMetaDb } from '../meta-db'
 import { closePool } from './pool'
 
 export type DbConnection = {
@@ -65,13 +65,28 @@ function parseEnvConnections(): Array<{
   return parsed
 }
 
+/**
+ * Env vars seed connections only while the metadata DB is empty. This used to
+ * run at import time, which opened SQLite just for importing `lib/db`; it now
+ * runs on first access via db().
+ */
+let seedChecked = false
+
+function db() {
+  if (!seedChecked) {
+    seedChecked = true
+    seedConnectionsIfEmpty()
+  }
+  return getMetaDb()
+}
+
 function seedConnectionsIfEmpty() {
-  const hasConnections = metaDb.select({ id: dbConnections.id }).from(dbConnections).limit(1).get()
+  const hasConnections = getMetaDb().select({ id: dbConnections.id }).from(dbConnections).limit(1).get()
   if (hasConnections) return
   const seeded = parseEnvConnections()
   if (seeded.length === 0) return
   const now = new Date().toISOString()
-  metaDb.transaction((tx) => {
+  getMetaDb().transaction((tx) => {
     for (const [index, connection] of seeded.entries()) {
       tx.insert(dbConnections)
         .values({
@@ -87,8 +102,6 @@ function seedConnectionsIfEmpty() {
     }
   })
 }
-
-seedConnectionsIfEmpty()
 
 function mapConnection(row: typeof dbConnections.$inferSelect): DbConnection {
   return {
@@ -145,7 +158,7 @@ export function getConnectionByName(connectionName?: string): DbConnection {
 }
 
 export function getConnections(): DbConnection[] {
-  return metaDb
+  return db()
     .select()
     .from(dbConnections)
     .orderBy(desc(dbConnections.isDefault), dbConnections.name)
@@ -184,7 +197,7 @@ export function createConnection(input: {
   const shouldBeDefault = input.isDefault === true || existing.length === 0
   const readOnly = input.readOnly === true
 
-  metaDb.transaction((tx) => {
+  db().transaction((tx) => {
     if (shouldBeDefault) tx.update(dbConnections).set({ isDefault: false }).run()
     tx.insert(dbConnections)
       .values({
@@ -199,7 +212,7 @@ export function createConnection(input: {
       .run()
   })
 
-  const created = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  const created = db().select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!created) throw new Error('failed to create connection')
   return mapConnection(created)
 }
@@ -208,7 +221,7 @@ export function updateConnection(
   id: string,
   input: { name?: string; connectionString?: string; isDefault?: boolean; readOnly?: boolean }
 ) {
-  const existing = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  const existing = db().select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return null
 
   const nextName = input.name === undefined ? existing.name : input.name.trim()
@@ -231,7 +244,7 @@ export function updateConnection(
 
   const now = new Date().toISOString()
   const renamed = existing.name !== nextName
-  metaDb.transaction((tx) => {
+  db().transaction((tx) => {
     if (nextDefault) tx.update(dbConnections).set({ isDefault: false }).run()
     tx.update(dbConnections)
       .set({
@@ -267,7 +280,7 @@ export function updateConnection(
     }
   })
 
-  const updated = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  const updated = db().select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (existing.connectionString !== nextConnectionString) {
     closePoolIfUnused(existing.connectionString)
   }
@@ -275,19 +288,19 @@ export function updateConnection(
 }
 
 export function setDefaultConnection(id: string) {
-  const existing = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  const existing = db().select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return null
   const now = new Date().toISOString()
-  metaDb.transaction((tx) => {
+  db().transaction((tx) => {
     tx.update(dbConnections).set({ isDefault: false }).run()
     tx.update(dbConnections).set({ isDefault: true, updatedAt: now }).where(eq(dbConnections.id, id)).run()
   })
-  const updated = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  const updated = db().select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   return updated ? mapConnection(updated) : null
 }
 
 export function deleteConnection(id: string) {
-  const existing = metaDb.select().from(dbConnections).where(eq(dbConnections.id, id)).get()
+  const existing = db().select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return false
   const all = getConnections()
   if (all.length <= 1) {
@@ -297,7 +310,7 @@ export function deleteConnection(id: string) {
   }
 
   const now = new Date().toISOString()
-  metaDb.transaction((tx) => {
+  db().transaction((tx) => {
     tx.delete(dbConnections).where(eq(dbConnections.id, id)).run()
     const hasDefault = tx
       .select({ id: dbConnections.id })

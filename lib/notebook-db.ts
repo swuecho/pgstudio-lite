@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, asc, desc, eq } from 'drizzle-orm'
 import { notebookCells, notebooks } from '../drizzle/schema'
 import { executeQuery, getConnections } from './db'
-import { metaDb } from './meta-db'
+import { getMetaDb } from './meta-db'
 import { compileSqlTemplate, extractTemplateKeys } from './notebook-params'
 import {
   getWidgetParamValues,
@@ -133,7 +133,7 @@ function applyCellOrder(tx: any, notebookId: string, orderedCellIds: string[], n
 
 export function listNotebooks(limit = 200) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 200))
-  return metaDb
+  return getMetaDb()
     .select()
     .from(notebooks)
     .orderBy(desc(notebooks.updatedAt))
@@ -150,7 +150,7 @@ export function createNotebook(input: { title: string; connectionName?: string }
   const metadataJson = '{}'
   const now = new Date().toISOString()
   const id = randomUUID()
-  metaDb
+  getMetaDb()
     .insert(notebooks)
     .values({
       id,
@@ -162,13 +162,13 @@ export function createNotebook(input: { title: string; connectionName?: string }
       updatedAt: now,
     })
     .run()
-  const created = metaDb.select().from(notebooks).where(eq(notebooks.id, id)).get()
+  const created = getMetaDb().select().from(notebooks).where(eq(notebooks.id, id)).get()
   if (!created) throw new Error('failed to create notebook')
   return toNotebook(created)
 }
 
 export function updateNotebook(id: string, input: { title?: string; connectionName?: string }) {
-  const existing = metaDb.select().from(notebooks).where(eq(notebooks.id, id)).get()
+  const existing = getMetaDb().select().from(notebooks).where(eq(notebooks.id, id)).get()
   if (!existing) return null
 
   const nextTitle = input.title === undefined ? existing.title : input.title.trim()
@@ -179,7 +179,7 @@ export function updateNotebook(id: string, input: { title?: string; connectionNa
   if (!nextConnectionName) throw new Error('connectionName cannot be empty')
 
   const now = new Date().toISOString()
-  metaDb
+  getMetaDb()
     .update(notebooks)
     .set({
       title: nextTitle,
@@ -189,7 +189,7 @@ export function updateNotebook(id: string, input: { title?: string; connectionNa
     .where(eq(notebooks.id, id))
     .run()
 
-  const updated = metaDb.select().from(notebooks).where(eq(notebooks.id, id)).get()
+  const updated = getMetaDb().select().from(notebooks).where(eq(notebooks.id, id)).get()
   return updated ? toNotebook(updated) : null
 }
 
@@ -207,10 +207,10 @@ export function importNotebookSpecV1(input: {
     spec.metadata && typeof spec.metadata === 'object' && !Array.isArray(spec.metadata) ? spec.metadata : {}
   const connectionName = spec.connection_name?.trim() || getDefaultConnectionName()
   const existingByTarget = input.targetNotebookId
-    ? metaDb.select().from(notebooks).where(eq(notebooks.id, input.targetNotebookId)).get()
+    ? getMetaDb().select().from(notebooks).where(eq(notebooks.id, input.targetNotebookId)).get()
     : null
   const existingBySpecId = spec.id
-    ? metaDb.select().from(notebooks).where(eq(notebooks.id, spec.id)).get()
+    ? getMetaDb().select().from(notebooks).where(eq(notebooks.id, spec.id)).get()
     : null
 
   let notebookId: string
@@ -263,7 +263,7 @@ export function importNotebookSpecV1(input: {
   }
 
   const now = new Date().toISOString()
-  metaDb.transaction((tx) => {
+  getMetaDb().transaction((tx) => {
     if (mode === 'create' && spec.id) {
       const existing = tx.select({ id: notebooks.id }).from(notebooks).where(eq(notebooks.id, spec.id)).get()
       if (existing) {
@@ -397,9 +397,9 @@ export function exportNotebookSpecV1ById(id: string): NotebookSpecV1 {
 }
 
 export function deleteNotebook(id: string) {
-  const existing = metaDb.select({ id: notebooks.id }).from(notebooks).where(eq(notebooks.id, id)).get()
+  const existing = getMetaDb().select({ id: notebooks.id }).from(notebooks).where(eq(notebooks.id, id)).get()
   if (!existing) return false
-  metaDb.transaction((tx) => {
+  getMetaDb().transaction((tx) => {
     tx.delete(notebookCells).where(eq(notebookCells.notebookId, id)).run()
     tx.delete(notebooks).where(eq(notebooks.id, id)).run()
   })
@@ -407,9 +407,9 @@ export function deleteNotebook(id: string) {
 }
 
 export function getNotebookById(id: string) {
-  const notebook = metaDb.select().from(notebooks).where(eq(notebooks.id, id)).get()
+  const notebook = getMetaDb().select().from(notebooks).where(eq(notebooks.id, id)).get()
   if (!notebook) return null
-  const cells = metaDb
+  const cells = getMetaDb()
     .select()
     .from(notebookCells)
     .where(eq(notebookCells.notebookId, id))
@@ -426,14 +426,14 @@ export function createNotebookCell(input: {
   metadata?: NotebookStoredWidgetMetadata | null
   position?: number
 }) {
-  const notebook = metaDb.select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
+  const notebook = getMetaDb().select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
   if (!notebook) {
     const error = new Error('notebook not found') as Error & { statusCode?: number }
     error.statusCode = 404
     throw error
   }
 
-  const rows = metaDb
+  const rows = getMetaDb()
     .select()
     .from(notebookCells)
     .where(eq(notebookCells.notebookId, input.notebookId))
@@ -454,7 +454,7 @@ export function createNotebookCell(input: {
               }
         )
       : null
-  metaDb.transaction((tx) => {
+  getMetaDb().transaction((tx) => {
     tx.insert(notebookCells)
       .values({
         id,
@@ -472,7 +472,7 @@ export function createNotebookCell(input: {
     applyCellOrder(tx, input.notebookId, orderedCellIds, now)
   })
 
-  const created = metaDb.select().from(notebookCells).where(eq(notebookCells.id, id)).get()
+  const created = getMetaDb().select().from(notebookCells).where(eq(notebookCells.id, id)).get()
   if (!created) throw new Error('failed to create notebook cell')
   return toNotebookCell(created)
 }
@@ -488,7 +488,7 @@ export function updateNotebookCell(
     metadata?: NotebookStoredWidgetMetadata | null
   }
 ) {
-  const existing = metaDb
+  const existing = getMetaDb()
     .select()
     .from(notebookCells)
     .where(and(eq(notebookCells.id, cellId), eq(notebookCells.notebookId, notebookId)))
@@ -496,7 +496,7 @@ export function updateNotebookCell(
   if (!existing) return null
 
   const now = new Date().toISOString()
-  metaDb.transaction((tx) => {
+  getMetaDb().transaction((tx) => {
     if (input.position !== undefined) {
       const rows = tx
         .select()
@@ -532,19 +532,19 @@ export function updateNotebookCell(
     tx.update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, notebookId)).run()
   })
 
-  const updated = metaDb.select().from(notebookCells).where(eq(notebookCells.id, cellId)).get()
+  const updated = getMetaDb().select().from(notebookCells).where(eq(notebookCells.id, cellId)).get()
   return updated ? toNotebookCell(updated) : null
 }
 
 export function deleteNotebookCell(notebookId: string, cellId: string) {
-  const existing = metaDb
+  const existing = getMetaDb()
     .select()
     .from(notebookCells)
     .where(and(eq(notebookCells.id, cellId), eq(notebookCells.notebookId, notebookId)))
     .get()
   if (!existing) return false
   const now = new Date().toISOString()
-  metaDb.transaction((tx) => {
+  getMetaDb().transaction((tx) => {
     tx.delete(notebookCells).where(eq(notebookCells.id, cellId)).run()
     const orderedCellIds = tx
       .select()
@@ -564,13 +564,13 @@ export async function runNotebookSqlCell(input: {
   query: string
   inputValues?: Record<string, unknown>
 }) {
-  const notebook = metaDb.select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
+  const notebook = getMetaDb().select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
   if (!notebook) {
     const error = new Error('notebook not found') as Error & { statusCode?: number }
     error.statusCode = 404
     throw error
   }
-  const cell = metaDb
+  const cell = getMetaDb()
     .select()
     .from(notebookCells)
     .where(and(eq(notebookCells.id, input.cellId), eq(notebookCells.notebookId, input.notebookId)))
@@ -589,7 +589,7 @@ export async function runNotebookSqlCell(input: {
   const now = new Date().toISOString()
   try {
     const templateKeys = extractTemplateKeys(input.query)
-    const notebookCellsWithMetadata = metaDb
+    const notebookCellsWithMetadata = getMetaDb()
       .select()
       .from(notebookCells)
       .where(eq(notebookCells.notebookId, input.notebookId))
@@ -634,7 +634,7 @@ export async function runNotebookSqlCell(input: {
       connectionName: notebook.connectionName,
       values: compiledValues,
     })
-    metaDb
+    getMetaDb()
       .update(notebookCells)
       .set({
         lastRunStatus: 'success',
@@ -647,11 +647,11 @@ export async function runNotebookSqlCell(input: {
       })
       .where(eq(notebookCells.id, input.cellId))
       .run()
-    metaDb.update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, input.notebookId)).run()
+    getMetaDb().update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, input.notebookId)).run()
     return result
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    metaDb
+    getMetaDb()
       .update(notebookCells)
       .set({
         lastRunStatus: 'error',
@@ -664,7 +664,7 @@ export async function runNotebookSqlCell(input: {
       })
       .where(eq(notebookCells.id, input.cellId))
       .run()
-    metaDb.update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, input.notebookId)).run()
+    getMetaDb().update(notebooks).set({ updatedAt: now }).where(eq(notebooks.id, input.notebookId)).run()
     throw error
   }
 }
@@ -674,7 +674,7 @@ export async function runNotebookOptionQuery(input: {
   query: string
   inputValues?: Record<string, unknown>
 }) {
-  const notebook = metaDb.select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
+  const notebook = getMetaDb().select().from(notebooks).where(eq(notebooks.id, input.notebookId)).get()
   if (!notebook) {
     const error = new Error('notebook not found') as Error & { statusCode?: number }
     error.statusCode = 404

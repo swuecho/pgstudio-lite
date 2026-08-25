@@ -43,4 +43,4 @@ export function resolveSortAndFilter(columns: ColumnInfo[], sortBy: string, filt
   }
 }
 
-export { sanitizeRowsQueryOptions } from '../../lib/table-query-options'
+export { sanitizeRowsQueryOptions } from '@/lib/table-query-options'

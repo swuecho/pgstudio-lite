@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { WidgetValidationMessages } from '../../lib/notebook-widget-validation'
+import type { WidgetValidationMessages } from '@/lib/notebook-widget-validation'
 import type {
   NotebookInputCellMetadata,
   NotebookInputOption,

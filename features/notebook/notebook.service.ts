@@ -1,6 +1,6 @@
-import { fetchJson } from '../../lib/http'
-import type { Connection } from '../../components/sql-editor/types'
-import type { NotebookSpecV1 } from '../../lib/notebook-types'
+import { fetchJson } from '@/lib/http'
+import type { Connection } from '@/components/sql-editor/types'
+import type { NotebookSpecV1 } from '@/lib/notebook-types'
 import type {
   Notebook,
   NotebookCell,
@@ -9,7 +9,7 @@ import type {
   NotebookWidgetMetadata,
   NotebookInputValues,
   RunCellResponse,
-} from '../../components/notebook/types'
+} from '@/components/notebook/types'
 
 export type { NotebookSpecV1 }
 

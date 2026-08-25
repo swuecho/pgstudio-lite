@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useSidebarResizer } from '../../hooks/useSidebarResizer'
+import { useSidebarResizer } from '@/hooks/useSidebarResizer'
 import { useNotebookCellState } from './useNotebookCellState'
 import { useNotebookCrudState } from './useNotebookCrudState'
 import { useNotebookImport } from './useNotebookImport'
-import type { NotebookWidgetPresetId } from '../../lib/notebook-widgets'
+import type { NotebookWidgetPresetId } from '@/lib/notebook-widgets'
 
 export type NotebookPageController = ReturnType<typeof useNotebookPageState>
 

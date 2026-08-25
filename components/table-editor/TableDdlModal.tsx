@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getTableDdl } from '../../features/table/table.service'
+import { getTableDdl } from '@/features/table/table.service'
 import styles from './TableDdlModal.module.css'
 
 type TableDdlModalProps = {

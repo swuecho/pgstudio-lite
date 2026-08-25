@@ -5,7 +5,7 @@ import {
   isBooleanColumn,
   isJsonColumn,
   isNumericColumn,
-} from '../../lib/table-column-kind'
+} from '@/lib/table-column-kind'
 import { ForeignKeyCombobox } from './ForeignKeyCombobox'
 import type { ColumnInfo } from './types'
 import styles from './TableEditorStyles.module.css'

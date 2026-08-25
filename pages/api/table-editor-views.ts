@@ -8,13 +8,13 @@ import {
   recordTableEditorRecentView,
   saveTableEditorBookmark,
   updateTableEditorBookmark,
-} from '../../lib/db'
-import { getRequestConnectionName } from '../../lib/api/connection'
-import { nonEmptyStringSchema, parseWithSchema } from '../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../lib/api/errors'
-import { getColumnKind } from '../../lib/table-column-kind'
-import { parseFilterMode } from '../../lib/table-filter'
-import type { TableEditorFilter } from '../../components/table-editor/stores/tableEditorFilterStore'
+} from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { nonEmptyStringSchema, parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
+import { getColumnKind } from '@/lib/table-column-kind'
+import { parseFilterMode } from '@/lib/table-filter'
+import type { TableEditorFilter } from '@/components/table-editor/stores/tableEditorFilterStore'
 
 const tableFilterSchema = z
   .object({

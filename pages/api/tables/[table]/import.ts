@@ -1,13 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { importTableRows } from '../../../../lib/db'
-import { getRequestConnectionName } from '../../../../lib/api/connection'
-import {
-  nonEmptyStringSchema,
-  optionalSchemaNameSchema,
-  parseWithSchema,
-} from '../../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
+import { importTableRows } from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const MAX_IMPORT_ROWS = 50_000
 

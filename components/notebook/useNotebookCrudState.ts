@@ -8,7 +8,7 @@ import {
   getNotebook,
   getNotebooks,
   updateNotebook,
-} from '../../features/notebook/notebook.service'
+} from '@/features/notebook/notebook.service'
 
 export const NOTEBOOKS_QUERY_KEY = ['notebooks']
 

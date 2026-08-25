@@ -6,15 +6,11 @@ import {
   getTableRows,
   insertTableRow,
   updateTableRowByPrimaryKey,
-} from '../../../../lib/db'
-import { TABLE_FILTER_MODES } from '../../../../lib/table-filter'
-import { getRequestConnectionName } from '../../../../lib/api/connection'
-import {
-  nonEmptyStringSchema,
-  optionalSchemaNameSchema,
-  parseWithSchema,
-} from '../../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
+} from '@/lib/db'
+import { TABLE_FILTER_MODES } from '@/lib/table-filter'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const tableParamSchema = z.object({
   table: nonEmptyStringSchema,

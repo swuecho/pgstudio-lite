@@ -1,4 +1,4 @@
-import type { TableFilterMode } from '../../lib/table-filter'
+import type { TableFilterMode } from '@/lib/table-filter'
 import {
   tableEditorFilterKey,
   useTableEditorFilterStore,

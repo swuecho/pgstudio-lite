@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { importNotebookSpecV1 } from '../../../lib/notebook-db'
-import { generateTourNotebook } from '../../../lib/tour-generator'
-import { getRequestConnectionName } from '../../../lib/api/connection'
-import { parseWithSchema } from '../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../lib/api/errors'
+import { importNotebookSpecV1 } from '@/lib/notebook-db'
+import { generateTourNotebook } from '@/lib/tour-generator'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const bodySchema = z.object({
   schema: z.string().trim().min(1).optional(),

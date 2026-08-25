@@ -7,10 +7,10 @@ import {
   importRows as importRowsService,
   patchRow,
   removeRow,
-} from '../../features/table/table.service'
+} from '@/features/table/table.service'
 import { useActiveConnection } from '../shared/hooks/useActiveConnection'
-import { isMutableRelationKind } from '../../lib/relation-kind'
-import type { TableFilterMode } from '../../lib/table-filter'
+import { isMutableRelationKind } from '@/lib/relation-kind'
+import type { TableFilterMode } from '@/lib/table-filter'
 import { parseActiveTableKey } from './tableEditorContracts'
 import type { RowKey } from './types'
 

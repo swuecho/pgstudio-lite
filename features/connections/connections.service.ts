@@ -1,4 +1,4 @@
-import { fetchJson } from '../../lib/http'
+import { fetchJson } from '@/lib/http'
 
 export type ConnectionItem = {
   id: string

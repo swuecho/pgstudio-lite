@@ -1,13 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { lookupTableRow } from '../../../../lib/db'
-import { getRequestConnectionName } from '../../../../lib/api/connection'
-import {
-  nonEmptyStringSchema,
-  optionalSchemaNameSchema,
-  parseWithSchema,
-} from '../../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
+import { lookupTableRow } from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const tableParamSchema = z.object({
   table: nonEmptyStringSchema,
