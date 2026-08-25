@@ -54,14 +54,7 @@ describe('CellForeignKeyEditor', () => {
 
   it('opens a picker from a compact FK cell and commits selected values explicitly', async () => {
     const onCommit = vi.fn(() => 'pending' as const)
-    render(
-      <CellForeignKeyEditor
-        connectionName="local"
-        column={userColumn}
-        row={row}
-        onCommit={onCommit}
-      />
-    )
+    render(<CellForeignKeyEditor connectionName="local" column={userColumn} row={row} onCommit={onCommit} />)
 
     fireEvent.click(screen.getByRole('button', { name: /null/i }))
 
@@ -107,9 +100,7 @@ describe('CellForeignKeyEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'u-2' }))
 
     await waitFor(() => {
-      expect(getForeignKeyOptions).toHaveBeenCalledWith(
-        expect.objectContaining({ selectedValue: 'u-2' })
-      )
+      expect(getForeignKeyOptions).toHaveBeenCalledWith(expect.objectContaining({ selectedValue: 'u-2' }))
     })
     expect(await screen.findByRole('option', { name: /Current User/i })).toHaveAttribute(
       'aria-selected',
@@ -191,14 +182,7 @@ describe('CellForeignKeyEditor', () => {
 
   it('omits the trace shortcut when the FK value is empty', async () => {
     const onCommit = vi.fn(() => 'pending' as const)
-    render(
-      <CellForeignKeyEditor
-        connectionName="local"
-        column={userColumn}
-        row={row}
-        onCommit={onCommit}
-      />
-    )
+    render(<CellForeignKeyEditor connectionName="local" column={userColumn} row={row} onCommit={onCommit} />)
 
     fireEvent.click(screen.getByRole('button', { name: /null/i }))
 
@@ -208,14 +192,7 @@ describe('CellForeignKeyEditor', () => {
 
   it('shows an open-table shortcut when the FK value is empty', async () => {
     const onCommit = vi.fn(() => 'pending' as const)
-    render(
-      <CellForeignKeyEditor
-        connectionName="local"
-        column={userColumn}
-        row={row}
-        onCommit={onCommit}
-      />
-    )
+    render(<CellForeignKeyEditor connectionName="local" column={userColumn} row={row} onCommit={onCommit} />)
 
     fireEvent.click(screen.getByRole('button', { name: /null/i }))
 

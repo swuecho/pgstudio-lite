@@ -1,4 +1,4 @@
-import { formatUuidDisplay, looksLikeUuid } from '../../lib/format-uuid-display'
+import { formatUuidDisplay, looksLikeUuid } from '@/lib/format-uuid-display'
 import type { ColumnForeignKey } from './types'
 
 export function buildForeignKeyMatch(

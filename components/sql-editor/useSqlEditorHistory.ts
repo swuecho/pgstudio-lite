@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { clearHistory as clearHistoryService, getHistory } from '../../features/sql/sql.service'
+import { clearHistory as clearHistoryService, getHistory } from '@/features/sql/sql.service'
 
 export function useSqlEditorHistory(historySearch: string, connectionName: string) {
   const queryClient = useQueryClient()

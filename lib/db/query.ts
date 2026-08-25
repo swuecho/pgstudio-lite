@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { parseSql } from '../pg-parser'
 import { extractSelectOutputColumnNames, narrowResultToSelectList } from '../query-output-columns'
-import { queryHistory } from '../../drizzle/schema'
-import { metaDb } from '../meta-db'
+import { queryHistory } from '@/drizzle/schema'
+import { getMetaDb } from '../meta-db'
 import { getConnectionByName } from './connections'
 import { getPool } from './pool'
 import { getPrimaryKeyColumns } from './tables'
@@ -278,7 +278,7 @@ export async function executeQuery({
       const durationMs = Date.now() - startedTs
       const totalRows = results.reduce((sum, r) => sum + (r.rowCount || 0), 0)
 
-      metaDb
+      getMetaDb()
         .insert(queryHistory)
         .values({
           id: historyId,
@@ -322,7 +322,7 @@ export async function executeQuery({
     const durationMs = Date.now() - startedTs
     const message = error instanceof Error ? error.message : String(error)
 
-    metaDb
+    getMetaDb()
       .insert(queryHistory)
       .values({
         id: historyId,

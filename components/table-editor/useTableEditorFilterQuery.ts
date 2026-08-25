@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { filterModeNeedsValue, hasActiveTableFilter, type TableFilterMode } from '../../lib/table-filter'
-import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { filterModeNeedsValue, hasActiveTableFilter, type TableFilterMode } from '@/lib/table-filter'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useTableEditorLocalStore } from './stores/tableEditorLocalStore'
 
 const DEFAULT_FILTER_DEBOUNCE_MS = 300

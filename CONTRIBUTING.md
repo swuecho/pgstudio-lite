@@ -4,7 +4,14 @@ Thanks for helping improve PG Studio Lite. This document covers how to set up a 
 
 ## Prerequisites
 
-- **Node.js**: use a current LTS release. CI runs on **Node 20** (see `.github/workflows/tests.yml`); matching that version avoids surprises.
+- **Node.js**: **Node 22**, pinned in [`.nvmrc`](./.nvmrc) and enforced by the `engines` field in `package.json` (with `engine-strict=true` in `.npmrc`). CI reads the same file, so local and CI always agree. With nvm:
+
+  ```bash
+  nvm use
+  ```
+
+  This matters more than usual here: `better-sqlite3` is a native addon, and switching Node majors leaves you with binaries compiled for the wrong ABI. If tests fail with `NODE_MODULE_VERSION`, run `npm rebuild better-sqlite3`.
+
 - **npm**: this repo uses `package-lock.json`; install dependencies with `npm ci` in CI-like workflows, or `npm install` locally.
 - **PostgreSQL**: a reachable instance for the SQL editor, table editor, and notebook SQL cells. The app talks to Postgres over TCP using `pg`.
 
@@ -46,6 +53,21 @@ Saved connections, history, snippets, and notebooks live in a **local SQLite** f
 - **`docs/`** — Additional specs and migration notes.
 
 When in doubt, follow patterns in nearby files (naming, validation with Zod, error handling via `lib/api/errors`).
+
+### Imports
+
+Use the `@/` alias — mapped to the repo root in both `tsconfig.json` and `vitest.config.ts` — instead of climbing two or more directories:
+
+```ts
+import { splitStatements } from '@/lib/db' // not '../../lib/db'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+```
+
+Single-level relative imports (`./sibling`, `../parent`) stay relative; they survive file moves fine and read better up close.
+
+### Touching the metadata DB
+
+`lib/meta-db.ts` opens SQLite **lazily**. Import `getMetaDb()` / `getSqlite()` and call them inside the function that queries — never hoist the handle to a module-level `const`. Opening at import time makes every module that transitively reaches `lib/db` pay for a native addon and a file handle, including pure helpers and the tests that cover them.
 
 ## Commands
 

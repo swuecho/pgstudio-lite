@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { NotebookCell, NotebookWidgetMetadata } from './types'
-import { updateCell } from '../../features/notebook/notebook.service'
+import { updateCell } from '@/features/notebook/notebook.service'
 import { clearPendingSaveCell, clearSaveError, getPendingSaveEntries } from './cellSyncHelpers'
 
 export function useCellAutoSave(params: { activeNotebookId: string; setStatus: (value: string) => void }) {

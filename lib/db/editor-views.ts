@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, desc, eq } from 'drizzle-orm'
-import { tableEditorBookmarks, tableEditorRecentViews } from '../../drizzle/schema'
-import { metaDb } from '../meta-db'
+import { tableEditorBookmarks, tableEditorRecentViews } from '@/drizzle/schema'
+import { getMetaDb } from '../meta-db'
 import {
   dbFieldsToViewState,
   MAX_RECENT_VIEWS,
@@ -101,7 +101,7 @@ function rowToTableEditorRecentView(row: TableEditorRecentViewRow): TableEditorR
 
 export function getTableEditorViews(connectionName?: string) {
   const resolvedConnectionName = getConnectionByName(connectionName).name
-  const bookmarks = metaDb
+  const bookmarks = getMetaDb()
     .select()
     .from(tableEditorBookmarks)
     .where(eq(tableEditorBookmarks.connectionName, resolvedConnectionName))
@@ -110,7 +110,7 @@ export function getTableEditorViews(connectionName?: string) {
     .map(toTableEditorBookmarkRow)
     .map(rowToTableEditorBookmark)
 
-  const recentViews = metaDb
+  const recentViews = getMetaDb()
     .select()
     .from(tableEditorRecentViews)
     .where(eq(tableEditorRecentViews.connectionName, resolvedConnectionName))
@@ -144,7 +144,7 @@ export function saveTableEditorBookmark(
   }
   const fields = viewStateToDbFields(view)
   const now = new Date().toISOString()
-  const existing = metaDb
+  const existing = getMetaDb()
     .select()
     .from(tableEditorBookmarks)
     .where(
@@ -156,12 +156,12 @@ export function saveTableEditorBookmark(
     .get()
 
   if (existing) {
-    metaDb
+    getMetaDb()
       .update(tableEditorBookmarks)
       .set({ title: trimmedTitle, updatedAt: now })
       .where(eq(tableEditorBookmarks.id, existing.id))
       .run()
-    const row = metaDb
+    const row = getMetaDb()
       .select()
       .from(tableEditorBookmarks)
       .where(eq(tableEditorBookmarks.id, existing.id))
@@ -170,7 +170,7 @@ export function saveTableEditorBookmark(
   }
 
   const id = randomUUID()
-  metaDb
+  getMetaDb()
     .insert(tableEditorBookmarks)
     .values({
       id,
@@ -188,7 +188,7 @@ export function saveTableEditorBookmark(
     })
     .run()
 
-  const row = metaDb.select().from(tableEditorBookmarks).where(eq(tableEditorBookmarks.id, id)).get()
+  const row = getMetaDb().select().from(tableEditorBookmarks).where(eq(tableEditorBookmarks.id, id)).get()
   return row ? rowToTableEditorBookmark(toTableEditorBookmarkRow(row)) : null
 }
 
@@ -210,7 +210,7 @@ export function updateTableEditorBookmark({
   if (title !== undefined) values.title = title.trim()
   if (pinned !== undefined) values.pinned = pinned
 
-  const result = metaDb
+  const result = getMetaDb()
     .update(tableEditorBookmarks)
     .set(values)
     .where(
@@ -219,7 +219,7 @@ export function updateTableEditorBookmark({
     .run()
   if (!result.changes) return null
 
-  const row = metaDb
+  const row = getMetaDb()
     .select()
     .from(tableEditorBookmarks)
     .where(
@@ -231,7 +231,7 @@ export function updateTableEditorBookmark({
 
 export function deleteTableEditorBookmark(id: string, connectionName?: string) {
   const resolvedConnectionName = getConnectionByName(connectionName).name
-  metaDb
+  getMetaDb()
     .delete(tableEditorBookmarks)
     .where(
       and(eq(tableEditorBookmarks.id, id), eq(tableEditorBookmarks.connectionName, resolvedConnectionName))
@@ -254,7 +254,7 @@ export function recordTableEditorRecentView(args: {
   }
   const fields = viewStateToDbFields(view)
   const now = new Date().toISOString()
-  const existing = metaDb
+  const existing = getMetaDb()
     .select()
     .from(tableEditorRecentViews)
     .where(
@@ -266,13 +266,13 @@ export function recordTableEditorRecentView(args: {
     .get()
 
   if (existing) {
-    metaDb
+    getMetaDb()
       .update(tableEditorRecentViews)
       .set({ visitedAt: now })
       .where(eq(tableEditorRecentViews.id, existing.id))
       .run()
   } else {
-    metaDb
+    getMetaDb()
       .insert(tableEditorRecentViews)
       .values({
         id: randomUUID(),
@@ -288,19 +288,23 @@ export function recordTableEditorRecentView(args: {
       .run()
   }
 
-  const stale = metaDb
+  // Trimmed in JS rather than with .offset(): SQLite rejects OFFSET without a
+  // preceding LIMIT, and drizzle drops a `.limit(-1)` instead of emitting
+  // SQLite's "no limit" form. A single connection holds ~MAX_RECENT_VIEWS rows,
+  // so reading them all is cheaper than working around the dialect.
+  const stale = getMetaDb()
     .select({ id: tableEditorRecentViews.id })
     .from(tableEditorRecentViews)
     .where(eq(tableEditorRecentViews.connectionName, resolvedConnectionName))
     .orderBy(desc(tableEditorRecentViews.visitedAt))
-    .offset(MAX_RECENT_VIEWS)
     .all()
+    .slice(MAX_RECENT_VIEWS)
 
   for (const row of stale) {
-    metaDb.delete(tableEditorRecentViews).where(eq(tableEditorRecentViews.id, row.id)).run()
+    getMetaDb().delete(tableEditorRecentViews).where(eq(tableEditorRecentViews.id, row.id)).run()
   }
 
-  const saved = metaDb
+  const saved = getMetaDb()
     .select()
     .from(tableEditorRecentViews)
     .where(
@@ -316,7 +320,7 @@ export function recordTableEditorRecentView(args: {
 
 export function clearTableEditorRecentViews(connectionName?: string) {
   const resolvedConnectionName = getConnectionByName(connectionName).name
-  metaDb
+  getMetaDb()
     .delete(tableEditorRecentViews)
     .where(eq(tableEditorRecentViews.connectionName, resolvedConnectionName))
     .run()

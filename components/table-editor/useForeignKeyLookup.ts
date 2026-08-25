@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { lookupReferencedRow } from '../../features/table/table.service'
+import { lookupReferencedRow } from '@/features/table/table.service'
 
 export function foreignKeyLookupQueryKey(
   connectionName: string,

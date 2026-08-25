@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PageHead } from '@/components/shared/PageHead'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import ThemeToggle from '../components/theme-toggle'
@@ -67,6 +68,7 @@ export default function NotebookPage() {
         onSelectNotebook={controller.setActiveNotebookId}
       />
 
+      <PageHead title="Notebook" subject={controller.activeNotebook?.title} />
       <main className={styles.layoutMain}>
         <div className={styles.editorPanelHeader}>
           <div className={`${styles.editorTitle} truncate`}>

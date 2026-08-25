@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { listConnections } from '../../../features/connections/connections.service'
+import { listConnections } from '@/features/connections/connections.service'
 
 export const CONNECTIONS_QUERY_KEY = ['connections'] as const
 

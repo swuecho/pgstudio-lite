@@ -8,12 +8,12 @@ import {
   recordTableEditorViewRecent,
   saveTableEditorViewBookmark,
   updateTableEditorViewBookmark,
-} from '../../features/table/table.service'
+} from '@/features/table/table.service'
 import type {
   TableEditorBookmark,
   TableEditorRecentView,
   TableEditorViewState,
-} from '../../lib/table-editor-views'
+} from '@/lib/table-editor-views'
 
 export const EMPTY_RECENT_VIEWS: TableEditorRecentView[] = []
 export const EMPTY_BOOKMARKS: TableEditorBookmark[] = []

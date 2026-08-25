@@ -1,5 +1,5 @@
-import type { RelationKind } from '../../lib/relation-kind'
-import { relationKindLabel, relationKindShortBadge } from '../../lib/relation-kind'
+import type { RelationKind } from '@/lib/relation-kind'
+import { relationKindLabel, relationKindShortBadge } from '@/lib/relation-kind'
 import styles from './RelationKindBadge.module.css'
 
 type RelationKindBadgeProps = {

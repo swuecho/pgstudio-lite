@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { isBooleanColumn, isJsonColumn, isNumericColumn } from '../../lib/table-column-kind'
-import { parseCsv } from '../../lib/csv-parse'
+import { isBooleanColumn, isJsonColumn, isNumericColumn } from '@/lib/table-column-kind'
+import { parseCsv } from '@/lib/csv-parse'
 import type { ColumnInfo } from './types'
 import styles from './ImportRowsModal.module.css'
 

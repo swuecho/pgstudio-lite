@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, desc, eq } from 'drizzle-orm'
-import { queryHistory, querySnippets } from '../../drizzle/schema'
-import { metaDb } from '../meta-db'
+import { queryHistory, querySnippets } from '@/drizzle/schema'
+import { getMetaDb } from '../meta-db'
 import { getConnectionByName } from './connections'
 
 type QueryHistoryRow = {
@@ -64,30 +64,30 @@ export function getHistory(limit = 100, connectionName?: string) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100))
   const resolved = connectionName?.trim()
   const rows = resolved
-    ? metaDb
+    ? getMetaDb()
         .select()
         .from(queryHistory)
         .where(eq(queryHistory.connectionName, resolved))
         .orderBy(desc(queryHistory.executedAt))
         .limit(safeLimit)
         .all()
-    : metaDb.select().from(queryHistory).orderBy(desc(queryHistory.executedAt)).limit(safeLimit).all()
+    : getMetaDb().select().from(queryHistory).orderBy(desc(queryHistory.executedAt)).limit(safeLimit).all()
   return rows.map((row) => parseHistoryRow(toHistoryRow(row)))
 }
 
 export function clearHistory(connectionName?: string) {
   const resolved = connectionName?.trim()
   if (!resolved) {
-    metaDb.delete(queryHistory).run()
+    getMetaDb().delete(queryHistory).run()
     return
   }
-  metaDb.delete(queryHistory).where(eq(queryHistory.connectionName, resolved)).run()
+  getMetaDb().delete(queryHistory).where(eq(queryHistory.connectionName, resolved)).run()
 }
 
 export function getSnippets(limit = 100, connectionName?: string) {
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100))
   const resolvedConnectionName = getConnectionByName(connectionName).name
-  return metaDb
+  return getMetaDb()
     .select()
     .from(querySnippets)
     .where(eq(querySnippets.connectionName, resolvedConnectionName))
@@ -109,7 +109,7 @@ export function saveSnippet({
   const now = new Date().toISOString()
   const id = randomUUID()
   const resolvedConnectionName = getConnectionByName(connectionName).name
-  metaDb
+  getMetaDb()
     .insert(querySnippets)
     .values({
       id,
@@ -143,7 +143,7 @@ export function updateSnippet({
 }) {
   const resolvedConnectionName = getConnectionByName(connectionName).name
   if (title === undefined && queryText === undefined) {
-    const row = metaDb
+    const row = getMetaDb()
       .select()
       .from(querySnippets)
       .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
@@ -157,14 +157,14 @@ export function updateSnippet({
   if (title !== undefined) values.title = title.trim()
   if (queryText !== undefined) values.queryText = queryText.trim()
 
-  const result = metaDb
+  const result = getMetaDb()
     .update(querySnippets)
     .set(values)
     .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
     .run()
   if (!result.changes) return null
 
-  const row = metaDb
+  const row = getMetaDb()
     .select()
     .from(querySnippets)
     .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
@@ -174,7 +174,7 @@ export function updateSnippet({
 
 export function deleteSnippet(id: string, connectionName?: string) {
   const resolvedConnectionName = getConnectionByName(connectionName).name
-  metaDb
+  getMetaDb()
     .delete(querySnippets)
     .where(and(eq(querySnippets.id, id), eq(querySnippets.connectionName, resolvedConnectionName)))
     .run()

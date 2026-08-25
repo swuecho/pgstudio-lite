@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { PageHead } from '@/components/shared/PageHead'
 import { RelationKindBadge } from '../components/shared/RelationKindBadge'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
@@ -46,6 +47,7 @@ export default function TableEditorPage() {
 
       <SettingsPanel />
 
+      <PageHead title="Table Editor" subject={state.activeTable} />
       <main className={pageStyles.layoutMain}>
         <div className={`${pageStyles.editorPanelHeader} ${tableStyles.tableMainHeader}`}>
           <div className={tableStyles.tableHeaderTitle}>

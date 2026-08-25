@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { HttpError } from '../../lib/http'
+import { HttpError } from '@/lib/http'
 import {
   buildGeneratePrompt,
   buildNotebookExportCurl,
@@ -11,8 +11,8 @@ import {
   getJsonParseErrorHint,
   summarizeNotebookDiff,
   type NotebookDiffSummary,
-} from '../../lib/notebook-ui'
-import { exportNotebook, importNotebook, type NotebookSpecV1 } from '../../features/notebook/notebook.service'
+} from '@/lib/notebook-ui'
+import { exportNotebook, importNotebook, type NotebookSpecV1 } from '@/features/notebook/notebook.service'
 
 type ValidationDetail = { path: string; message: string; code?: string }
 

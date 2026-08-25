@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { getTableColumns } from '../../../lib/db'
-import { getRequestConnectionName } from '../../../lib/api/connection'
-import { parseWithSchema } from '../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../lib/api/errors'
+import { getTableColumns } from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const schemaColumnsQuerySchema = z.object({
   schema: z.string().trim().optional().default('public'),

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { NotebookCell, NotebookResolvedOptionsState, NotebookWidgetMetadata } from './types'
-import { runOptionQuery } from '../../features/notebook/notebook.service'
-import { mapQueryResultToOptions } from '../../lib/notebook-option-source'
+import { runOptionQuery } from '@/features/notebook/notebook.service'
+import { mapQueryResultToOptions } from '@/lib/notebook-option-source'
 
 export function useWidgetOptions(params: {
   activeNotebookId: string

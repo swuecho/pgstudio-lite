@@ -4,8 +4,8 @@ import {
   getWidgetParamValues,
   normalizeWidgetMetadata,
   createDefaultWidgetMetadata,
-} from '../../lib/notebook-widgets'
-import type { WidgetValidationMessages } from '../../lib/notebook-widget-validation'
+} from '@/lib/notebook-widgets'
+import type { WidgetValidationMessages } from '@/lib/notebook-widget-validation'
 
 export function isSameValue(a: unknown, b: unknown) {
   if (Array.isArray(a) && Array.isArray(b)) return JSON.stringify(a) === JSON.stringify(b)

@@ -152,7 +152,7 @@ export function SqlSidebar({
           {activeNavTab === 'history' ? (
             <>
               <button className="btn small" onClick={onRefreshHistory} disabled={loadingHistory}>
-                Refresh
+                {loadingHistory ? 'Refreshing...' : 'Refresh'}
               </button>
               <button
                 className="btn small danger"
@@ -165,7 +165,7 @@ export function SqlSidebar({
           ) : activeNavTab === 'snippets' ? (
             <>
               <button className="btn small" onClick={onRefreshSnippets} disabled={loadingSnippets}>
-                Refresh
+                {loadingSnippets ? 'Refreshing...' : 'Refresh'}
               </button>
               <button className="btn small" onClick={() => onSaveSnippet(false)}>
                 {canSaveAs ? 'Update' : 'Save'}
@@ -180,7 +180,7 @@ export function SqlSidebar({
           ) : (
             <>
               <button className="btn small" onClick={onRefreshSchema} disabled={loadingSchema}>
-                Refresh
+                {loadingSchema ? 'Refreshing...' : 'Refresh'}
               </button>
               <button className="btn small" onClick={onInsertTemplate}>
                 Insert
@@ -193,9 +193,11 @@ export function SqlSidebar({
           {activeNavTab === 'history' ? (
             filteredHistory.length === 0 ? (
               <div className="empty-state">
-                {historySearch.trim()
-                  ? 'No history matches your search.'
-                  : 'No query history yet. Run a query to start.'}
+                {loadingHistory
+                  ? 'Loading history...'
+                  : historySearch.trim()
+                    ? 'No history matches your search.'
+                    : 'No query history yet. Run a query to start.'}
               </div>
             ) : (
               filteredHistory.map((item) => (
@@ -225,9 +227,11 @@ export function SqlSidebar({
           ) : activeNavTab === 'snippets' ? (
             filteredSnippets.length === 0 ? (
               <div className="empty-state">
-                {historySearch.trim()
-                  ? 'No snippets match your search.'
-                  : 'No snippets yet. Use Save in the SQL editor to create one.'}
+                {loadingSnippets
+                  ? 'Loading snippets...'
+                  : historySearch.trim()
+                    ? 'No snippets match your search.'
+                    : 'No snippets yet. Use Save in the SQL editor to create one.'}
               </div>
             ) : (
               filteredSnippets.map((item) => (
@@ -289,9 +293,12 @@ export function SqlSidebar({
             )
           ) : schemaGroups.length === 0 ? (
             <div className="empty-state">
-              {historySearch.trim()
-                ? 'No tables or views match your search.'
-                : 'No tables or views found for this connection.'}
+              {/* Don't claim the connection is empty while the fetch is in flight. */}
+              {loadingSchema
+                ? 'Loading tables...'
+                : historySearch.trim()
+                  ? 'No tables or views match your search.'
+                  : 'No tables or views found for this connection.'}
             </div>
           ) : (
             schemaGroups.map(([schema, tables]) => (

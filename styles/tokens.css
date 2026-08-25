@@ -1,4 +1,7 @@
 :root {
+  /* Keeps native scrollbars, form controls, and canvas in step with the theme. */
+  color-scheme: light;
+
   --font-ui: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-size-xs: 12px;
@@ -65,6 +68,8 @@
 }
 
 [data-theme='dark'] {
+  color-scheme: dark;
+
   --bg: #0f131a;
   --panel: #171c25;
   --panel-2: #202634;

@@ -14,7 +14,7 @@ import {
   toTableKey,
   type TableListGroup,
   type TableListSortMode,
-} from '../../lib/table-editor-nav'
+} from '@/lib/table-editor-nav'
 import {
   filterViews,
   formatRelativeTime,
@@ -25,7 +25,7 @@ import {
   type TableEditorBookmark,
   type TableEditorRecentView,
   type TableEditorViewState,
-} from '../../lib/table-editor-views'
+} from '@/lib/table-editor-views'
 import { EMPTY_TABLE_KEYS, useTableEditorNavStore } from './stores/tableEditorNavStore'
 import { useTableEditorSchemaStore } from './stores/tableEditorSchemaStore'
 import { TableInfo } from './types'
@@ -614,8 +614,14 @@ export function TableSidebar({
               {loadingTables ? 'Refreshing...' : 'Refresh'}
             </button>
             <div className={styles.tableNavMeta} aria-live="polite">
-              {matchCount} {matchCount === 1 ? 'table' : 'tables'}
-              {searchAllSchemas ? ' · all schemas' : ''}
+              {loadingTables && tables.length === 0 ? (
+                'Loading...'
+              ) : (
+                <>
+                  {matchCount} {matchCount === 1 ? 'table' : 'tables'}
+                  {searchAllSchemas ? ' · all schemas' : ''}
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -662,11 +668,14 @@ export function TableSidebar({
             renderViewsList()
           ) : flatTables.length === 0 ? (
             <div className="empty-state">
-              {tables.length === 0
-                ? 'No tables or views found for this connection.'
-                : parsedSearch.text
-                  ? 'No tables or views match your search.'
-                  : 'No tables or views found in this schema.'}
+              {/* Don't claim the connection is empty while the fetch is in flight. */}
+              {loadingTables
+                ? 'Loading tables...'
+                : tables.length === 0
+                  ? 'No tables or views found for this connection.'
+                  : parsedSearch.text
+                    ? 'No tables or views match your search.'
+                    : 'No tables or views found in this schema.'}
             </div>
           ) : (
             listSections.map((section, index) => {

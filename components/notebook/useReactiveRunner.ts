@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { NotebookCell, NotebookWidgetMetadata } from './types'
-import { getDependentSqlTargetsForInputKeys, type ReactiveNotebookState } from '../../lib/notebook-reactive'
+import { getDependentSqlTargetsForInputKeys, type ReactiveNotebookState } from '@/lib/notebook-reactive'
 import { getChangedWidgetParamKeys, markQueuedCells } from './cellSyncHelpers'
 
 export function useReactiveRunner(params: {

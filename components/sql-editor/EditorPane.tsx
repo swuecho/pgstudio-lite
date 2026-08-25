@@ -13,7 +13,7 @@ import {
   isFromJoinTableContext,
   resolveAvailableAlias,
   resolveTableForDotContext,
-} from '../../lib/sql-completion-context'
+} from '@/lib/sql-completion-context'
 import { getCurrentTheme } from './utils'
 import { SchemaTable } from './types'
 

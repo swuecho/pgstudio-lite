@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { getActivityStatements, installPgStatStatements, resetActivityStatements } from '../../../lib/db'
-import { getRequestConnectionName } from '../../../lib/api/connection'
-import { parseWithSchema } from '../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../lib/api/errors'
+import { getActivityStatements, installPgStatStatements, resetActivityStatements } from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const orderSchema = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() ? value.trim() : undefined),

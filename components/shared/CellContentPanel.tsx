@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useBottomPanelResizer } from '../../hooks/useBottomPanelResizer'
-import { formatCellContentForView } from '../../lib/format-cell-content'
-import { getColumnKind } from '../../lib/table-column-kind'
+import { useBottomPanelResizer } from '@/hooks/useBottomPanelResizer'
+import { formatCellContentForView } from '@/lib/format-cell-content'
+import { getColumnKind } from '@/lib/table-column-kind'
 import styles from './CellContentPanel.module.css'
 
 export type CellContentPanelProps = {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { suggestBookmarkTitle, type TableEditorViewState } from '../../lib/table-editor-views'
+import { suggestBookmarkTitle, type TableEditorViewState } from '@/lib/table-editor-views'
 import { isOutsideToolbarPopover, useToolbarPopoverPosition } from './useToolbarPopover'
 import styles from './SaveViewPopover.module.css'
 

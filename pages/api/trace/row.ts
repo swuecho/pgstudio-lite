@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { traceRowLineage } from '../../../lib/row-trace'
-import { getRequestConnectionName } from '../../../lib/api/connection'
-import { parseWithSchema } from '../../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../../lib/api/errors'
+import { traceRowLineage } from '@/lib/row-trace'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const bodySchema = z.object({
   schema: z.string().trim().min(1),

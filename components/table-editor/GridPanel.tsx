@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import type { RefObject } from 'react'
 import { ColumnInfo, RowData, RowKey } from './types'
-import { copyableCellDisplayProps } from '../../lib/format-uuid-display'
-import { isBooleanColumn, isDateColumn, isDateTimeColumn, isJsonColumn } from '../../lib/table-column-kind'
+import { copyableCellDisplayProps } from '@/lib/format-uuid-display'
+import { isBooleanColumn, isDateColumn, isDateTimeColumn, isJsonColumn } from '@/lib/table-column-kind'
 import { ColumnsSelector } from './ColumnsSelector'
 import { FilterPopover } from './FilterPopover'
 import { SortPopover } from './SortPopover'
@@ -12,9 +12,9 @@ import { ImportRowsModal } from './ImportRowsModal'
 import { TableDdlModal } from './TableDdlModal'
 import { CellContentPanel } from '../shared/CellContentPanel'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
-import { canOpenCellViewer } from '../../lib/format-cell-content'
-import { buildTraceHref } from '../../lib/trace-url'
-import type { TableFilterMode } from '../../lib/table-filter'
+import { canOpenCellViewer } from '@/lib/format-cell-content'
+import { buildTraceHref } from '@/lib/trace-url'
+import type { TableFilterMode } from '@/lib/table-filter'
 import { ForeignKeyCell } from './ForeignKeyCell'
 import { CellForeignKeyEditor } from './CellForeignKeyEditor'
 import { formatForeignKeyHeaderTitle } from './foreignKeyUtils'
@@ -462,104 +462,103 @@ export function TableGridPanel({
                               onCommit={commitRowChange}
                             />
                           ) : isBooleanColumn(col.dataType) ? (
-                              <div className={styles.tableCellEditor}>
-                                <button
-                                  className={`${styles.tableBoolToggle} ${row[col.name] === true ? styles.tableBoolToggleOn : ''}`}
-                                  onClick={() => {
-                                    commitRowChange(row, col.name, row[col.name] !== true, col.dataType)
-                                  }}
-                                  title={`Toggle ${col.name}`}
-                                >
-                                  {row[col.name] === true ? 'TRUE' : 'FALSE'}
-                                </button>
-                              </div>
-                            ) : isDateColumn(col.dataType) ? (
-                              <div className={styles.tableCellEditor}>
-                                <input
-                                  className={`${styles.cellInput} ${styles.tableTypedInput}`}
-                                  type="date"
-                                  defaultValue={toDateInputValue(row[col.name])}
-                                  onBlur={(e) => {
-                                    const target = e.currentTarget
-                                    const raw = target.value
-                                    const nextValue = raw || null
-                                    const result = commitRowChange(
-                                      row,
-                                      col.name,
-                                      nextValue,
-                                      col.dataType,
-                                      () => {
-                                        target.value = toDateInputValue(row[col.name])
-                                      }
-                                    )
-                                    if (result === 'unchanged') target.value = toDateInputValue(row[col.name])
-                                  }}
-                                />
-                              </div>
-                            ) : isDateTimeColumn(col.dataType) ? (
-                              <div className={styles.tableCellEditor}>
-                                <input
-                                  className={`${styles.cellInput} ${styles.tableTypedInput}`}
-                                  type="datetime-local"
-                                  defaultValue={toDateTimeInputValue(row[col.name])}
-                                  onBlur={(e) => {
-                                    const target = e.currentTarget
-                                    const raw = target.value
-                                    const nextValue = raw || null
-                                    const result = commitRowChange(
-                                      row,
-                                      col.name,
-                                      nextValue,
-                                      col.dataType,
-                                      () => {
-                                        target.value = toDateTimeInputValue(row[col.name])
-                                      }
-                                    )
-                                    if (result === 'unchanged')
+                            <div className={styles.tableCellEditor}>
+                              <button
+                                className={`${styles.tableBoolToggle} ${row[col.name] === true ? styles.tableBoolToggleOn : ''}`}
+                                onClick={() => {
+                                  commitRowChange(row, col.name, row[col.name] !== true, col.dataType)
+                                }}
+                                title={`Toggle ${col.name}`}
+                              >
+                                {row[col.name] === true ? 'TRUE' : 'FALSE'}
+                              </button>
+                            </div>
+                          ) : isDateColumn(col.dataType) ? (
+                            <div className={styles.tableCellEditor}>
+                              <input
+                                className={`${styles.cellInput} ${styles.tableTypedInput}`}
+                                type="date"
+                                defaultValue={toDateInputValue(row[col.name])}
+                                onBlur={(e) => {
+                                  const target = e.currentTarget
+                                  const raw = target.value
+                                  const nextValue = raw || null
+                                  const result = commitRowChange(
+                                    row,
+                                    col.name,
+                                    nextValue,
+                                    col.dataType,
+                                    () => {
+                                      target.value = toDateInputValue(row[col.name])
+                                    }
+                                  )
+                                  if (result === 'unchanged') target.value = toDateInputValue(row[col.name])
+                                }}
+                              />
+                            </div>
+                          ) : isDateTimeColumn(col.dataType) ? (
+                            <div className={styles.tableCellEditor}>
+                              <input
+                                className={`${styles.cellInput} ${styles.tableTypedInput}`}
+                                type="datetime-local"
+                                defaultValue={toDateTimeInputValue(row[col.name])}
+                                onBlur={(e) => {
+                                  const target = e.currentTarget
+                                  const raw = target.value
+                                  const nextValue = raw || null
+                                  const result = commitRowChange(
+                                    row,
+                                    col.name,
+                                    nextValue,
+                                    col.dataType,
+                                    () => {
                                       target.value = toDateTimeInputValue(row[col.name])
-                                  }}
-                                />
-                              </div>
-                            ) : isJsonColumn(col.dataType) ? (
-                              <div className={styles.tableCellEditor}>
-                                <span className={styles.tableCellKind}>JSON</span>
-                                <button
-                                  type="button"
-                                  className={styles.jsonbPreviewButton}
-                                  onClick={() => openCellView(row, col)}
-                                  title="Click to view JSON (double-click cell)"
-                                >
-                                  <code className={styles.jsonbPreviewText}>
-                                    {truncate(formatJsonbPreview(row[col.name]), 150)}
-                                  </code>
-                                </button>
-                              </div>
-                            ) : (
-                              <div className={styles.tableCellEditor}>
-                                {editorKind ? (
-                                  <span className={styles.tableCellKind}>{editorKind.toUpperCase()}</span>
-                                ) : null}
-                                <input
-                                  className={`${styles.cellInput} ${styles.tableTypedInput}`}
-                                  defaultValue={String(row[col.name] ?? '')}
-                                  onBlur={(e) => {
-                                    const target = e.currentTarget
-                                    const nextValue = target.value
-                                    const result = commitRowChange(
-                                      row,
-                                      col.name,
-                                      nextValue,
-                                      col.dataType,
-                                      () => {
-                                        target.value = String(row[col.name] ?? '')
-                                      }
-                                    )
-                                    if (result === 'unchanged') target.value = String(row[col.name] ?? '')
-                                  }}
-                                />
-                              </div>
-                            )
-                          }
+                                    }
+                                  )
+                                  if (result === 'unchanged')
+                                    target.value = toDateTimeInputValue(row[col.name])
+                                }}
+                              />
+                            </div>
+                          ) : isJsonColumn(col.dataType) ? (
+                            <div className={styles.tableCellEditor}>
+                              <span className={styles.tableCellKind}>JSON</span>
+                              <button
+                                type="button"
+                                className={styles.jsonbPreviewButton}
+                                onClick={() => openCellView(row, col)}
+                                title="Click to view JSON (double-click cell)"
+                              >
+                                <code className={styles.jsonbPreviewText}>
+                                  {truncate(formatJsonbPreview(row[col.name]), 150)}
+                                </code>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className={styles.tableCellEditor}>
+                              {editorKind ? (
+                                <span className={styles.tableCellKind}>{editorKind.toUpperCase()}</span>
+                              ) : null}
+                              <input
+                                className={`${styles.cellInput} ${styles.tableTypedInput}`}
+                                defaultValue={String(row[col.name] ?? '')}
+                                onBlur={(e) => {
+                                  const target = e.currentTarget
+                                  const nextValue = target.value
+                                  const result = commitRowChange(
+                                    row,
+                                    col.name,
+                                    nextValue,
+                                    col.dataType,
+                                    () => {
+                                      target.value = String(row[col.name] ?? '')
+                                    }
+                                  )
+                                  if (result === 'unchanged') target.value = String(row[col.name] ?? '')
+                                }}
+                              />
+                            </div>
+                          )}
                         </td>
                       )
                     })}

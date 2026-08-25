@@ -5,10 +5,10 @@ import {
   deleteConnection,
   setDefaultConnection,
   updateConnection,
-} from '../../../features/connections/connections.service'
-import { CONNECTIONS_QUERY_KEY, useConnections } from '../../shared/hooks/useConnections'
-import { useActiveConnectionStore } from '../../shared/stores/activeConnectionStore'
-import { ConfirmDialog } from '../../shared/Dialog'
+} from '@/features/connections/connections.service'
+import { CONNECTIONS_QUERY_KEY, useConnections } from '@/components/shared/hooks/useConnections'
+import { useActiveConnectionStore } from '@/components/shared/stores/activeConnectionStore'
+import { ConfirmDialog } from '@/components/shared/Dialog'
 
 export function ConnectionsSection() {
   const queryClient = useQueryClient()

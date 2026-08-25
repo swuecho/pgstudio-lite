@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EChartsType } from 'echarts'
 import styles from './ResultChart.module.css'
-import { useThemeMode } from '../../hooks/useThemeMode'
-import type { ResultChartType } from '../../lib/notebook-chart-config'
+import { useThemeMode } from '@/hooks/useThemeMode'
+import type { ResultChartType } from '@/lib/notebook-chart-config'
 
 export type ResultChartConfig = {
   chartType: ResultChartType

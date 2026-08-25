@@ -2,35 +2,68 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import BetterSqlite3 from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from '../drizzle/schema'
 import { getMetaDbDir, getMetaDbPath } from './meta-db-path'
 
-const DB_PATH = getMetaDbPath()
-const DATA_DIR = getMetaDbDir()
-
-if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-
-export const sqlite = new BetterSqlite3(DB_PATH)
-sqlite.pragma('journal_mode = WAL')
-sqlite.pragma('foreign_keys = ON')
-
-function hasTable(name: string) {
-  return Boolean(
-    sqlite.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1`).get(name)
-  )
+/**
+ * The metadata DB is opened lazily on first access, never at import time.
+ *
+ * `better-sqlite3` is a native addon: constructing a Database loads a compiled
+ * binary and touches the filesystem. Doing that at module load meant importing
+ * anything from `lib/db` — including pure helpers like `splitStatements` — paid
+ * for a SQLite handle, and a Node ABI mismatch failed test files that never
+ * touch the database. Use `getMetaDb()` / `getSqlite()` instead of module-level
+ * bindings so the cost lands only on code that actually queries.
+ */
+type MetaDbHandles = {
+  sqlite: BetterSqlite3.Database
+  metaDb: BetterSQLite3Database<typeof schema>
 }
 
-function hasColumn(table: string, column: string) {
-  return Boolean(
-    sqlite.prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ? LIMIT 1`).get(table, column)
-  )
+let handles: MetaDbHandles | null = null
+
+function openMetaDb(): MetaDbHandles {
+  const dataDir = getMetaDbDir()
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
+
+  const sqlite = new BetterSqlite3(getMetaDbPath())
+  sqlite.pragma('journal_mode = WAL')
+  sqlite.pragma('foreign_keys = ON')
+
+  return { sqlite, metaDb: drizzle(sqlite, { schema }) }
 }
 
-export const metaDb = drizzle(sqlite, { schema })
+function getHandles(): MetaDbHandles {
+  if (handles) return handles
+  handles = openMetaDb()
+  reconcileSchema(handles)
+  return handles
+}
+
+export function getSqlite() {
+  return getHandles().sqlite
+}
+
+export function getMetaDb() {
+  return getHandles().metaDb
+}
 
 export function ensureMetaDbReady() {
+  const alreadyOpen = handles !== null
+  const current = getHandles()
+  // getHandles() reconciles on open; only re-run for explicit later calls.
+  if (alreadyOpen) reconcileSchema(current)
+}
+
+function reconcileSchema({ sqlite, metaDb }: MetaDbHandles) {
+  const hasTable = (name: string) =>
+    Boolean(sqlite.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1`).get(name))
+
+  const hasColumn = (table: string, column: string) =>
+    Boolean(sqlite.prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ? LIMIT 1`).get(table, column))
+
   const isTestRuntime = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test')
   // Handle dev drift where metadata_json exists already but 0006 is not yet registered.
   const hasNotebookMetadataJsonColumn =
@@ -59,7 +92,7 @@ export function ensureMetaDbReady() {
   }
 
   if (isTestRuntime) {
-    ensureBaseTables()
+    ensureBaseTables(sqlite)
   }
 
   if (hasTable('notebook_cells') && !hasColumn('notebook_cells', 'last_result_json')) {
@@ -111,9 +144,7 @@ export function ensureMetaDbReady() {
   }
 }
 
-ensureMetaDbReady()
-
-function ensureBaseTables() {
+function ensureBaseTables(sqlite: BetterSqlite3.Database) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS db_connections (
       id text PRIMARY KEY NOT NULL,

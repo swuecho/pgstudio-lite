@@ -1,0 +1,41 @@
+.rail {
+  border-right: 1px solid var(--border);
+  background: var(--surface-rail);
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.railBtn {
+  height: 38px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.railBtn:hover,
+.railBtnActive {
+  background: var(--panel-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.themeSlot {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .rail {
+    display: none;
+  }
+}

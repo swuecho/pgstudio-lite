@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { DATETIME_FILTER_TIMEZONE_HINT, getColumnKind } from '../../lib/table-column-kind'
+import { DATETIME_FILTER_TIMEZONE_HINT, getColumnKind } from '@/lib/table-column-kind'
 import {
   defaultFilterModeForColumnKind,
   filterModeNeedsEndValue,
@@ -10,7 +10,7 @@ import {
   hasActiveTableFilter,
   isSlowFilterMode,
   type TableFilterMode,
-} from '../../lib/table-filter'
+} from '@/lib/table-filter'
 import type { ColumnInfo } from './types'
 import { ForeignKeyCombobox } from './ForeignKeyCombobox'
 import { isOutsideToolbarPopover, useToolbarPopoverPosition } from './useToolbarPopover'
@@ -72,7 +72,10 @@ export function FilterPopover({
   const hasFilters = hasActiveTableFilter(filterColumn, filterMode, filterValue, filterValueEnd)
   const showBooleanFilterValue = filterColumnKind === 'boolean' && filterValueRequired
   const showForeignKeyFilterValue =
-    Boolean(filterColumnMeta?.foreignKey) && filterValueRequired && !showBooleanFilterValue && !filterEndRequired
+    Boolean(filterColumnMeta?.foreignKey) &&
+    filterValueRequired &&
+    !showBooleanFilterValue &&
+    !filterEndRequired
   const filterSummary = formatTableFilterSummary(filterColumn, filterMode, filterValue, filterValueEnd)
   const showSlowFilterWarning = isSlowFilterMode(filterMode) && totalRows > 1000
 

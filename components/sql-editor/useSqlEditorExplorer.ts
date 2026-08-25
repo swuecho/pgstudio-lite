@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getSchema, getSchemaColumns } from '../../features/sql/sql.service'
+import { getSchema, getSchemaColumns } from '@/features/sql/sql.service'
 import { useSqlEditorExplorerStore } from './stores/sqlEditorExplorerStore'
 import type { SchemaTable } from './types'
 

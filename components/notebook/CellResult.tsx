@@ -2,8 +2,8 @@ import { memo, useState } from 'react'
 import { ResultChart } from '../sql-editor/ResultChart'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import { formatCell } from '../sql-editor/utils'
-import { copyableCellDisplayProps } from '../../lib/format-uuid-display'
-import { getChartConfig, setChartConfig } from '../../lib/notebook-chart-config'
+import { copyableCellDisplayProps } from '@/lib/format-uuid-display'
+import { getChartConfig, setChartConfig } from '@/lib/notebook-chart-config'
 import type { QueryResult } from '../sql-editor/types'
 
 type CellResultProps = {

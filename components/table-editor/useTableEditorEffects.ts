@@ -4,15 +4,15 @@ import {
   hasActiveTableFilter,
   isFilterModeAllowedForColumnKind,
   type TableFilterMode,
-} from '../../lib/table-filter'
-import { buildViewState, viewStateKey } from '../../lib/table-editor-views'
-import { getColumnKind } from '../../lib/table-column-kind'
+} from '@/lib/table-filter'
+import { buildViewState, viewStateKey } from '@/lib/table-editor-views'
+import { getColumnKind } from '@/lib/table-column-kind'
 import { resolveNextActiveTable, resolveSortAndFilter } from './tableEditorContracts'
 import { restoreTableFilters } from './restoreTableFilters'
 import { tableEditorFilterKey, useTableEditorFilterStore } from './stores/tableEditorFilterStore'
 import type { TableEditorFilter } from './stores/tableEditorFilterStore'
 import type { ColumnInfo, TableInfo } from './types'
-import type { TableEditorViewState } from '../../lib/table-editor-views'
+import type { TableEditorViewState } from '@/lib/table-editor-views'
 
 const RECENT_VIEW_DEBOUNCE_MS = 400
 

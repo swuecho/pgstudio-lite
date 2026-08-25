@@ -5,16 +5,16 @@ import type { CSSProperties } from 'react'
 import { QueryResult } from './types'
 import { CellContentPanel } from '../shared/CellContentPanel'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
-import { canOpenCellViewer } from '../../lib/format-cell-content'
-import { copyableCellDisplayProps } from '../../lib/format-uuid-display'
+import { canOpenCellViewer } from '@/lib/format-cell-content'
+import { copyableCellDisplayProps } from '@/lib/format-uuid-display'
 import {
   buildResultExportFilename,
   downloadText,
   rowsToCsv,
   rowsToJson,
   rowsToTsv,
-} from '../../lib/result-export'
-import { buildTraceHref } from '../../lib/trace-url'
+} from '@/lib/result-export'
+import { buildTraceHref } from '@/lib/trace-url'
 import { formatExplainPlan } from './utils'
 import { ExplainPlanTree } from './ExplainPlanTree'
 import { ResultChart } from './ResultChart'

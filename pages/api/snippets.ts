@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { deleteSnippet, getSnippets, saveSnippet, updateSnippet } from '../../lib/db'
-import { getRequestConnectionName } from '../../lib/api/connection'
-import { nonEmptyStringSchema, parseWithSchema } from '../../lib/api/validation'
-import { methodNotAllowed, sendApiError } from '../../lib/api/errors'
+import { deleteSnippet, getSnippets, saveSnippet, updateSnippet } from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { nonEmptyStringSchema, parseWithSchema } from '@/lib/api/validation'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const snippetsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional().default(200),

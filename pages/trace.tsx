@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PageHead } from '@/components/shared/PageHead'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -233,6 +234,7 @@ export default function TracePage() {
         </div>
       </aside>
 
+      <PageHead title="Trace" subject={schema && table ? `${schema}.${table}` : null} />
       <main className={styles.layoutMain}>
         <div className={styles.header}>
           <div className={styles.title}>Trace · {schema && table ? `${schema}.${table}` : 'no target'}</div>

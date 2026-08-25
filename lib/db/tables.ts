@@ -692,7 +692,9 @@ function normalizeLabelColumnName(name: string) {
 }
 
 export function pickForeignKeyLabelColumn(columns: TableColumn[], valueColumn: string): string | undefined {
-  const candidates = columns.filter((column) => column.name !== valueColumn && isLabelLikeType(column.dataType))
+  const candidates = columns.filter(
+    (column) => column.name !== valueColumn && isLabelLikeType(column.dataType)
+  )
   if (candidates.length === 0) return undefined
 
   for (const rank of FK_LABEL_NAME_RANKS) {
@@ -758,7 +760,11 @@ export async function getForeignKeyOptions(
     )
     const heuristicLabelColumn = pickForeignKeyLabelColumn(columns, column)
     const labelColumn = configuredLabelColumn ?? heuristicLabelColumn
-    const labelColumnSource = configuredLabelColumn ? 'configured' : heuristicLabelColumn ? 'heuristic' : 'none'
+    const labelColumnSource = configuredLabelColumn
+      ? 'configured'
+      : heuristicLabelColumn
+        ? 'heuristic'
+        : 'none'
     const availableLabelColumns = columns
       .filter((candidate) => candidate.name !== column)
       .map((candidate) => ({

@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router'
+import { PageHead } from '@/components/shared/PageHead'
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
@@ -227,6 +228,7 @@ export default function SqlEditorPage() {
       className={styles.layoutRoot}
       style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
     >
+      <PageHead title="SQL Editor" />
       <SqlSidebar
         searchInputRef={sidebarSearchRef}
         connectionName={state.connectionName}

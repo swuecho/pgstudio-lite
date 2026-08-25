@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { TableFilterMode } from '../../../lib/table-filter'
+import type { TableFilterMode } from '@/lib/table-filter'
 
 export type TableEditorFilter = {
   filterColumn: string

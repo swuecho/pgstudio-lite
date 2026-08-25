@@ -1,17 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import {
-  getForeignKeyDisplayConfig,
-  getTableColumns,
-  saveForeignKeyDisplayConfig,
-} from '../../../../lib/db'
-import { getRequestConnectionName } from '../../../../lib/api/connection'
-import {
-  nonEmptyStringSchema,
-  optionalSchemaNameSchema,
-  parseWithSchema,
-} from '../../../../lib/api/validation'
-import { badRequest, methodNotAllowed, sendApiError } from '../../../../lib/api/errors'
+import { getForeignKeyDisplayConfig, getTableColumns, saveForeignKeyDisplayConfig } from '@/lib/db'
+import { getRequestConnectionName } from '@/lib/api/connection'
+import { nonEmptyStringSchema, optionalSchemaNameSchema, parseWithSchema } from '@/lib/api/validation'
+import { badRequest, methodNotAllowed, sendApiError } from '@/lib/api/errors'
 
 const tableParamSchema = z.object({
   table: nonEmptyStringSchema,

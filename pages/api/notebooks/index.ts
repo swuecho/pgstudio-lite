@@ -1,12 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
-import { createNotebook, deleteNotebook, listNotebooks, updateNotebook } from '../../../lib/notebook-db'
-import { methodNotAllowed, sendApiError } from '../../../lib/api/errors'
-import {
-  nonEmptyStringSchema,
-  optionalConnectionNameSchema,
-  parseWithSchema,
-} from '../../../lib/api/validation'
+import { createNotebook, deleteNotebook, listNotebooks, updateNotebook } from '@/lib/notebook-db'
+import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
+import { nonEmptyStringSchema, optionalConnectionNameSchema, parseWithSchema } from '@/lib/api/validation'
 
 const notebooksQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional().default(200),

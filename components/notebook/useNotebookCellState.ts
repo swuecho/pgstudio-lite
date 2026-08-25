@@ -2,20 +2,20 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell, NotebookCellType, NotebookDetail, NotebookWidgetMetadata } from './types'
-import { buildInputValues } from '../../lib/notebook-reactive'
-import { createCell, deleteCell, updateCell } from '../../features/notebook/notebook.service'
-import { extractTemplateKeys } from '../../lib/notebook-params'
+import { buildInputValues } from '@/lib/notebook-reactive'
+import { createCell, deleteCell, updateCell } from '@/features/notebook/notebook.service'
+import { extractTemplateKeys } from '@/lib/notebook-params'
 import {
   createDefaultWidgetMetadata,
   createWidgetMetadataFromPreset,
   normalizeWidgetMetadata,
   type NotebookWidgetPresetId,
-} from '../../lib/notebook-widgets'
+} from '@/lib/notebook-widgets'
 import {
   countWidgetValidationMessages,
   getWidgetValidationMessages,
   type WidgetValidationMessages,
-} from '../../lib/notebook-widget-validation'
+} from '@/lib/notebook-widget-validation'
 import {
   getPendingSaveCount,
   getStaleResultByCell,
