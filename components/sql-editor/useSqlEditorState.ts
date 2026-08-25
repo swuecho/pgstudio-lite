@@ -2,7 +2,7 @@ import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useMemo, useState } from 'react'
 import { runQuery } from '../../features/sql/sql.service'
 import { buildExplainQuery, detectOS, suffixWithLimit } from './utils'
-import type { QueryResult, SnippetItem } from './types'
+import type { SnippetItem } from './types'
 import { useSqlEditorExplorer } from './useSqlEditorExplorer'
 import { useSqlEditorHistory } from './useSqlEditorHistory'
 import { useSqlEditorSnippets } from './useSqlEditorSnippets'
@@ -17,12 +17,13 @@ export function useSqlEditorState() {
   const [running, setRunning] = useState(false)
   const [explaining, setExplaining] = useState(false)
   const [hasSelection, setHasSelection] = useState(false)
-  const [result, setResult] = useState<QueryResult | null>(null)
   const { connections, connectionName, setConnectionName } = useActiveConnection({
     onUnconfigured: () => setStatus({ text: 'Set PG_CONNECTION_STRING to start', tone: 'warning' }),
   })
 
   const tabs = useSqlEditorTabs()
+
+  const result = tabs.activeQueryTab ? (tabs.resultsByTabId[tabs.activeQueryTab.id] ?? null) : null
 
   function getEditorQueryText() {
     return editorRef?.getModel()?.getValue() || tabs.activeQueryTab?.query || ''
@@ -88,19 +89,18 @@ export function useSqlEditorState() {
       return
     }
 
+    const tabId = tabs.activeQueryTab.id
     setRunning(true)
     setStatus({ text: 'Running query...', tone: 'running' })
 
     try {
       const payload = await runQuery(connectionName, suffixWithLimit(current, 100))
-      setResult(payload)
+      tabs.setTabResult(tabId, payload)
       setStatus({ text: `Success in ${payload.durationMs} ms`, tone: 'ok' })
-      tabs.setQueryTabs((all) =>
-        all.map((t) => (t.id === tabs.activeQueryTab?.id ? { ...t, dirty: false } : t))
-      )
+      tabs.setQueryTabs((all) => all.map((t) => (t.id === tabId ? { ...t, dirty: false } : t)))
       await history.loadHistory()
     } catch (error) {
-      setResult(null)
+      tabs.setTabResult(tabId, null)
       setStatus({ text: error instanceof Error ? error.message : 'Query failed', tone: 'error' })
       await history.loadHistory()
     } finally {
@@ -121,6 +121,7 @@ export function useSqlEditorState() {
     const readOnly = Boolean(connection?.readOnly)
     const explainQuery = buildExplainQuery(current, readOnly)
 
+    const tabId = tabs.activeQueryTab.id
     setExplaining(true)
     setStatus({
       text: readOnly ? 'Explaining query (no analyze on read-only)...' : 'Explaining query (analyze)...',
@@ -129,11 +130,11 @@ export function useSqlEditorState() {
 
     try {
       const payload = await runQuery(connectionName, explainQuery)
-      setResult(payload)
+      tabs.setTabResult(tabId, payload)
       setStatus({ text: `Explain finished in ${payload.durationMs} ms`, tone: 'ok' })
       await history.loadHistory()
     } catch (error) {
-      setResult(null)
+      tabs.setTabResult(tabId, null)
       setStatus({ text: error instanceof Error ? error.message : 'Explain failed', tone: 'error' })
       await history.loadHistory()
     } finally {

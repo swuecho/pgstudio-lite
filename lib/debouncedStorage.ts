@@ -14,7 +14,12 @@ export function createDebouncedStateStorage(delayMs = 500): DebouncedStateStorag
       timer = null
     }
     if (!pending) return
-    localStorage.setItem(pending.name, pending.value)
+    try {
+      localStorage.setItem(pending.name, pending.value)
+    } catch (error) {
+      // Quota exceeded (e.g. large query results) — keep the app running; state stays in memory.
+      console.warn('Failed to persist state to localStorage', error)
+    }
     pending = null
   }
 

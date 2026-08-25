@@ -7,6 +7,8 @@ export function useSqlEditorTabs() {
   const setQueryTabs = useSqlEditorTabsStore((s) => s.setQueryTabs)
   const activeQueryTabId = useSqlEditorTabsStore((s) => s.activeQueryTabId)
   const setActiveQueryTabId = useSqlEditorTabsStore((s) => s.setActiveQueryTabId)
+  const resultsByTabId = useSqlEditorTabsStore((s) => s.resultsByTabId)
+  const setTabResult = useSqlEditorTabsStore((s) => s.setTabResult)
 
   const activeQueryTab = useMemo(
     () => queryTabs.find((tab) => tab.id === activeQueryTabId) || queryTabs[0],
@@ -122,6 +124,8 @@ export function useSqlEditorTabs() {
   return {
     queryTabs,
     setQueryTabs,
+    resultsByTabId,
+    setTabResult,
     activeQueryTabId,
     setActiveQueryTabId,
     activeQueryTab,
