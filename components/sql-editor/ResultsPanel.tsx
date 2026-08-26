@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { useState } from 'react'
+import { useGridKeyboardNav } from '@/hooks/useGridKeyboardNav'
 import styles from './ResultsPanel.module.css'
 import type { CSSProperties } from 'react'
 import { QueryResult } from './types'
@@ -200,77 +201,14 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                 ) : statement.fields.length > 0 && viewModes[index] === 'chart' ? (
                   <ResultChart fields={statement.fields} rows={statement.rows} />
                 ) : statement.fields.length > 0 ? (
-                  (() => {
-                    const traceTarget = getTraceTarget(statement)
-                    return (
-                      <div className={styles.tableWrap}>
-                        <table>
-                          <thead>
-                            <tr>
-                              {statement.fields.map((field) => (
-                                <th key={field}>{field}</th>
-                              ))}
-                              {traceTarget ? <th aria-label="trace" /> : null}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {statement.rows.map((row, rowIndex) => (
-                              <tr key={rowIndex}>
-                                {statement.fields.map((field) => {
-                                  const rawValue = row[field]
-                                  const isViewable = canOpenCellViewer(undefined, rawValue)
-                                  const isViewing =
-                                    cellView?.statementIndex === index &&
-                                    cellView.rowIndex === rowIndex &&
-                                    cellView.field === field
-                                  return (
-                                    <td
-                                      key={`${rowIndex}-${field}`}
-                                      className={isViewable ? styles.resultCellViewable : undefined}
-                                      data-viewing={isViewing ? 'true' : undefined}
-                                      title={isViewable ? 'Double-click to view full content' : undefined}
-                                      onDoubleClick={() => {
-                                        if (isViewable) {
-                                          setCellView({
-                                            statementIndex: index,
-                                            rowIndex,
-                                            field,
-                                            value: rawValue,
-                                          })
-                                        }
-                                      }}
-                                    >
-                                      <CopyableCellValue
-                                        {...copyableCellDisplayProps(formatCell(rawValue))}
-                                      />
-                                    </td>
-                                  )
-                                })}
-                                {traceTarget ? (
-                                  <td className={styles.resultTraceCell}>
-                                    {(() => {
-                                      const href = buildStatementTraceHref(connectionName, traceTarget, row)
-                                      return href ? (
-                                        <Link
-                                          className={styles.resultTraceLink}
-                                          href={href}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          title="Trace foreign-key lineage from this row"
-                                        >
-                                          Trace
-                                        </Link>
-                                      ) : null
-                                    })()}
-                                  </td>
-                                ) : null}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )
-                  })()
+                  <ResultRowsTable
+                    statement={statement}
+                    statementIndex={index}
+                    connectionName={connectionName}
+                    formatCell={formatCell}
+                    cellView={cellView}
+                    onOpenCellView={setCellView}
+                  />
                 ) : (
                   <div className={styles.emptyState}>Command executed successfully.</div>
                 )}
@@ -287,6 +225,97 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
           onClose={() => setCellView(null)}
         />
       ) : null}
+    </div>
+  )
+}
+
+type ResultRowsTableProps = {
+  statement: StatementResult
+  statementIndex: number
+  connectionName: string
+  formatCell: (value: unknown) => string
+  cellView: SqlCellView | null
+  onOpenCellView: (view: SqlCellView) => void
+}
+
+/** One tab stop for the whole result table; arrows move between cells. */
+function ResultRowsTable({
+  statement,
+  statementIndex,
+  connectionName,
+  formatCell,
+  cellView,
+  onOpenCellView,
+}: ResultRowsTableProps) {
+  const traceTarget = getTraceTarget(statement)
+  const { containerRef, cellProps, onKeyDown } = useGridKeyboardNav({
+    rowCount: statement.rows.length,
+    colCount: statement.fields.length,
+  })
+
+  return (
+    <div className={styles.tableWrap} ref={containerRef} onKeyDown={onKeyDown}>
+      <table>
+        <thead>
+          <tr>
+            {statement.fields.map((field) => (
+              <th key={field}>{field}</th>
+            ))}
+            {traceTarget ? <th aria-label="trace" /> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {statement.rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {statement.fields.map((field, colIndex) => {
+                const rawValue = row[field]
+                const isViewable = canOpenCellViewer(undefined, rawValue)
+                const isViewing =
+                  cellView?.statementIndex === statementIndex &&
+                  cellView.rowIndex === rowIndex &&
+                  cellView.field === field
+                return (
+                  <td
+                    key={`${rowIndex}-${field}`}
+                    className={isViewable ? styles.resultCellViewable : undefined}
+                    data-viewing={isViewing ? 'true' : undefined}
+                    title={isViewable ? 'Double-click to view full content' : undefined}
+                    onDoubleClick={() => {
+                      if (isViewable) {
+                        onOpenCellView({ statementIndex, rowIndex, field, value: rawValue })
+                      }
+                    }}
+                  >
+                    <CopyableCellValue
+                      {...copyableCellDisplayProps(formatCell(rawValue))}
+                      {...cellProps(rowIndex, colIndex)}
+                      ariaLabel={`${field}, row ${rowIndex + 1}`}
+                    />
+                  </td>
+                )
+              })}
+              {traceTarget ? (
+                <td className={styles.resultTraceCell}>
+                  {(() => {
+                    const href = buildStatementTraceHref(connectionName, traceTarget, row)
+                    return href ? (
+                      <Link
+                        className={styles.resultTraceLink}
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Trace foreign-key lineage from this row"
+                      >
+                        Trace
+                      </Link>
+                    ) : null
+                  })()}
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

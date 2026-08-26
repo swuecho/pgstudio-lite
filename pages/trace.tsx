@@ -1,9 +1,9 @@
+import { NavRail } from '@/components/shared/NavRail'
 import Link from 'next/link'
 import { PageHead } from '@/components/shared/PageHead'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import ThemeToggle from '../components/theme-toggle'
 import { useActiveConnection } from '../components/shared/hooks/useActiveConnection'
 import { fetchRowTrace, type TraceEdge, type TraceNode } from '../features/trace/trace.service'
 import { buildTraceHref } from '../lib/trace-url'
@@ -216,23 +216,7 @@ export default function TracePage() {
 
   return (
     <div className={styles.layoutRoot}>
-      <aside className={styles.layoutRail}>
-        <Link className={styles.railBtn} href="/">
-          SQL
-        </Link>
-        <Link className={styles.railBtn} href="/table-editor">
-          TB
-        </Link>
-        <Link className={styles.railBtn} href="/notebook">
-          NB
-        </Link>
-        <Link className={styles.railBtn} href="/activity">
-          AC
-        </Link>
-        <div className="mt-auto flex justify-center">
-          <ThemeToggle />
-        </div>
-      </aside>
+      <NavRail active={undefined} />
 
       <PageHead title="Trace" subject={schema && table ? `${schema}.${table}` : null} />
       <main className={styles.layoutMain}>

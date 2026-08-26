@@ -1,6 +1,5 @@
-import Link from 'next/link'
+import { NavRail } from '@/components/shared/NavRail'
 import type { RefObject } from 'react'
-import ThemeToggle from '../theme-toggle'
 import { RelationKindBadge } from '../shared/RelationKindBadge'
 import { HistoryItem, SchemaTable, SnippetItem } from './types'
 import styles from './Sidebar.module.css'
@@ -92,30 +91,14 @@ export function SqlSidebar({
   formatTime,
   onWidthResizerMouseDown,
 }: SqlSidebarProps) {
-  const searchPlaceholder =
-    activeNavTab === 'history'
-      ? 'Search history'
-      : activeNavTab === 'snippets'
-        ? 'Search snippets'
-        : 'Search tables & views'
+  const searchTarget =
+    activeNavTab === 'history' ? 'history' : activeNavTab === 'snippets' ? 'snippets' : 'tables & views'
+  // The "/" shortcut was undiscoverable; the placeholder is where people look.
+  const searchPlaceholder = `Search ${searchTarget}  (/)`
 
   return (
     <>
-      <aside className={styles.layoutRail}>
-        <button className={`${styles.railBtn} ${styles.active}`}>SQL</button>
-        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/table-editor">
-          TB
-        </Link>
-        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/notebook">
-          NB
-        </Link>
-        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/activity">
-          AC
-        </Link>
-        <div className="mt-auto flex justify-center">
-          <ThemeToggle />
-        </div>
-      </aside>
+      <NavRail active="sql" />
 
       <aside className={styles.layoutNav}>
         <div className={styles.layoutNavHeader}>
