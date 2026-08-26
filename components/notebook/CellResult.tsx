@@ -1,4 +1,5 @@
 import { memo, useState } from 'react'
+import { useGridKeyboardNav } from '@/hooks/useGridKeyboardNav'
 import { ResultChart } from '../sql-editor/ResultChart'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import { formatCell } from '../sql-editor/utils'
@@ -76,31 +77,52 @@ export const CellResult = memo(function CellResult({
               }}
             />
           ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    {statement.fields.map((field) => (
-                      <th key={field}>{field}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {statement.rows.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {statement.fields.map((field) => (
-                        <td key={`${rowIndex}-${field}`}>
-                          <CopyableCellValue {...copyableCellDisplayProps(formatCell(row[field]))} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResultRowsTable fields={statement.fields} rows={statement.rows} />
           )}
         </div>
       ))}
     </div>
   )
 })
+
+type ResultRowsTableProps = {
+  fields: string[]
+  rows: Array<Record<string, unknown>>
+}
+
+/** One tab stop for the whole table; arrows move between cells. */
+function ResultRowsTable({ fields, rows }: ResultRowsTableProps) {
+  const { containerRef, cellProps, onKeyDown } = useGridKeyboardNav({
+    rowCount: rows.length,
+    colCount: fields.length,
+  })
+
+  return (
+    <div className="table-wrap" ref={containerRef} onKeyDown={onKeyDown}>
+      <table>
+        <thead>
+          <tr>
+            {fields.map((field) => (
+              <th key={field}>{field}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {fields.map((field, colIndex) => (
+                <td key={`${rowIndex}-${field}`}>
+                  <CopyableCellValue
+                    {...copyableCellDisplayProps(formatCell(row[field]))}
+                    {...cellProps(rowIndex, colIndex)}
+                    ariaLabel={`${field}, row ${rowIndex + 1}`}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

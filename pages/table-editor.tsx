@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react'
 import { PageHead } from '@/components/shared/PageHead'
+import { QuickActionsDialog } from '@/components/shared/Dialog'
+import { CopyableCellValue } from '@/components/shared/CopyableCellValue'
+import { useQuickActionsHotkey } from '@/hooks/useQuickActionsHotkey'
 import { RelationKindBadge } from '../components/shared/RelationKindBadge'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
@@ -17,6 +20,7 @@ export default function TableEditorPage() {
   const state = useTableEditorState()
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const filterValueInputRef = useRef<HTMLInputElement>(null)
+  const sidebarSearchRef = useRef<HTMLInputElement>(null)
 
   const [sidebarNavTab, setSidebarNavTab] = useState<'tables' | 'views'>('tables')
 
@@ -25,6 +29,34 @@ export default function TableEditorPage() {
     onChangeNavTab: setSidebarNavTab,
   })
   const gridProps = state.getGridProps(filterValueInputRef)
+
+  const quickActions = useQuickActionsHotkey({ searchRef: sidebarSearchRef })
+  const quickActionItems = [
+    {
+      id: 'refresh-tables',
+      title: 'Refresh tables',
+      description: 'Reload the table and view list for this connection.',
+      onSelect: () => sidebarProps.onRefreshTables(),
+    },
+    {
+      id: 'clear-filters',
+      title: 'Clear filters',
+      description: 'Drop the active row filter.',
+      onSelect: () => gridProps.onClearFilters(),
+    },
+    {
+      id: 'saved-views',
+      title: 'Show saved views',
+      description: 'Switch the sidebar to bookmarks and recent views.',
+      onSelect: () => setSidebarNavTab('views'),
+    },
+    {
+      id: 'tables-list',
+      title: 'Show tables',
+      description: 'Switch the sidebar back to tables and views.',
+      onSelect: () => setSidebarNavTab('tables'),
+    },
+  ]
 
   useTableEditorUrlSync({
     connectionName: state.connectionName,
@@ -43,16 +75,33 @@ export default function TableEditorPage() {
       className={pageStyles.layoutRoot}
       style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
     >
-      <TableSidebar {...sidebarProps} onWidthResizerMouseDown={handleWidthResizerMouseDown} />
+      <TableSidebar
+        {...sidebarProps}
+        searchInputRef={sidebarSearchRef}
+        onWidthResizerMouseDown={handleWidthResizerMouseDown}
+      />
 
       <SettingsPanel />
 
       <PageHead title="Table Editor" subject={state.activeTable} />
+      <QuickActionsDialog
+        open={quickActions.open}
+        items={quickActionItems}
+        onClose={() => quickActions.setOpen(false)}
+      />
       <main className={pageStyles.layoutMain}>
         <div className={`${pageStyles.editorPanelHeader} ${tableStyles.tableMainHeader}`}>
           <div className={tableStyles.tableHeaderTitle}>
             <div className={pageStyles.editorTitle}>Table Editor</div>
-            <code className={tableStyles.tableHeaderTable}>{state.activeTable || 'No table selected'}</code>
+            {state.activeTable ? (
+              <CopyableCellValue
+                text={state.activeTable}
+                className={tableStyles.tableHeaderTable}
+                ariaLabel="Table name"
+              />
+            ) : (
+              <code className={tableStyles.tableHeaderTable}>No table selected</code>
+            )}
             {state.filterSummary ? (
               <span className={tableStyles.tableHeaderFilterChip} title={state.filterSummary}>
                 {state.filterSummary}

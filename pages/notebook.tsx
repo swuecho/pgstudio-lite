@@ -1,8 +1,7 @@
-import Link from 'next/link'
+import { NavRail } from '@/components/shared/NavRail'
 import { PageHead } from '@/components/shared/PageHead'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import ThemeToggle from '../components/theme-toggle'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
 import { ConfirmDialog, PromptDialog } from '../components/shared/Dialog'
@@ -36,21 +35,7 @@ export default function NotebookPage() {
       className={styles.layoutRoot}
       style={{ gridTemplateColumns: `52px ${controller.sidebarWidth}px minmax(0, 1fr)` }}
     >
-      <aside className={styles.layoutRail}>
-        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/">
-          SQL
-        </Link>
-        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/table-editor">
-          TB
-        </Link>
-        <button className={`${styles.railBtn} ${styles.active}`}>NB</button>
-        <Link className={`${styles.railBtn} ${styles.linkBtn}`} href="/activity">
-          AC
-        </Link>
-        <div className="mt-auto flex justify-center">
-          <ThemeToggle />
-        </div>
-      </aside>
+      <NavRail active="notebook" />
 
       <NotebookSidebar
         activeNotebookId={controller.activeNotebookId}

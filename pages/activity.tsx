@@ -1,8 +1,7 @@
-import Link from 'next/link'
+import { NavRail } from '@/components/shared/NavRail'
 import { PageHead } from '@/components/shared/PageHead'
 import { useRouter } from 'next/router'
 import { useCallback, useMemo, useState } from 'react'
-import ThemeToggle from '../components/theme-toggle'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
 import { ConfirmDialog } from '../components/shared/Dialog'
@@ -151,21 +150,7 @@ export default function ActivityPage() {
 
   return (
     <div className={styles.layoutRoot}>
-      <aside className={styles.layoutRail}>
-        <Link className={styles.railBtn} href="/">
-          SQL
-        </Link>
-        <Link className={styles.railBtn} href="/table-editor">
-          TB
-        </Link>
-        <Link className={styles.railBtn} href="/notebook">
-          NB
-        </Link>
-        <button className={`${styles.railBtn} ${styles.active}`}>AC</button>
-        <div className="mt-auto flex justify-center">
-          <ThemeToggle />
-        </div>
-      </aside>
+      <NavRail active="activity" />
 
       <PageHead title="Activity" />
       <main className={styles.layoutMain}>

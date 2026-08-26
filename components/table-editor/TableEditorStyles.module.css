@@ -221,6 +221,14 @@
   line-height: 1.5;
 }
 
+/* Wins over the global .copyable-cell padding/margin so the header table name
+   keeps its pill shape while staying click-to-copy. */
+code.tableHeaderTable {
+  padding: 4px 10px;
+  margin: 0;
+  border-radius: var(--radius-md);
+}
+
 .tableHeaderFilterChip {
   max-width: min(48vw, 520px);
   overflow: hidden;

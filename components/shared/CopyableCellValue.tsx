@@ -7,6 +7,19 @@ type CopyableCellValueProps = {
   className?: string
   title?: string
   maxDisplayLength?: number
+  /**
+   * Grids pass -1 for every cell but the roving one (see useGridKeyboardNav);
+   * standalone cells keep the default so they stay reachable by Tab.
+   */
+  tabIndex?: number
+  /**
+   * Names the cell for assistive tech, e.g. "email, row 3". Without it every
+   * cell in a grid announces the same "Click to copy".
+   */
+  ariaLabel?: string
+  /** Lets the owning grid track which cell holds focus. */
+  onCellFocus?: () => void
+  'data-grid-cell'?: string
 }
 
 const DEFAULT_MAX_DISPLAY_LENGTH = 500
@@ -17,6 +30,10 @@ export function CopyableCellValue({
   className,
   title,
   maxDisplayLength = DEFAULT_MAX_DISPLAY_LENGTH,
+  tabIndex = 0,
+  ariaLabel,
+  onCellFocus,
+  'data-grid-cell': dataGridCell,
 }: CopyableCellValueProps) {
   const [copied, setCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -43,25 +60,35 @@ export function CopyableCellValue({
   const truncated = baseDisplay.length > maxDisplayLength
   const renderedText = truncated ? `${baseDisplay.slice(0, maxDisplayLength)}…` : baseDisplay
   const shortenedUuid = displayText !== undefined && displayText !== text
-  const computedTitle =
-    title ||
-    (copied
-      ? 'Copied!'
-      : shortenedUuid
-        ? 'Click to copy full UUID'
-        : truncated
-          ? `Click to copy (full value is ${text.length} chars)`
-          : 'Click to copy')
+  const copyHint = copied
+    ? 'Copied!'
+    : shortenedUuid
+      ? 'Click to copy full UUID'
+      : truncated
+        ? `Click to copy (full value is ${text.length} chars)`
+        : 'Click to copy'
+  const computedTitle = title || copyHint
 
   return (
     <code
       className={`copyable-cell ${copied ? 'copyable-cell-copied' : ''} ${className || ''}`.trim()}
       role="button"
-      tabIndex={0}
+      tabIndex={tabIndex}
       title={computedTitle}
+      aria-label={ariaLabel ? `${ariaLabel}: ${copyHint}` : undefined}
+      data-grid-cell={dataGridCell}
+      onFocus={onCellFocus}
       onClick={handleClick}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          handleClick()
+          return
+        }
+        // ⌘C / Ctrl+C copies the focused cell without disturbing a real
+        // selection the user may have made inside it.
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
+          if (window.getSelection()?.toString()) return
           event.preventDefault()
           handleClick()
         }

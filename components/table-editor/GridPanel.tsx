@@ -14,6 +14,8 @@ import { CellContentPanel } from '../shared/CellContentPanel'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
 import { canOpenCellViewer } from '@/lib/format-cell-content'
 import { buildTraceHref } from '@/lib/trace-url'
+import { useGridKeyboardNav } from '@/hooks/useGridKeyboardNav'
+import { hasActiveTableFilter } from '@/lib/table-filter'
 import type { TableFilterMode } from '@/lib/table-filter'
 import { ForeignKeyCell } from './ForeignKeyCell'
 import { CellForeignKeyEditor } from './CellForeignKeyEditor'
@@ -300,6 +302,12 @@ export function TableGridPanel({
   const matchedVisibleColumns =
     visibleColumns.length > 0 ? columns.filter((col) => visibleColumns.includes(col.name)) : columns
   const displayColumns = matchedVisibleColumns.length > 0 ? matchedVisibleColumns : columns
+
+  const {
+    containerRef: gridRef,
+    cellProps,
+    onKeyDown: onGridKeyDown,
+  } = useGridKeyboardNav({ rowCount: rows.length, colCount: displayColumns.length })
   const viewingCellKey = cellView ? getCellViewKey(cellView.row, cellView.column) : null
   const canEditViewedJson =
     cellView &&
@@ -399,7 +407,7 @@ export function TableGridPanel({
               </div>
             ) : null}
           </div>
-          <div className={styles.tableScrollArea}>
+          <div className={styles.tableScrollArea} ref={gridRef} onKeyDown={onGridKeyDown}>
             <table className={styles.tableGridTable}>
               <thead>
                 <tr>
@@ -428,7 +436,7 @@ export function TableGridPanel({
               <tbody>
                 {rows.map((row, rowIndex) => (
                   <tr key={row._rowKey ? formatRowKey(row._rowKey) : `row-${rowIndex}`}>
-                    {displayColumns.map((col) => {
+                    {displayColumns.map((col, colIndex) => {
                       const readOnly = readOnlyTable || !editableColumns.some((c) => c.name === col.name)
                       const editorKind = getEditorKind(col.dataType)
                       const cellValue = row[col.name]
@@ -452,6 +460,8 @@ export function TableGridPanel({
                               row,
                               <CopyableCellValue
                                 {...copyableCellDisplayProps(row[col.name], { dataType: col.dataType })}
+                                {...cellProps(rowIndex, colIndex)}
+                                ariaLabel={`${col.name}, row ${rowIndex + 1}`}
                               />
                             )
                           ) : col.foreignKey ? (
@@ -598,6 +608,15 @@ export function TableGridPanel({
                 ))}
               </tbody>
             </table>
+            {rows.length === 0 ? (
+              <div className="empty-state">
+                {!table
+                  ? 'Select a table in the sidebar to browse its rows.'
+                  : hasActiveTableFilter(filterColumn, filterMode, filterValue, filterValueEnd)
+                    ? 'No rows match the current filter.'
+                    : 'This table has no rows.'}
+              </div>
+            ) : null}
           </div>
           <div className={styles.tablePagination}>
             <span className="history-meta">

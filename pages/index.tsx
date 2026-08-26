@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router'
 import { PageHead } from '@/components/shared/PageHead'
+import { useQuickActionsHotkey } from '@/hooks/useQuickActionsHotkey'
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
@@ -36,7 +37,6 @@ export default function SqlEditorPage() {
   const { sidebarWidth, handleWidthResizerMouseDown } = useSidebarResizer()
   const [resultsHeight, setResultsHeight] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
-  const [showQuickActions, setShowQuickActions] = useState(false)
   const [tabRenameState, setTabRenameState] = useState<{ tabId: string; title: string } | null>(null)
   const [saveSnippetState, setSaveSnippetState] = useState<{ forceCreate: boolean; title: string } | null>(
     null
@@ -46,6 +46,16 @@ export default function SqlEditorPage() {
   )
   const [deleteSnippetId, setDeleteSnippetId] = useState<string | null>(null)
   const sidebarSearchRef = useRef<HTMLInputElement>(null)
+  const quickActions = useQuickActionsHotkey({
+    searchRef: sidebarSearchRef,
+    onEscapeSearch: () => {
+      if (state.historySearch) {
+        state.setHistorySearch('')
+      } else {
+        sidebarSearchRef.current?.blur()
+      }
+    },
+  })
   const editorPanelBodyRef = useRef<HTMLDivElement>(null)
   const editorFooterRef = useRef<HTMLDivElement>(null)
 
@@ -143,49 +153,6 @@ export default function SqlEditorPage() {
     })
     setSaveSnippetState(null)
   }
-
-  useEffect(() => {
-    const isEditableTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false
-      if (target.isContentEditable) return true
-      const tag = target.tagName
-      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase()
-      if ((event.metaKey || event.ctrlKey) && key === 'k') {
-        event.preventDefault()
-        setShowQuickActions(true)
-        return
-      }
-
-      if (
-        event.key === '/' &&
-        !event.metaKey &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !isEditableTarget(event.target)
-      ) {
-        event.preventDefault()
-        sidebarSearchRef.current?.focus()
-        sidebarSearchRef.current?.select()
-        return
-      }
-
-      if (event.key === 'Escape' && document.activeElement === sidebarSearchRef.current) {
-        if (state.historySearch) {
-          state.setHistorySearch('')
-        } else {
-          sidebarSearchRef.current?.blur()
-        }
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.historySearch, state.setHistorySearch])
 
   useEffect(() => {
     return () => {
@@ -383,9 +350,9 @@ export default function SqlEditorPage() {
         </div>
       </main>
       <QuickActionsDialog
-        open={showQuickActions}
+        open={quickActions.open}
         items={quickActionItems}
-        onClose={() => setShowQuickActions(false)}
+        onClose={() => quickActions.setOpen(false)}
       />
       <PromptDialog
         open={Boolean(tabRenameState)}

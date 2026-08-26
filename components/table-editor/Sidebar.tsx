@@ -1,6 +1,6 @@
+import { NavRail } from '@/components/shared/NavRail'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
-import ThemeToggle from '../theme-toggle'
+import type { RefObject } from 'react'
 import { RelationKindBadge } from '../shared/RelationKindBadge'
 import {
   filterTables,
@@ -34,6 +34,8 @@ import styles from './TableEditorStyles.module.css'
 type TableSidebarNavTab = 'tables' | 'views'
 
 type TableSidebarProps = {
+  /** Focus target for the `/` search shortcut. */
+  searchInputRef?: RefObject<HTMLInputElement | null>
   connectionName: string
   tables: TableInfo[]
   tablesTruncated: boolean
@@ -66,6 +68,7 @@ function tableItemKey(sectionId: string, tableKey: string) {
 }
 
 export function TableSidebar({
+  searchInputRef,
   connectionName,
   tables,
   tablesTruncated,
@@ -159,7 +162,9 @@ export function TableSidebar({
         tables: group.tables,
       }))
     }
-    return [{ id: 'all', label: '', tables: rest }]
+    // Labelled so the Recent block above reads as a shortcut list rather than
+    // duplicated rows: recent tables intentionally still appear here.
+    return [{ id: 'all', label: 'All tables', tables: rest }]
   }, [rest, sortMode])
 
   const listSections = useMemo(
@@ -533,21 +538,7 @@ export function TableSidebar({
 
   return (
     <>
-      <aside className="layout-rail">
-        <Link className="rail-btn link-btn" href="/">
-          SQL
-        </Link>
-        <button className="rail-btn active">TB</button>
-        <Link className="rail-btn link-btn" href="/notebook">
-          NB
-        </Link>
-        <Link className="rail-btn link-btn" href="/activity">
-          AC
-        </Link>
-        <div className="mt-auto flex justify-center">
-          <ThemeToggle />
-        </div>
-      </aside>
+      <NavRail active="table" />
 
       <aside className="layout-nav">
         <div className="layout-nav-header">
@@ -594,7 +585,8 @@ export function TableSidebar({
             </select>
             <div className={styles.tableSearchWrap}>
               <input
-                placeholder="Search (table:, view:, mv:)"
+                ref={searchInputRef}
+                placeholder="Search (table:, view:, mv:)  (/)"
                 value={tableSearch}
                 onChange={(event) => setTableSearch(event.target.value)}
                 aria-label="Search tables and views"

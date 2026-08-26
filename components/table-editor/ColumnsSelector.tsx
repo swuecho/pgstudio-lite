@@ -91,16 +91,20 @@ export function ColumnsSelector({
         ref={anchorRef}
         className="btn small"
         onClick={() => setIsOpen((open) => !open)}
-        title={`${selectedCount} of ${columns.length} columns selected`}
+        title={
+          someSelected && !allSelected
+            ? `Showing ${selectedCount} of ${columns.length} columns`
+            : `Showing all ${columns.length} columns`
+        }
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        Columns{' '}
-        {someSelected && !allSelected
-          ? `(${selectedCount}/${columns.length})`
-          : allSelected
-            ? '(All)'
-            : '(None)'}
+        {/*
+          An empty selection means no column filter, and the grid renders every
+          column — so labelling that state "(None)" contradicted what was on
+          screen. Both unfiltered cases read "(All)".
+        */}
+        Columns {someSelected && !allSelected ? `(${selectedCount}/${columns.length})` : '(All)'}
       </button>
       {dropdown && portalReady ? createPortal(dropdown, document.body) : null}
     </div>

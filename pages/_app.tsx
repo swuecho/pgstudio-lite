@@ -1,6 +1,8 @@
 import type { AppProps } from 'next/app'
 import { useEffect } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { NotificationCenter } from '../components/shared/NotificationCenter'
+import { notify } from '../components/shared/stores/notificationStore'
 import {
   DARK_MEDIA_QUERY,
   THEME_CHANGE_EVENT,
@@ -13,7 +15,27 @@ import '../styles/globals.css'
 import '../styles/dialogs.css'
 import '../styles/feedback.css'
 
+function describeError(error: unknown) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return 'Unexpected error'
+}
+
+/**
+ * Surfaces request failures app-wide. Without this, anything not wired to a
+ * component's local error state failed silently.
+ */
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => {
+      notify({ tone: 'error', title: 'Request failed', message: describeError(error) })
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      notify({ tone: 'error', title: 'Action failed', message: describeError(error) })
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 30_000,
@@ -43,6 +65,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <Component {...pageProps} />
+      <NotificationCenter />
     </QueryClientProvider>
   )
 }
