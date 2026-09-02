@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { existsSync, readFileSync } from 'node:fs'
-import { extname, join, resolve, sep } from 'node:path'
-
-const MONACO_MIN_DIR = resolve(join(process.cwd(), 'node_modules', 'monaco-editor', 'min'))
+import { extname, resolve, sep } from 'node:path'
+import { getMonacoMinDir } from '@/lib/runtime-paths'
 
 function contentTypeFor(pathname: string) {
   const ext = extname(pathname).toLowerCase()
@@ -33,6 +32,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   ) {
     return res.status(400).send('Bad Request')
   }
+  // Resolved per request, not at module scope: the desktop main process
+  // injects runtime paths at startup, after this module may be imported.
+  const MONACO_MIN_DIR = resolve(getMonacoMinDir())
   const requestedPath = pathSegments.join('/')
   const normalizedPath = requestedPath.startsWith('min/') ? requestedPath.slice(4) : requestedPath
   const candidates = [normalizedPath]

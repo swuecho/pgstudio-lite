@@ -14,6 +14,13 @@ export default tseslint.config(
       'node_modules/**',
       'output/**',
       'tmp/**',
+      // Desktop build outputs and generated assets.
+      '.desktop-native/**',
+      'dist-electron/**',
+      'native/**',
+      'out-desktop/**',
+      'release/**',
+      'public/theme-bootstrap.js',
     ],
   },
   js.configs.recommended,

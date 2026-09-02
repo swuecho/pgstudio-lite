@@ -6,6 +6,7 @@ import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import * as schema from '../drizzle/schema'
 import { getMetaDbDir, getMetaDbPath } from './meta-db-path'
+import { getMigrationsDir, getSqliteNativeBinding } from './runtime-paths'
 
 /**
  * The metadata DB is opened lazily on first access, never at import time.
@@ -28,7 +29,11 @@ function openMetaDb(): MetaDbHandles {
   const dataDir = getMetaDbDir()
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
 
-  const sqlite = new BetterSqlite3(getMetaDbPath())
+  // A packaged desktop app loads an Electron-ABI addon from resourcesPath;
+  // everywhere else this is undefined and better-sqlite3 resolves its own
+  // Node-ABI build through `bindings`, exactly as before.
+  const nativeBinding = getSqliteNativeBinding()
+  const sqlite = new BetterSqlite3(getMetaDbPath(), nativeBinding ? { nativeBinding } : {})
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
 
@@ -48,6 +53,29 @@ export function getSqlite() {
 
 export function getMetaDb() {
   return getHandles().metaDb
+}
+
+/**
+ * Close the metadata DB, checkpointing the WAL first so no `-wal`/`-shm`
+ * siblings are left next to `history.db`. Safe to call when never opened.
+ *
+ * Synchronous by design: it runs from Electron's `before-quit` and from a
+ * `process.on('exit')` fallback, neither of which can await.
+ */
+export function closeMetaDb() {
+  const current = handles
+  if (!current) return
+  handles = null
+  try {
+    current.sqlite.pragma('wal_checkpoint(TRUNCATE)')
+  } catch {
+    // A checkpoint failure must not block shutdown; close still releases the file.
+  }
+  try {
+    current.sqlite.close()
+  } catch {
+    // Already closed, or closing during an abnormal exit.
+  }
 }
 
 export function ensureMetaDbReady() {
@@ -71,7 +99,7 @@ function reconcileSchema({ sqlite, metaDb }: MetaDbHandles) {
   if (hasNotebookMetadataJsonColumn) {
     const hasMigrationsTable = hasTable('__drizzle_migrations')
     if (hasMigrationsTable) {
-      const migrationPath = join(process.cwd(), 'drizzle/migrations/0006_input_cell_metadata.sql')
+      const migrationPath = join(getMigrationsDir(), '0006_input_cell_metadata.sql')
       if (existsSync(migrationPath)) {
         const migrationHash = createHash('sha256').update(readFileSync(migrationPath, 'utf8')).digest('hex')
         const alreadyApplied = sqlite
@@ -88,7 +116,7 @@ function reconcileSchema({ sqlite, metaDb }: MetaDbHandles) {
 
   const shouldRunMigrations = isTestRuntime || process.env.SKIP_RUNTIME_MIGRATE !== '1'
   if (shouldRunMigrations) {
-    migrate(metaDb, { migrationsFolder: join(process.cwd(), 'drizzle/migrations') })
+    migrate(metaDb, { migrationsFolder: getMigrationsDir() })
   }
 
   if (isTestRuntime) {

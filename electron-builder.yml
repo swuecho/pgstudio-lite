@@ -1,0 +1,57 @@
+appId: com.goyaso.pgstudio-lite
+productName: PgStudio Lite
+copyright: Copyright © 2026
+
+directories:
+  output: release
+  buildResources: build
+
+# The app bundle carries only the esbuild output. Everything read from disk at
+# runtime goes in extraResources, which lands in Contents/Resources outside
+# app.asar: `.node` addons cannot be required from an asar, and emscripten's
+# wasm loading does not cope with the asar virtual filesystem. That is also why
+# asarUnpack ends up empty.
+# esbuild bundles every runtime dependency into dist-electron/main.js, so the
+# asar needs no node_modules at all. Without the explicit exclusion
+# electron-builder ships all production dependencies (~130 MB of dead weight).
+files:
+  - dist-electron/**
+  - package.json
+  - '!node_modules/**'
+  - '!**/*.map'
+
+extraResources:
+  # The exported Next site, served by electron/static.ts.
+  - from: out-desktop
+    to: renderer
+  # Read at runtime by lib/meta-db.ts (drizzle migrate + the 0006 hash check).
+  # Includes meta/_journal.json, which the migrator requires.
+  - from: drizzle/migrations
+    to: drizzle/migrations
+  # monaco's `min` only (~15 MB) rather than the whole 70 MB package.
+  - from: node_modules/monaco-editor/min
+    to: monaco/min
+  - from: node_modules/@pgsql/parser/wasm/v17
+    to: pgsql-parser/wasm/v17
+  # Electron-ABI addon from scripts/build-sqlite-native.mjs, per arch.
+  - from: native/${platform}-${arch}/better_sqlite3.node
+    to: native/better_sqlite3.node
+
+asar: true
+asarUnpack: []
+# Never rebuild in node_modules: it holds the Node-ABI better-sqlite3 that
+# `npm test` and `next dev` depend on. See scripts/build-sqlite-native.mjs.
+npmRebuild: false
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  category: public.app-category.developer-tools
+  # Unsigned first pass: no hardenedRuntime/entitlements/notarization yet.
+  identity: null
+
+dmg:
+  title: ${productName}
