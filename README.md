@@ -331,13 +331,9 @@ Stale Next build lock:
 
 ## Notes
 
-- Monaco integration, page structure, and some SQL editor behavior were adapted from Supabase Studio.
+- The Monaco integration, page structure, and SQL editor behavior are inspired by [Supabase Studio](https://github.com/supabase/supabase); no code is copied from it.
 - The current UI is optimized for local development workflows rather than multi-user deployment.
 
 ## License
 
 [MIT](./LICENSE) © Hao Wu
-
-Portions of the Monaco integration, page structure, and SQL editor behavior were
-adapted from [Supabase Studio](https://github.com/supabase/supabase). Check that
-project's license for the attribution its terms require.
