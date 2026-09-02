@@ -22,3 +22,13 @@ export function closePool(connectionString: string) {
     // Swallow pool shutdown errors during lifecycle cleanup.
   })
 }
+
+/**
+ * Drain every pool. Used by the desktop app's shutdown path so Postgres
+ * connections are closed before the process exits rather than being severed.
+ */
+export async function closeAllPools() {
+  const pools = [...connectionPools.values()]
+  connectionPools.clear()
+  await Promise.allSettled(pools.map((pool) => pool.end()))
+}

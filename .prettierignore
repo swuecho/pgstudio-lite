@@ -7,3 +7,14 @@ coverage
 drizzle/migrations
 *.lock
 package-lock.json
+
+# Desktop build outputs
+.desktop-native/
+dist-electron/
+native/
+out-desktop/
+release/
+
+# Generated from themeBootstrapScript(); must stay byte-identical (see
+# tests/theme-bootstrap.test.ts).
+public/theme-bootstrap.js

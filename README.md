@@ -2,7 +2,9 @@
 
 For development setup, checks, and pull request expectations, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-PG Studio Lite is a local PostgreSQL web manager built with Next.js. It includes:
+PG Studio Lite is a local PostgreSQL manager built with Next.js. It runs either as a
+web app (`npm run dev`) or as a macOS desktop app (see [Desktop app](#desktop-app)).
+It includes:
 
 - SQL Editor
 - Table Editor
@@ -127,7 +129,8 @@ Advanced optional:
 
 The app stores local metadata in a SQLite database:
 
-- Default path: `data/history.db`
+- Default path (web/dev): `data/history.db`
+- Desktop app: `~/Library/Application Support/PgStudio Lite/history.db`
 - Stores:
   - saved connections
   - query history
@@ -151,6 +154,93 @@ Connections can also be marked read-only. In read-only mode:
 - write SQL is rejected
 - table insert/update/delete actions are blocked
 - the UI labels the connection as read-only
+
+## Desktop app
+
+The desktop build packages the same codebase as a macOS app with no Node install
+and no dev server. Run it with:
+
+```bash
+npm run desktop:preview
+```
+
+Build distributables (unsigned `.dmg` + `.zip`, arm64 and x64) into `release/`:
+
+```bash
+npm run desktop:dist
+```
+
+### How it differs from the web build
+
+There is no HTTP server at runtime. `next build` runs with `output: 'export'`
+(`PGSTUDIO_TARGET=desktop`) to emit a static site into `out-desktop/`, and the
+Electron main process serves it from a custom `app://pgstudio` scheme. That same
+protocol handler dispatches `/api/*` straight to the existing `pages/api/**`
+handler functions through a `NextApiRequest`/`NextApiResponse` shim, so
+`lib/http.ts` and every `features/*/*.service.ts` call site are unchanged.
+
+Consequences worth knowing:
+
+- **No listening port.** The web build's API routes are unauthenticated and
+  `/api/query` runs arbitrary SQL, so not opening a socket is the point.
+- **`app://pgstudio` must stay the origin.** It is a secure context (needed by
+  `navigator.clipboard`) and gives a stable origin for the eight modules that
+  persist to `localStorage`. Changing it would silently discard every user's
+  editor tabs, filters, and theme.
+- **API routes are excluded from the export** by `pageExtensions: ['tsx','jsx']`,
+  which works because every file under `pages/api/**` is `.ts` and every page is
+  `.tsx`. `tests/desktop-api-route-extensions.test.ts` enforces that.
+- **New API routes must be registered** in `electron/api/routes.ts`.
+  `tests/desktop-routes.test.ts` asserts a bijection with `pages/api/**`, so a
+  missing entry fails `npm test` rather than 404ing in a shipped build.
+
+### Layout
+
+| Path                                   | Purpose                                               |
+| -------------------------------------- | ----------------------------------------------------- |
+| `electron/main.ts`                     | App lifecycle, window, security guards                |
+| `electron/protocol.ts`                 | `app://` scheme registration and request routing      |
+| `electron/static.ts`                   | Serves `out-desktop/`, with `.html` fallbacks and CSP |
+| `electron/monaco.ts`                   | Serves monaco's AMD bundle and workers                |
+| `electron/api/{routes,router,shim}.ts` | Dispatch to `pages/api` handlers                      |
+| `electron/smoke.ts`                    | `--smoke` self-check (see below)                      |
+| `lib/runtime-paths.ts`                 | Single source of runtime paths for both builds        |
+
+### Native SQLite
+
+`better-sqlite3` is the only native addon, and Electron's `NODE_MODULE_VERSION`
+differs from the Node the repo targets. Rather than rebuilding in place — which
+would break `npm test` and `next dev` — `npm run desktop:native` downloads an
+Electron-ABI prebuilt addon into `native/<platform>-<arch>/`, and
+`lib/meta-db.ts` loads it via better-sqlite3's `nativeBinding` option.
+`node_modules` stays at the Node ABI.
+
+Electron is pinned deliberately: `better-sqlite3` publishes Electron prebuilds
+only through Electron 42 (ABI 146), and 12.x cannot compile against Electron
+43+/Node 24 V8 headers. Bumping Electron means checking prebuild availability
+first.
+
+### Verifying a desktop change
+
+`npm run dev` does not exercise the protocol handler or the API shim, so run
+this after touching `pages/api/**` or `electron/**`:
+
+```bash
+npm run desktop:build
+npx electron . --smoke --user-data-dir /tmp/pgstudio-smoke
+```
+
+It drives the real renderer over `app://` and checks the static site, Monaco,
+the API dispatch, the libpg-query wasm, and the shutdown WAL checkpoint. Add a
+real database to also cover the Postgres paths:
+
+```bash
+PGSTUDIO_SMOKE_CONNECTION_STRING=postgres://user:pass@host:5432/db \
+  npx electron . --smoke --user-data-dir /tmp/pgstudio-smoke
+```
+
+`--smoke` and `--capture <dir>` write to the metadata DB, so they default to a
+throwaway profile under the temp directory rather than the real one.
 
 ## Commands
 
@@ -182,6 +272,13 @@ npm run db:migrate
 ```
 
 Migrations also run automatically on server startup unless `SKIP_RUNTIME_MIGRATE=1`.
+
+Desktop app:
+
+```bash
+npm run desktop:preview
+npm run desktop:dist
+```
 
 ## API Routes
 

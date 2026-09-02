@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { existsSync, readFileSync } from 'node:fs'
 import { extname, join, resolve, sep } from 'node:path'
-
-const MONACO_VS_DIR = resolve(join(process.cwd(), 'node_modules', 'monaco-editor', 'min', 'vs'))
+import { getMonacoMinDir } from '@/lib/runtime-paths'
 
 function contentTypeFor(pathname: string) {
   const ext = extname(pathname).toLowerCase()
@@ -33,6 +32,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   ) {
     return res.status(400).send('Bad Request')
   }
+  // Resolved per request, not at module scope: the desktop main process
+  // injects runtime paths at startup, after this module may be imported.
+  const MONACO_VS_DIR = resolve(join(getMonacoMinDir(), 'vs'))
   const fullPath = resolve(MONACO_VS_DIR, pathSegments.join('/'))
   if (fullPath !== MONACO_VS_DIR && !fullPath.startsWith(MONACO_VS_DIR + sep)) {
     return res.status(400).send('Bad Request')

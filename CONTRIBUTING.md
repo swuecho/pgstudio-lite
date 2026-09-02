@@ -12,6 +12,8 @@ Thanks for helping improve PG Studio Lite. This document covers how to set up a 
 
   This matters more than usual here: `better-sqlite3` is a native addon, and switching Node majors leaves you with binaries compiled for the wrong ABI. If tests fail with `NODE_MODULE_VERSION`, run `npm rebuild better-sqlite3`.
 
+  The desktop build needs the same addon compiled for Electron's ABI, which is a different one. It is kept out of `node_modules` on purpose — `npm run desktop:native` downloads it to `native/<platform>-<arch>/` and `lib/meta-db.ts` loads it from there — so packaging never disturbs the Node-ABI build that `npm test` and `next dev` use. Never run `electron-rebuild` or `electron-builder install-app-deps` against this repo's `node_modules`.
+
 - **npm**: this repo uses `package-lock.json`; install dependencies with `npm ci` in CI-like workflows, or `npm install` locally.
 - **PostgreSQL**: a reachable instance for the SQL editor, table editor, and notebook SQL cells. The app talks to Postgres over TCP using `pg`.
 
@@ -101,6 +103,15 @@ npm run test
 ```
 
 If Prettier reports issues, fix them with `npm run format`.
+
+If your change touches `pages/api/**` or `electron/**`, also verify the desktop build. `npm run dev` does not exercise the `app://` protocol handler or the API shim, so a regression there is invisible to the normal checks:
+
+```bash
+npm run desktop:build
+npx electron . --smoke --user-data-dir /tmp/pgstudio-smoke
+```
+
+See [Desktop app](./README.md#desktop-app) for what the smoke run covers and how to include the Postgres paths.
 
 ## Tests
 
