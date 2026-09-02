@@ -36,6 +36,43 @@ jobs:
       - name: Run tests
         run: npm test
 
+  desktop-build:
+    # The desktop static export and the Electron main bundle are only exercised
+    # by `npm run desktop:*`, so build both here. Without this, a change to
+    # pages/api or electron/ could break the packaged app while CI stays green.
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch Electron-ABI better-sqlite3
+        run: npm run desktop:native
+
+      - name: Build static renderer
+        run: npm run desktop:renderer
+
+      - name: Build Electron main process
+        run: npm run desktop:main
+
+      - name: Smoke-test the desktop app
+        # The renderer needs a window server; xvfb is Linux-only, so this runs
+        # on macOS where the runner provides one.
+        run: npx electron . --smoke --user-data-dir "$RUNNER_TEMP/pgstudio-smoke"
+
+      - name: Show smoke log
+        if: always()
+        run: cat "$RUNNER_TEMP/pgstudio-smoke/smoke.log" || true
+
   pg-integration:
     runs-on: ubuntu-latest
 

@@ -2,6 +2,12 @@ data/
 node_modules/
 .next/
 out/
+out-desktop/
+dist-electron/
+release/
+native/
+# Generated from public/favicon.svg by scripts/icon/main.cjs
+build/icon.png
 tsconfig.tsbuildinfo
 tmp/
 output

@@ -1,8 +1,6 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-
-const PG_VERSION = 17
-const WASM_DIR = path.join(process.cwd(), 'node_modules', '@pgsql/parser', 'wasm', `v${PG_VERSION}`)
+import { getPgParserWasmDir } from './runtime-paths'
 
 type WasmModule = {
   _malloc: (size: number) => number
@@ -22,12 +20,15 @@ async function loadWasmModule(): Promise<WasmModule> {
   if (wasmModule) return wasmModule
   if (!initPromise) {
     initPromise = (async () => {
-      const libpgQueryUrl = pathToFileURL(path.join(WASM_DIR, 'libpg-query.js')).href
+      // Resolved lazily, not at module scope: the desktop main process
+      // injects runtime paths at startup, after this module may be imported.
+      const wasmDir = getPgParserWasmDir()
+      const libpgQueryUrl = pathToFileURL(path.join(wasmDir, 'libpg-query.js')).href
       const initPgQuery = (await import(/* webpackIgnore: true */ libpgQueryUrl)).default as (options?: {
         locateFile?: (file: string) => string
       }) => Promise<WasmModule>
       wasmModule = await initPgQuery({
-        locateFile: (file) => path.join(WASM_DIR, file),
+        locateFile: (file) => path.join(wasmDir, file),
       })
     })()
   }

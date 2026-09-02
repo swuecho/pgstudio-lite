@@ -10,6 +10,13 @@
     "dev": "next dev -p 4180",
     "build": "next build",
     "start": "next start -p 4180",
+    "desktop:icon": "electron scripts/icon/main.mjs",
+    "desktop:native": "node scripts/build-sqlite-native.mjs",
+    "desktop:renderer": "node scripts/generate-theme-bootstrap.mjs && PGSTUDIO_TARGET=desktop next build",
+    "desktop:main": "node scripts/build-electron.mjs",
+    "desktop:build": "npm run desktop:icon && npm run desktop:native && npm run desktop:renderer && npm run desktop:main",
+    "desktop:preview": "npm run desktop:build && electron .",
+    "desktop:dist": "npm run desktop:build && electron-builder --mac",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "lint": "eslint .",
@@ -25,7 +32,7 @@
     "@pgsql/parser": "^1.2.1",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-virtual": "^3.13.23",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.1",
     "echarts": "^6.1.0",
     "next": "~16.0.0",
@@ -49,6 +56,9 @@
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.4.24",
     "drizzle-kit": "^0.31.9",
+    "electron": "42.0.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "eslint": "^10.1.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.4.0",
@@ -59,5 +69,6 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.57.2",
     "vitest": "^4.0.18"
-  }
+  },
+  "main": "dist-electron/main.js"
 }

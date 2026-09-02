@@ -12,7 +12,7 @@ export {
   deleteConnection,
 } from './db/connections'
 
-export { getPool, closePool } from './db/pool'
+export { getPool, closePool, closeAllPools } from './db/pool'
 export { withClient } from './db/client'
 export { sqlIdent } from './db/sql'
 

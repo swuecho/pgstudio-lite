@@ -1,11 +1,14 @@
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { isMainThread, threadId } from 'node:worker_threads'
+import { getUserDataDir } from './runtime-paths'
 
 export function getMetaDbPath() {
   const explicitPath = process.env.PGSTUDIO_META_DB_PATH?.trim()
   if (explicitPath) {
-    return resolve(process.cwd(), explicitPath)
+    // Relative values resolve against the writable data directory rather than
+    // cwd, so a packaged desktop app can still honour this override.
+    return resolve(getUserDataDir(), explicitPath)
   }
 
   if (process.env.VITEST || process.env.NODE_ENV === 'test') {
@@ -16,7 +19,7 @@ export function getMetaDbPath() {
     return join(tmpdir(), 'pgstudio-lite-vitest', `history-${process.pid}-${workerId}.db`)
   }
 
-  return join(process.cwd(), 'data', 'history.db')
+  return join(getUserDataDir(), 'history.db')
 }
 
 export function getMetaDbDir() {
