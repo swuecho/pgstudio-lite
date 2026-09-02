@@ -3,6 +3,16 @@
   "version": "0.3.0",
   "private": true,
   "description": "PostgreSQL SQL + Table Editor (Next.js + TypeScript) inspired by Supabase Studio, with SQLite-backed query history",
+  "license": "MIT",
+  "author": "Hao Wu <echowuhao@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swuecho/pgstudio-lite.git"
+  },
+  "homepage": "https://github.com/swuecho/pgstudio-lite#readme",
+  "bugs": {
+    "url": "https://github.com/swuecho/pgstudio-lite/issues"
+  },
   "engines": {
     "node": ">=22.0.0 <23.0.0"
   },
