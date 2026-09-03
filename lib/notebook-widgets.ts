@@ -266,6 +266,7 @@ export const notebookWidgetMetadataSchema = z.discriminatedUnion('widgetType', [
 ])
 
 export type NotebookWidgetType = z.infer<typeof notebookWidgetTypeSchema>
+export type NotebookInputLikeWidgetType = z.infer<typeof inputLikeWidgetTypeSchema>
 export type NotebookWidgetOption = z.infer<typeof notebookWidgetOptionSchema>
 export type NotebookWidgetMetadata = z.infer<typeof notebookWidgetMetadataSchema>
 export type NotebookWidgetPresetId =
@@ -295,21 +296,19 @@ export function isWidgetMetadata(value: unknown): value is NotebookWidgetMetadat
   return notebookWidgetMetadataSchema.safeParse(value).success
 }
 
+/** True for the single-value parameter widgets that share the input-like schema. */
+export function isInputLikeWidgetType(
+  widgetType: NotebookWidgetType
+): widgetType is NotebookInputLikeWidgetType {
+  return (inputLikeWidgetTypeSchema.options as readonly string[]).includes(widgetType)
+}
+
 function trimIfString(value: unknown) {
   return typeof value === 'string' ? value.trim() : value
 }
 
 export function createDefaultWidgetMetadata(widgetType: NotebookWidgetType): NotebookWidgetMetadata {
-  if (
-    widgetType === 'text' ||
-    widgetType === 'number' ||
-    widgetType === 'date' ||
-    widgetType === 'datetime-local' ||
-    widgetType === 'checkbox' ||
-    widgetType === 'select' ||
-    widgetType === 'range' ||
-    widgetType === 'multiselect'
-  ) {
+  if (isInputLikeWidgetType(widgetType)) {
     const defaultValue =
       widgetType === 'checkbox'
         ? false

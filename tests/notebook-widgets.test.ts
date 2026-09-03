@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   createWidgetMetadataFromPreset,
   createDefaultWidgetMetadata,
+  isInputLikeWidgetType,
   normalizeWidgetMetadata,
   notebookWidgetMetadataSchema,
+  type NotebookWidgetType,
 } from '../lib/notebook-widgets'
 import { mapQueryResultToOptions } from '../lib/notebook-option-source'
 
@@ -172,5 +174,44 @@ describe('notebook widgets', () => {
       { value: 'open', label: 'Open' },
       { value: 'closed', label: 'Closed' },
     ])
+  })
+
+  it('classifies the single-value parameter widgets as input-like', () => {
+    const inputLike: NotebookWidgetType[] = [
+      'text',
+      'number',
+      'date',
+      'datetime-local',
+      'checkbox',
+      'select',
+      'range',
+      'multiselect',
+    ]
+    const other: NotebookWidgetType[] = ['radio-group', 'date-range', 'actions', 'callout']
+    for (const widgetType of inputLike) expect(isInputLikeWidgetType(widgetType)).toBe(true)
+    for (const widgetType of other) expect(isInputLikeWidgetType(widgetType)).toBe(false)
+  })
+
+  it('gives every input-like default a defaultValue matching its value', () => {
+    // The widget editor's type switcher and the preset menu both go through
+    // createDefaultWidgetMetadata, so a widget created either way must carry the
+    // same shape. Reset relies on defaultValue being present.
+    const expectedValue: Record<string, unknown> = {
+      text: '',
+      date: '',
+      'datetime-local': '',
+      select: '',
+      number: null,
+      range: null,
+      checkbox: false,
+      multiselect: [],
+    }
+    for (const [widgetType, value] of Object.entries(expectedValue)) {
+      const metadata = createDefaultWidgetMetadata(widgetType as NotebookWidgetType)
+      expect(metadata.widgetType).toBe(widgetType)
+      expect(metadata.value).toEqual(value)
+      expect(metadata.defaultValue).toEqual(value)
+      expect(notebookWidgetMetadataSchema.safeParse(metadata).success).toBe(true)
+    }
   })
 })

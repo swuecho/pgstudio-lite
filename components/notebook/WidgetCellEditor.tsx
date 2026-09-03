@@ -1,13 +1,13 @@
 import { InputCellEditor } from './InputCellEditor'
+import { fromLegacyInputMetadata, toLegacyInputMetadata } from './widgetInputAdapters'
 import type {
-  NotebookInputCellMetadata,
-  NotebookInputType,
   NotebookInputValues,
   NotebookResolvedOptionsState,
   NotebookWidgetMetadata,
   NotebookWidgetType,
 } from './types'
 import type { WidgetValidationMessages } from '@/lib/notebook-widget-validation'
+import { createDefaultWidgetMetadata, isInputLikeWidgetType } from '@/lib/notebook-widgets'
 import styles from './NotebookPage.module.css'
 
 type WidgetCellEditorProps = {
@@ -57,7 +57,7 @@ export function WidgetCellEditor({
   if (collapsed || valueOnly) {
     return (
       <div className={styles.widgetCollapsedSummary}>
-        {isInputLikeWidget(metadata.widgetType) ? (
+        {isInputLikeWidgetType(metadata.widgetType) ? (
           <div className={styles.widgetInlineRow}>
             <span className={styles.widgetInlineLabel}>{metadata.key || metadata.label || 'param'}</span>
             <InputLikeWidgetEditor
@@ -119,7 +119,7 @@ export function WidgetCellEditor({
             disabled={disabled}
             onChange={(event) => {
               const nextType = event.target.value as NotebookWidgetType
-              onChange(defaultMetadataForType(nextType))
+              onChange(createDefaultWidgetMetadata(nextType) as NotebookWidgetMetadata)
             }}
           >
             {WIDGET_OPTIONS.map((option) => (
@@ -157,7 +157,7 @@ export function WidgetCellEditor({
         )}
       </div>
 
-      {isInputLikeWidget(metadata.widgetType) ? (
+      {isInputLikeWidgetType(metadata.widgetType) ? (
         <InputLikeWidgetEditor
           metadata={metadata}
           disabled={disabled}
@@ -638,148 +638,6 @@ function calloutToneClassName(tone: 'info' | 'success' | 'warning' | 'danger') {
   if (tone === 'warning') return 'border-amber-500/40 bg-amber-500/10 text-amber-200'
   if (tone === 'danger') return 'border-rose-500/40 bg-rose-500/10 text-rose-200'
   return 'border-sky-500/40 bg-sky-500/10 text-sky-200'
-}
-
-function defaultMetadataForType(widgetType: NotebookWidgetType): NotebookWidgetMetadata {
-  if (isInputLikeWidget(widgetType)) {
-    return {
-      widgetType,
-      key: `param_${Math.random().toString(36).slice(2, 8)}`,
-      label: 'Input',
-      autoRun: true,
-      value:
-        widgetType === 'checkbox'
-          ? false
-          : widgetType === 'number' || widgetType === 'range'
-            ? null
-            : widgetType === 'multiselect'
-              ? []
-              : '',
-      options:
-        widgetType === 'select' || widgetType === 'multiselect'
-          ? [{ label: 'Option 1', value: 'option_1' }]
-          : undefined,
-      config:
-        widgetType === 'select' || widgetType === 'multiselect' ? { optionSource: 'manual' } : undefined,
-    }
-  }
-  if (widgetType === 'radio-group') {
-    return {
-      widgetType,
-      key: 'status',
-      label: 'Status',
-      autoRun: true,
-      value: 'open',
-      options: [
-        { label: 'Open', value: 'open' },
-        { label: 'Closed', value: 'closed' },
-      ],
-    }
-  }
-  if (widgetType === 'date-range') {
-    return {
-      widgetType,
-      label: 'Date Range',
-      autoRun: true,
-      value: { start: '', end: '' },
-      config: { startKey: 'start_date', endKey: 'end_date' },
-    }
-  }
-  if (widgetType === 'actions') {
-    return {
-      widgetType,
-      label: 'Run Queries',
-      config: { action: 'run-all', targetCellIds: [] },
-    }
-  }
-  return {
-    widgetType: 'callout',
-    config: { tone: 'info', title: 'Note', body: '' },
-  }
-}
-
-function isInputLikeWidget(
-  widgetType: NotebookWidgetType
-): widgetType is
-  | 'text'
-  | 'number'
-  | 'date'
-  | 'datetime-local'
-  | 'checkbox'
-  | 'select'
-  | 'range'
-  | 'multiselect' {
-  return (
-    widgetType === 'text' ||
-    widgetType === 'number' ||
-    widgetType === 'date' ||
-    widgetType === 'datetime-local' ||
-    widgetType === 'checkbox' ||
-    widgetType === 'select' ||
-    widgetType === 'range' ||
-    widgetType === 'multiselect'
-  )
-}
-
-function toLegacyInputMetadata(metadata: NotebookWidgetMetadata): NotebookInputCellMetadata {
-  const widgetType = metadata.widgetType as NotebookInputType
-  return {
-    key: metadata.key || 'param',
-    label: metadata.label || 'Input',
-    inputType: widgetType,
-    value:
-      metadata.value === undefined
-        ? widgetType === 'checkbox'
-          ? false
-          : widgetType === 'number' || widgetType === 'range'
-            ? null
-            : widgetType === 'multiselect'
-              ? []
-              : ''
-        : (metadata.value as NotebookInputCellMetadata['value']),
-    defaultValue:
-      metadata.defaultValue === undefined
-        ? undefined
-        : (metadata.defaultValue as NotebookInputCellMetadata['defaultValue']),
-    required: metadata.required,
-    placeholder: metadata.placeholder,
-    options: metadata.options,
-    optionsSource: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
-    optionsQuery:
-      typeof metadata.config?.optionsQuery === 'string' ? metadata.config.optionsQuery : undefined,
-    min: metadata.min,
-    max: metadata.max,
-    step: metadata.step,
-    autoRun: metadata.autoRun,
-  }
-}
-
-function fromLegacyInputMetadata(
-  current: NotebookWidgetMetadata,
-  metadata: NotebookInputCellMetadata
-): NotebookWidgetMetadata {
-  const widgetType = current.widgetType as NotebookInputType
-  return {
-    widgetType,
-    key: metadata.key,
-    label: metadata.label,
-    value: metadata.value,
-    defaultValue: current.defaultValue,
-    required: metadata.required,
-    placeholder: metadata.placeholder,
-    options: metadata.options,
-    config:
-      widgetType === 'select' || widgetType === 'multiselect'
-        ? {
-            optionSource: metadata.optionsSource === 'sql' ? 'sql' : 'manual',
-            optionsQuery: metadata.optionsQuery?.trim() || undefined,
-          }
-        : undefined,
-    min: metadata.min,
-    max: metadata.max,
-    step: metadata.step,
-    autoRun: metadata.autoRun,
-  }
 }
 
 function ValidationList({ messages }: { messages: string[] }) {
