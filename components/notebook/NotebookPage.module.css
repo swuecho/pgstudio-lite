@@ -685,6 +685,31 @@
   background: linear-gradient(180deg, var(--surface-active-start), var(--surface-active-end));
 }
 
+/* The selectable part of a notebook card. Kept as a real <button> for keyboard
+   users, but visually flattened so the card itself carries the chrome; the
+   Rename/Delete actions sit beside it instead of inside it. */
+.historySelect {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.historySelect:focus-visible {
+  outline: 2px solid var(--border-active);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 .historyTop {
   display: flex;
   gap: 8px;

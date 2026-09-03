@@ -50,39 +50,31 @@ export function NotebookSidebar({
 
       <div className={styles.layoutNavList}>
         {filteredNotebooks.map((item) => (
-          <button
+          <div
             key={item.id}
             className={`${styles.historyItem} ${item.id === activeNotebookId ? styles.activeItem : ''}`}
-            onClick={() => onSelectNotebook(item.id)}
           >
-            <div className={styles.historyTop}>
-              <span className="pill ok">Notebook</span>
-              <span>{item.connection_name}</span>
-            </div>
-            <div className={styles.historyQuery}>{item.title}</div>
+            <button
+              type="button"
+              className={styles.historySelect}
+              aria-pressed={item.id === activeNotebookId}
+              onClick={() => onSelectNotebook(item.id)}
+            >
+              <div className={styles.historyTop}>
+                <span className="pill ok">Notebook</span>
+                <span>{item.connection_name}</span>
+              </div>
+              <div className={styles.historyQuery}>{item.title}</div>
+            </button>
             <div className="history-actions">
-              <button
-                type="button"
-                className="btn small"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onRenameNotebook(item)
-                }}
-              >
+              <button type="button" className="btn small" onClick={() => onRenameNotebook(item)}>
                 Rename
               </button>
-              <button
-                type="button"
-                className="btn small danger"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onDeleteNotebook(item)
-                }}
-              >
+              <button type="button" className="btn small danger" onClick={() => onDeleteNotebook(item)}>
                 Delete
               </button>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 
