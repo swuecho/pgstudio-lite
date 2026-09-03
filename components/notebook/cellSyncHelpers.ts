@@ -2,6 +2,7 @@ import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell, NotebookWidgetMetadata } from './types'
 import {
   getWidgetParamValues,
+  isInputLikeWidgetType,
   normalizeWidgetMetadata,
   createDefaultWidgetMetadata,
 } from '@/lib/notebook-widgets'
@@ -267,17 +268,7 @@ export function getChangedWidgetParamKeys(previous: NotebookWidgetMetadata, next
 }
 
 export function getWidgetParameterKeys(metadata: NotebookWidgetMetadata) {
-  if (
-    metadata.widgetType === 'text' ||
-    metadata.widgetType === 'number' ||
-    metadata.widgetType === 'date' ||
-    metadata.widgetType === 'datetime-local' ||
-    metadata.widgetType === 'checkbox' ||
-    metadata.widgetType === 'select' ||
-    metadata.widgetType === 'range' ||
-    metadata.widgetType === 'multiselect' ||
-    metadata.widgetType === 'radio-group'
-  ) {
+  if (isInputLikeWidgetType(metadata.widgetType) || metadata.widgetType === 'radio-group') {
     return metadata.key ? [metadata.key] : []
   }
 
@@ -291,17 +282,7 @@ export function getWidgetParameterKeys(metadata: NotebookWidgetMetadata) {
 }
 
 export function getResetWidgetValue(metadata: NotebookWidgetMetadata) {
-  if (
-    metadata.widgetType === 'text' ||
-    metadata.widgetType === 'number' ||
-    metadata.widgetType === 'date' ||
-    metadata.widgetType === 'datetime-local' ||
-    metadata.widgetType === 'checkbox' ||
-    metadata.widgetType === 'select' ||
-    metadata.widgetType === 'range' ||
-    metadata.widgetType === 'multiselect' ||
-    metadata.widgetType === 'radio-group'
-  ) {
+  if (isInputLikeWidgetType(metadata.widgetType) || metadata.widgetType === 'radio-group') {
     return metadata.defaultValue ?? metadata.value
   }
 

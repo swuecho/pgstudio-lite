@@ -267,6 +267,10 @@ export const notebookWidgetMetadataSchema = z.discriminatedUnion('widgetType', [
 
 export type NotebookWidgetType = z.infer<typeof notebookWidgetTypeSchema>
 export type NotebookInputLikeWidgetType = z.infer<typeof inputLikeWidgetTypeSchema>
+export type NotebookInputLikeWidgetMetadata = Extract<
+  NotebookWidgetMetadata,
+  { widgetType: NotebookInputLikeWidgetType }
+>
 export type NotebookWidgetOption = z.infer<typeof notebookWidgetOptionSchema>
 export type NotebookWidgetMetadata = z.infer<typeof notebookWidgetMetadataSchema>
 export type NotebookWidgetPresetId =
@@ -301,6 +305,13 @@ export function isInputLikeWidgetType(
   widgetType: NotebookWidgetType
 ): widgetType is NotebookInputLikeWidgetType {
   return (inputLikeWidgetTypeSchema.options as readonly string[]).includes(widgetType)
+}
+
+/** Same test, but narrows the whole metadata object to the input-like member. */
+export function isInputLikeWidget(
+  metadata: NotebookWidgetMetadata
+): metadata is NotebookInputLikeWidgetMetadata {
+  return isInputLikeWidgetType(metadata.widgetType)
 }
 
 function trimIfString(value: unknown) {
@@ -441,16 +452,7 @@ export function createWidgetMetadataFromPreset(presetId: NotebookWidgetPresetId)
 export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): NotebookWidgetMetadata {
   const parsed = notebookWidgetMetadataSchema.parse(input)
 
-  if (
-    parsed.widgetType === 'text' ||
-    parsed.widgetType === 'number' ||
-    parsed.widgetType === 'date' ||
-    parsed.widgetType === 'datetime-local' ||
-    parsed.widgetType === 'checkbox' ||
-    parsed.widgetType === 'select' ||
-    parsed.widgetType === 'range' ||
-    parsed.widgetType === 'multiselect'
-  ) {
+  if (isInputLikeWidget(parsed)) {
     let value = parsed.value
     let defaultValue = parsed.defaultValue
     if (parsed.widgetType === 'checkbox') value = Boolean(parsed.value)
@@ -622,16 +624,7 @@ export function normalizeWidgetMetadata(input: NotebookWidgetMetadata): Notebook
 export function getWidgetParamValues(metadata: NotebookWidgetMetadata): Record<string, unknown> {
   const normalized = normalizeWidgetMetadata(metadata)
 
-  if (
-    normalized.widgetType === 'text' ||
-    normalized.widgetType === 'number' ||
-    normalized.widgetType === 'date' ||
-    normalized.widgetType === 'datetime-local' ||
-    normalized.widgetType === 'checkbox' ||
-    normalized.widgetType === 'select' ||
-    normalized.widgetType === 'range' ||
-    normalized.widgetType === 'multiselect'
-  ) {
+  if (isInputLikeWidget(normalized)) {
     if (!normalized.key) return {}
     return { [normalized.key]: normalized.value }
   }
