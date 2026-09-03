@@ -12,7 +12,7 @@ import {
   syncCellResultState,
   syncCellDraftState,
   syncWidgetDraftState,
-} from '../components/notebook/useNotebookCellState'
+} from '../components/notebook/cellSyncHelpers'
 import {
   buildInputValues,
   getDependentSqlTargets,

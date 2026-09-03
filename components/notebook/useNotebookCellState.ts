@@ -1,46 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { QueryResult } from '../sql-editor/types'
-import type { NotebookCell, NotebookCellType, NotebookDetail, NotebookWidgetMetadata } from './types'
+import type { NotebookCell, NotebookDetail } from './types'
 import { buildInputValues } from '@/lib/notebook-reactive'
-import { createCell, deleteCell, updateCell } from '@/features/notebook/notebook.service'
-import { extractTemplateKeys } from '@/lib/notebook-params'
-import {
-  createDefaultWidgetMetadata,
-  createWidgetMetadataFromPreset,
-  normalizeWidgetMetadata,
-  type NotebookWidgetPresetId,
-} from '@/lib/notebook-widgets'
-import {
-  countWidgetValidationMessages,
-  getWidgetValidationMessages,
-  type WidgetValidationMessages,
-} from '@/lib/notebook-widget-validation'
 import {
   getPendingSaveCount,
   getStaleResultByCell,
   getCellUiStateByCell,
-  syncCellDraftState,
-  syncWidgetDraftState,
   syncCellResultState,
   syncExecutedQueryState,
-  getWidgetParameterKeys,
-  getResetWidgetValue,
-  pushValidationMessage,
-  getNormalizedWidgetMetadata,
 } from './cellSyncHelpers'
+import {
+  getInputCellIdByKey,
+  getNotebookInputs,
+  getParameterWidgets,
+  getValidationMessagesByCell,
+} from './notebookInputModel'
 import { useCellAutoSave } from './useCellAutoSave'
+import { useCellDrafts } from './useCellDrafts'
 import { useCellExecution } from './useCellExecution'
+import { useCellMutations } from './useCellMutations'
 import { useReactiveRunner } from './useReactiveRunner'
 import { useWidgetOptions } from './useWidgetOptions'
 
+/**
+ * Composes the per-cell hooks (drafts, auto-save, execution, reactive runs,
+ * widget options, mutations) into the single controller the notebook page
+ * consumes, and owns what is left: selection, pending focus actions, and the
+ * derived parameter model.
+ */
 export function useNotebookCellState(params: {
   activeNotebookId: string
   detailQueryData: NotebookDetail | undefined
   setStatus: (value: string) => void
 }) {
   const { activeNotebookId, detailQueryData, setStatus } = params
-  const queryClient = useQueryClient()
   const [selectedCellId, setSelectedCellId] = useState<string>('')
   const [selectedInsertParamByCell, setSelectedInsertParamByCell] = useState<Record<string, string>>({})
   const [previewMarkdown, setPreviewMarkdown] = useState<Record<string, boolean>>({})
@@ -48,12 +41,8 @@ export function useNotebookCellState(params: {
     cellId: string
     target: 'control' | 'editor'
   } | null>(null)
-  const [draftByCell, setDraftByCell] = useState<Record<string, string>>({})
-  const [widgetDraftByCell, setWidgetDraftByCell] = useState<Record<string, NotebookWidgetMetadata>>({})
 
   const cellSectionRefs = useRef<Record<string, HTMLElement | null>>({})
-  const draftByCellRef = useRef<Record<string, string>>({})
-  const widgetDraftByCellRef = useRef<Record<string, NotebookWidgetMetadata>>({})
   const lastSyncedResultByCellRef = useRef<Record<string, QueryResult | null>>({})
   const lastSyncedExecutedQueryByCellRef = useRef<Record<string, string>>({})
 
@@ -84,6 +73,14 @@ export function useNotebookCellState(params: {
     executeQueuedSqlRun: execution.executeQueuedSqlRun,
   })
 
+  const drafts = useCellDrafts({
+    cells,
+    sortedCellsRef: execution.sortedCellsRef,
+    autoSave,
+    scheduleWidgetReactiveRuns: reactive.scheduleWidgetReactiveRuns,
+  })
+  const { draftByCell, widgetDraftByCell } = drafts
+
   const inputValues = useMemo(
     () => buildInputValues(sortedCells, widgetDraftByCell),
     [sortedCells, widgetDraftByCell]
@@ -97,15 +94,17 @@ export function useNotebookCellState(params: {
     inputValues,
   })
 
-  // --- Ref sync effects ---
+  const mutations = useCellMutations({
+    activeNotebookId,
+    setStatus,
+    sortedCells,
+    selectedCellId,
+    setSelectedCellId,
+    widgetDraftByCellRef: drafts.widgetDraftByCellRef,
+  })
 
-  // Ref sync effects — refs are stable by design, no need to list them in deps
-  useEffect(() => {
-    draftByCellRef.current = draftByCell
-  }, [draftByCell])
-  useEffect(() => {
-    widgetDraftByCellRef.current = widgetDraftByCell
-  }, [widgetDraftByCell])
+  // --- Keep the execution refs current (refs are stable, so they stay out of deps) ---
+
   useEffect(() => {
     execution.sortedCellsRef.current = sortedCells
   }, [sortedCells]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -119,46 +118,18 @@ export function useNotebookCellState(params: {
     execution.widgetDraftByCellRef.current = widgetDraftByCell
   }, [widgetDraftByCell]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // --- Reset transient per-notebook state when switching notebooks ---
+
   useEffect(() => {
     setSelectedCellId('')
-  }, [activeNotebookId])
-  useEffect(() => {
+    setPendingCellAction(null)
     autoSave.setPendingSaveByCell({})
     autoSave.setSaveErrorByCell({})
     execution.setQueuedRunByCell({})
-    setPendingCellAction(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNotebookId])
 
-  // --- Draft sync effects ---
-
-  useEffect(() => {
-    setDraftByCell((prev) => {
-      const synced = syncCellDraftState({
-        cells,
-        previousDrafts: prev,
-        previousServerContent: autoSave.lastSyncedContentByCellRef.current,
-        pendingSavePayloads: autoSave.pendingSavePayloadRef.current,
-      })
-      autoSave.lastSyncedContentByCellRef.current = synced.serverContentByCell
-      return synced.drafts
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cells])
-
-  useEffect(() => {
-    setWidgetDraftByCell((prev) => {
-      const synced = syncWidgetDraftState({
-        cells,
-        previousDrafts: prev,
-        previousServerMetadata: autoSave.lastSyncedWidgetByCellRef.current,
-        pendingSavePayloads: autoSave.pendingSavePayloadRef.current,
-      })
-      autoSave.lastSyncedWidgetByCellRef.current = synced.serverMetadataByCell
-      return synced.drafts
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cells])
+  // --- Reconcile execution results with the server copy ---
 
   useEffect(() => {
     execution.setResultsByCell((prev) => {
@@ -193,6 +164,8 @@ export function useNotebookCellState(params: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // --- Drop selection / pending focus that points at a cell that no longer exists ---
+
   useEffect(() => {
     if (!selectedCellId) return
     if (sortedCells.some((cell) => cell.id === selectedCellId)) return
@@ -205,298 +178,27 @@ export function useNotebookCellState(params: {
     setPendingCellAction(null)
   }, [pendingCellAction, sortedCells])
 
-  // --- Derived state ---
+  // --- Derived parameter model ---
 
   const inputKeys = useMemo(() => new Set(Object.keys(inputValues)), [inputValues])
+  const notebookInputs = useMemo(
+    () => getNotebookInputs(sortedCells, widgetDraftByCell),
+    [sortedCells, widgetDraftByCell]
+  )
+  const inputCellIdByKey = useMemo(
+    () => getInputCellIdByKey(sortedCells, widgetDraftByCell),
+    [sortedCells, widgetDraftByCell]
+  )
+  const validationMessagesByCell = useMemo(
+    () => getValidationMessagesByCell(sortedCells, widgetDraftByCell),
+    [sortedCells, widgetDraftByCell]
+  )
+  const parameterWidgets = useMemo(
+    () => getParameterWidgets({ sortedCells, widgetDraftByCell, draftByCell, validationMessagesByCell }),
+    [draftByCell, sortedCells, validationMessagesByCell, widgetDraftByCell]
+  )
 
-  const notebookInputs = useMemo(() => {
-    const params: Array<{ key: string; label: string; inputType: string }> = []
-
-    for (const cell of sortedCells) {
-      if (cell.type !== 'widget') continue
-      const metadata = widgetDraftByCell[cell.id]
-      if (!metadata) continue
-
-      if (
-        metadata.widgetType === 'text' ||
-        metadata.widgetType === 'number' ||
-        metadata.widgetType === 'date' ||
-        metadata.widgetType === 'datetime-local' ||
-        metadata.widgetType === 'checkbox' ||
-        metadata.widgetType === 'select' ||
-        metadata.widgetType === 'range' ||
-        metadata.widgetType === 'multiselect'
-      ) {
-        if (!metadata.key) continue
-        params.push({
-          key: metadata.key,
-          label: metadata.label || metadata.key,
-          inputType: metadata.widgetType,
-        })
-        continue
-      }
-
-      if (metadata.widgetType === 'radio-group' && metadata.key) {
-        params.push({
-          key: metadata.key,
-          label: metadata.label || metadata.key,
-          inputType: 'widget-radio',
-        })
-        continue
-      }
-
-      if (metadata.widgetType === 'date-range') {
-        const startKey = metadata.config?.startKey?.trim()
-        const endKey = metadata.config?.endKey?.trim()
-        if (startKey) {
-          params.push({
-            key: startKey,
-            label: `${metadata.label || 'Date Range'} Start`,
-            inputType: 'widget-date',
-          })
-        }
-        if (endKey) {
-          params.push({
-            key: endKey,
-            label: `${metadata.label || 'Date Range'} End`,
-            inputType: 'widget-date',
-          })
-        }
-      }
-    }
-
-    return params
-  }, [sortedCells, widgetDraftByCell])
-
-  const inputCellIdByKey = useMemo(() => {
-    const out: Record<string, string> = {}
-    for (const cell of sortedCells) {
-      if (cell.type !== 'widget') continue
-      const metadata = widgetDraftByCell[cell.id]
-      if (!metadata) continue
-      if (metadata.key) out[metadata.key] = cell.id
-      if (metadata.widgetType === 'date-range') {
-        const startKey = metadata.config?.startKey?.trim()
-        const endKey = metadata.config?.endKey?.trim()
-        if (startKey) out[startKey] = cell.id
-        if (endKey) out[endKey] = cell.id
-      }
-    }
-    return out
-  }, [sortedCells, widgetDraftByCell])
-
-  const validationMessagesByCell = useMemo(() => {
-    const out: Record<string, WidgetValidationMessages> = {}
-    const duplicateKeys = new Map<string, string[]>()
-
-    for (const cell of sortedCells) {
-      if (cell.type !== 'widget') continue
-      const metadata = widgetDraftByCell[cell.id]
-      if (!metadata) continue
-      for (const key of getWidgetParameterKeys(metadata)) {
-        const next = duplicateKeys.get(key) || []
-        next.push(cell.id)
-        duplicateKeys.set(key, next)
-      }
-    }
-
-    for (const cell of sortedCells) {
-      if (cell.type !== 'widget') continue
-      const metadata = widgetDraftByCell[cell.id]
-      if (!metadata) continue
-
-      const extraMessages: WidgetValidationMessages = {}
-      for (const key of getWidgetParameterKeys(metadata)) {
-        const owners = duplicateKeys.get(key) || []
-        if (owners.length < 2) continue
-        if (metadata.widgetType === 'date-range') {
-          if (metadata.config?.startKey === key)
-            pushValidationMessage(
-              extraMessages,
-              'startKey',
-              `Parameter key '${key}' is already used by another widget`
-            )
-          if (metadata.config?.endKey === key)
-            pushValidationMessage(
-              extraMessages,
-              'endKey',
-              `Parameter key '${key}' is already used by another widget`
-            )
-        } else {
-          pushValidationMessage(
-            extraMessages,
-            'key',
-            `Parameter key '${key}' is already used by another widget`
-          )
-        }
-      }
-
-      out[cell.id] = getWidgetValidationMessages(metadata, extraMessages)
-    }
-
-    return out
-  }, [sortedCells, widgetDraftByCell])
-
-  const parameterWidgets = useMemo(() => {
-    return sortedCells.flatMap((cell) => {
-      if (cell.type !== 'widget') return []
-      const metadata = widgetDraftByCell[cell.id]
-      if (!metadata) return []
-      const paramKeys = getWidgetParameterKeys(metadata)
-      if (!paramKeys.length) return []
-
-      const usedByCellIds = sortedCells
-        .filter((item) => item.type === 'sql')
-        .filter((item) => {
-          const query = draftByCell[item.id] ?? item.content
-          const templateKeys = extractTemplateKeys(query)
-          return paramKeys.some((key) => templateKeys.includes(key))
-        })
-        .map((item) => item.id)
-
-      return [
-        {
-          cell,
-          metadata,
-          parameterKeys: paramKeys,
-          primaryKey: paramKeys[0],
-          source: metadata.config?.optionSource === 'sql' ? 'sql' : 'manual',
-          validationMessages: validationMessagesByCell[cell.id] || {},
-          validationCount: countWidgetValidationMessages(validationMessagesByCell[cell.id] || {}),
-          usedByCellIds,
-        },
-      ]
-    })
-  }, [draftByCell, sortedCells, validationMessagesByCell, widgetDraftByCell])
-
-  // --- Mutations ---
-
-  const addCellMutation = useMutation({
-    mutationFn: (type: NotebookCellType) => {
-      const selectedIndex = sortedCells.findIndex((cell) => cell.id === selectedCellId)
-      const position = selectedIndex === -1 ? undefined : selectedIndex + 1
-      if (type === 'sql') return createCell(activeNotebookId, { type, content: 'select now();', position })
-      if (type === 'markdown') return createCell(activeNotebookId, { type, content: '## Notes\n', position })
-      return createCell(activeNotebookId, {
-        type: 'widget',
-        metadata: createDefaultWidgetMetadata('text') as NotebookWidgetMetadata,
-        position,
-      })
-    },
-    onSuccess: (data) => {
-      setStatus('Cell added')
-      setSelectedCellId(data.item.id)
-      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-    },
-    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
-  })
-
-  const addWidgetPresetMutation = useMutation({
-    mutationFn: (presetId: NotebookWidgetPresetId) => {
-      const selectedIndex = sortedCells.findIndex((cell) => cell.id === selectedCellId)
-      const position = selectedIndex === -1 ? undefined : selectedIndex + 1
-      return createCell(activeNotebookId, {
-        type: 'widget',
-        metadata: createWidgetMetadataFromPreset(presetId) as NotebookWidgetMetadata,
-        position,
-      })
-    },
-    onSuccess: (data) => {
-      setStatus('Widget preset added')
-      setSelectedCellId(data.item.id)
-      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-    },
-    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
-  })
-
-  const duplicateWidgetMutation = useMutation({
-    mutationFn: (cellId: string) => {
-      const sourceCell = sortedCells.find((cell) => cell.id === cellId)
-      if (!sourceCell || sourceCell.type !== 'widget') {
-        throw new Error('widget cell not found')
-      }
-      const position = sourceCell.position + 1
-      const metadata = widgetDraftByCellRef.current[cellId] || getNormalizedWidgetMetadata(sourceCell)
-      return createCell(activeNotebookId, {
-        type: 'widget',
-        metadata,
-        position,
-      })
-    },
-    onSuccess: (data) => {
-      setStatus('Widget duplicated')
-      setSelectedCellId(data.item.id)
-      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-    },
-    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
-  })
-
-  const deleteCellMutation = useMutation({
-    mutationFn: (cellId: string) => deleteCell(activeNotebookId, cellId),
-    onSuccess: () => {
-      setStatus('Cell deleted')
-      if (activeNotebookId) void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-    },
-    onError: (error) => setStatus(error instanceof Error ? error.message : String(error)),
-  })
-
-  // --- Action handlers ---
-
-  function onChangeCell(cell: NotebookCell, next: string) {
-    setDraftByCell((prev) => ({ ...prev, [cell.id]: next }))
-    autoSave.scheduleCellSave(cell, { content: next })
-  }
-
-  function onWidgetMetadataChange(cell: NotebookCell, next: NotebookWidgetMetadata) {
-    const previous =
-      widgetDraftByCellRef.current[cell.id] ||
-      (cell.metadata_json && typeof cell.metadata_json === 'object' && 'widgetType' in cell.metadata_json
-        ? normalizeWidgetMetadata(cell.metadata_json as NotebookWidgetMetadata)
-        : createDefaultWidgetMetadata('callout'))
-    const normalized = normalizeWidgetMetadata(next) as NotebookWidgetMetadata
-    const nextDrafts = { ...widgetDraftByCellRef.current, [cell.id]: normalized }
-    widgetDraftByCellRef.current = nextDrafts
-    setWidgetDraftByCell(nextDrafts)
-    autoSave.scheduleCellSave(cell, { metadata: normalized })
-
-    reactive.scheduleWidgetReactiveRuns(cell.id, previous as NotebookWidgetMetadata, normalized)
-  }
-
-  function updateParameterWidget(cellId: string, next: NotebookWidgetMetadata) {
-    const cell = execution.sortedCellsRef.current.find((item) => item.id === cellId)
-    if (!cell || cell.type !== 'widget') return
-    onWidgetMetadataChange(cell, next)
-  }
-
-  function resetParameterWidget(cellId: string) {
-    const cell = execution.sortedCellsRef.current.find((item) => item.id === cellId)
-    if (!cell || cell.type !== 'widget') return
-    const metadata = widgetDraftByCellRef.current[cell.id]
-    if (!metadata) return
-    const resetValue = getResetWidgetValue(metadata)
-    if (resetValue === undefined) return
-    onWidgetMetadataChange(cell, { ...metadata, value: resetValue })
-  }
-
-  function moveCell(cell: NotebookCell, direction: 'up' | 'down') {
-    const to = direction === 'up' ? cell.position - 1 : cell.position + 1
-    if (to < 0 || to >= sortedCells.length) return
-    void updateCell(activeNotebookId, { cellId: cell.id, position: to })
-      .then(() => {
-        setStatus('Cell reordered')
-        void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-      })
-      .catch((error) => setStatus(error instanceof Error ? error.message : String(error)))
-  }
-
-  function toggleCellCollapsed(cell: NotebookCell) {
-    void updateCell(activeNotebookId, { cellId: cell.id, collapsed: !cell.collapsed })
-      .then(() => {
-        setStatus(cell.collapsed ? 'Cell expanded' : 'Cell collapsed')
-        void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
-      })
-      .catch((error) => setStatus(error instanceof Error ? error.message : String(error)))
-  }
+  // --- Selection and focus handlers ---
 
   function jumpToInputCell(paramKey: string) {
     const cellId = inputCellIdByKey[paramKey]
@@ -525,16 +227,8 @@ export function useNotebookCellState(params: {
 
     const draft = draftByCell[cell.id] ?? cell.content
     const next = draft.length === 0 ? token : `${draft}${/\s$/.test(draft) ? '' : ' '}${token}`
-    onChangeCell(cell, next)
+    drafts.onChangeCell(cell, next)
     setStatus(`Inserted ${token}`)
-  }
-
-  function deleteCellById(cellId: string) {
-    deleteCellMutation.mutate(cellId)
-  }
-
-  function duplicateWidgetCellById(cellId: string) {
-    duplicateWidgetMutation.mutate(cellId)
   }
 
   function clearPendingCellAction(cellId?: string) {
@@ -604,20 +298,20 @@ export function useNotebookCellState(params: {
   )
 
   return {
-    addCellMutation,
-    duplicateWidgetCellById,
-    duplicateWidgetMutation,
-    addWidgetPresetMutation,
+    addCellMutation: mutations.addCellMutation,
+    duplicateWidgetCellById: mutations.duplicateWidgetCellById,
+    duplicateWidgetMutation: mutations.duplicateWidgetMutation,
+    addWidgetPresetMutation: mutations.addWidgetPresetMutation,
     cellSectionRefs,
-    deleteCellById,
+    deleteCellById: mutations.deleteCellById,
     draftByCell,
     inputValues,
     inputKeys,
     jumpToInputCell,
-    moveCell,
+    moveCell: mutations.moveCell,
     notebookInputs,
     parameterWidgets,
-    onChangeCell,
+    onChangeCell: drafts.onChangeCell,
     cellUiStateByCell,
     pendingSaveByCell: autoSave.pendingSaveByCell,
     pendingSaveCount,
@@ -641,31 +335,14 @@ export function useNotebookCellState(params: {
     setSelectedInsertParamByCell,
     sortedCells,
     sqlEditorRefs: execution.sqlEditorRefs,
-    toggleCellCollapsed,
-    updateParameterWidget,
-    resetParameterWidget,
+    toggleCellCollapsed: mutations.toggleCellCollapsed,
+    updateParameterWidget: drafts.updateParameterWidget,
+    resetParameterWidget: drafts.resetParameterWidget,
     clearPendingCellAction,
     validationMessagesByCell,
     flushPendingSaves,
     insertParamIntoSqlCell,
     widgetDraftByCell,
-    onWidgetMetadataChange,
+    onWidgetMetadataChange: drafts.onWidgetMetadataChange,
   }
 }
-
-// Re-export pure functions for backward compatibility with tests
-export {
-  getChangedWidgetParamKeys,
-  syncCellDraftState,
-  syncWidgetDraftState,
-  syncCellResultState,
-  syncExecutedQueryState,
-  clearPendingSaveCell,
-  clearSaveError,
-  getPendingSaveCount,
-  getPendingSaveEntries,
-  getStaleResultByCell,
-  markQueuedCells,
-  clearQueuedCells,
-  getCellUiStateByCell,
-} from './cellSyncHelpers'
