@@ -25,10 +25,13 @@ export function useNotebookCrudState(params: { setStatus: (value: string) => voi
 
   useEffect(() => {
     if (!activeNotebookId && notebooks[0]?.id) setActiveNotebookId(notebooks[0].id)
+    // Fall back only against a settled list. While a fetch is in flight the
+    // cached list may predate a notebook we just created or selected.
+    if (notebooksQuery.isFetching) return
     if (activeNotebookId && !notebooks.some((n) => n.id === activeNotebookId)) {
       setActiveNotebookId(notebooks[0]?.id || '')
     }
-  }, [activeNotebookId, notebooks])
+  }, [activeNotebookId, notebooks, notebooksQuery.isFetching])
 
   const detailQuery = useQuery({
     queryKey: ['notebook', activeNotebookId],
@@ -44,6 +47,14 @@ export function useNotebookCrudState(params: { setStatus: (value: string) => voi
     },
     onSuccess: (data) => {
       setStatus('Notebook created')
+      // Seed the cached list with the new notebook before activating it. The
+      // effect above resets selection to the first notebook whenever the active
+      // id is missing from the list, which used to bounce a freshly created
+      // notebook back to the previous one until the refetch landed.
+      queryClient.setQueryData<{ items: Notebook[] }>(NOTEBOOKS_QUERY_KEY, (prev) => ({
+        ...prev,
+        items: [data.item, ...(prev?.items ?? []).filter((n) => n.id !== data.item.id)],
+      }))
       setActiveNotebookId(data.item.id)
       void queryClient.invalidateQueries({ queryKey: NOTEBOOKS_QUERY_KEY })
     },
