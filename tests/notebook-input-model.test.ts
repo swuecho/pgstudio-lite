@@ -64,10 +64,10 @@ const widgetDraftByCell: Record<string, NotebookWidgetMetadata> = {
 describe('notebook input model', () => {
   it('lists one input per parameter key, in cell order, skipping keyless and non-parameter widgets', () => {
     expect(getNotebookInputs(cells, widgetDraftByCell)).toEqual([
-      { key: 'q', label: 'Search', inputType: 'text' },
-      { key: 'status', label: 'Status', inputType: 'widget-radio' },
-      { key: 'created_from', label: 'Created Start', inputType: 'widget-date' },
-      { key: 'created_to', label: 'Created End', inputType: 'widget-date' },
+      { cellId: 'w-text', key: 'q', label: 'Search', inputType: 'text' },
+      { cellId: 'w-radio', key: 'status', label: 'Status', inputType: 'widget-radio' },
+      { cellId: 'w-range', key: 'created_from', label: 'Created Start', inputType: 'widget-date' },
+      { cellId: 'w-range', key: 'created_to', label: 'Created End', inputType: 'widget-date' },
     ])
   })
 

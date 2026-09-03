@@ -6,6 +6,7 @@ import rehypeSanitize from 'rehype-sanitize'
 import { SqlCellEditor } from './SqlCellEditor'
 import { CellResult } from './CellResult'
 import { WidgetCellEditor } from './WidgetCellEditor'
+import type { NotebookInputDescriptor } from './notebookInputModel'
 import { ErrorBoundary } from '../shared/ErrorBoundary'
 import type { NotebookPageController } from './useNotebookPageState'
 import type { QueryResult } from '../sql-editor/types'
@@ -423,7 +424,7 @@ type SqlCellBodyProps = {
   lastResult: QueryResult | undefined
   sqlKeys: string[]
   missingSqlKeys: string[]
-  notebookInputs: Array<{ key: string; label: string; inputType: string }>
+  notebookInputs: NotebookInputDescriptor[]
   selectedInsertParam: string
   onChange: (next: string) => void
   onRun: () => void
@@ -474,7 +475,7 @@ const SqlCellBody = memo(function SqlCellBody({
           <div className={styles.paramControls}>
             <select className={styles.paramSelect} value={selectedInsertParam} onChange={onSelectInsertParam}>
               {notebookInputs.map((item) => (
-                <option key={item.key} value={item.key}>
+                <option key={`${item.cellId}:${item.key}`} value={item.key}>
                   {item.key} ({item.inputType})
                 </option>
               ))}

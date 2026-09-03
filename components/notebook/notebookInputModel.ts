@@ -15,7 +15,8 @@ import { getWidgetParameterKeys, pushValidationMessage } from './cellSyncHelpers
  * the hook down to state and effects.
  */
 
-export type NotebookInputDescriptor = { key: string; label: string; inputType: string }
+/** One parameter exposed to SQL cells. `cellId` is the owning widget; keys are not unique (a duplicated widget shares its key until renamed). */
+export type NotebookInputDescriptor = { cellId: string; key: string; label: string; inputType: string }
 
 export type ParameterWidget = {
   cell: NotebookCell
@@ -47,10 +48,11 @@ export function getNotebookInputs(
 ): NotebookInputDescriptor[] {
   const params: NotebookInputDescriptor[] = []
 
-  for (const { metadata } of listWidgetDrafts(sortedCells, widgetDraftByCell)) {
+  for (const { cell, metadata } of listWidgetDrafts(sortedCells, widgetDraftByCell)) {
     if (isInputLikeWidgetType(metadata.widgetType)) {
       if (!metadata.key) continue
       params.push({
+        cellId: cell.id,
         key: metadata.key,
         label: metadata.label || metadata.key,
         inputType: metadata.widgetType,
@@ -60,6 +62,7 @@ export function getNotebookInputs(
 
     if (metadata.widgetType === 'radio-group' && metadata.key) {
       params.push({
+        cellId: cell.id,
         key: metadata.key,
         label: metadata.label || metadata.key,
         inputType: 'widget-radio',
@@ -72,6 +75,7 @@ export function getNotebookInputs(
       const endKey = metadata.config?.endKey?.trim()
       if (startKey) {
         params.push({
+          cellId: cell.id,
           key: startKey,
           label: `${metadata.label || 'Date Range'} Start`,
           inputType: 'widget-date',
@@ -79,6 +83,7 @@ export function getNotebookInputs(
       }
       if (endKey) {
         params.push({
+          cellId: cell.id,
           key: endKey,
           label: `${metadata.label || 'Date Range'} End`,
           inputType: 'widget-date',
