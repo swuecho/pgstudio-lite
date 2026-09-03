@@ -5,7 +5,7 @@ import { queryHistory } from '@/drizzle/schema'
 import { getMetaDb } from '../meta-db'
 import { getConnectionByName } from './connections'
 import { getPool } from './pool'
-import { getPrimaryKeyColumns } from './tables'
+import { getPrimaryKeyColumns } from './introspect'
 
 const QUERY_STATEMENT_TIMEOUT_MS = 15_000
 const MAX_RESULT_ROWS = 500

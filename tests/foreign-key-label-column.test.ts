@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { pickForeignKeyLabelColumn, type TableColumn } from '../lib/db/tables'
+import { pickForeignKeyLabelColumn } from '../lib/db/foreign-key-options'
+import type { TableColumn } from '../lib/db/introspect'
 
 function columns(names: Array<[string, string]>): TableColumn[] {
   return names.map(([name, dataType]) => ({

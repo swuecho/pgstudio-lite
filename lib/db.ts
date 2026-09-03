@@ -36,18 +36,22 @@ export {
   listTables,
   getTableForeignKeys,
   getTableColumns,
+  listSchemaObjects,
+  getIncomingForeignKeys,
+} from './db/introspect'
+
+export {
   lookupTableRow,
   getTableRows,
-  listSchemaObjects,
   updateTableRowByPrimaryKey,
   insertTableRow,
-  importTableRows,
   deleteTableRowByPrimaryKey,
-  getIncomingForeignKeys,
   fetchRowsByMatch,
-  type ForeignKeyOption,
-  getForeignKeyOptions,
-} from './db/tables'
+} from './db/rows'
+
+export { importTableRows } from './db/import'
+
+export { type ForeignKeyOption, getForeignKeyOptions } from './db/foreign-key-options'
 
 export { getTableDdl } from './db/table-ddl'
 
