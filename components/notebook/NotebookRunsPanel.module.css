@@ -1,0 +1,192 @@
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(16 24 39 / 48%);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 18px;
+}
+
+.modal {
+  width: min(1100px, 100%);
+  height: min(86vh, 920px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--panel);
+  padding: 12px;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scheduleBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel-3);
+  font-size: 12px;
+}
+
+.scheduleBar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.scheduleBar select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  color: var(--text);
+  height: var(--control-h);
+  padding: 0 8px;
+}
+
+.scheduleMeta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.scheduleSpacer {
+  flex: 1;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+}
+
+.runList {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  overflow: auto;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.runItem {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--surface-history-start), var(--surface-history-end));
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.runItemActive {
+  border-color: var(--border-active);
+  background: linear-gradient(180deg, var(--surface-active-start), var(--surface-active-end));
+}
+
+.runItemTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.runItemMeta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.detail {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding-right: 2px;
+}
+
+.detailHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.detailHead .spacer {
+  flex: 1;
+}
+
+.snapshotCell {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel-3);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.snapshotCellHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sqlText {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--control-bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.cellError {
+  color: var(--status-error-text);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.widgetValue {
+  font-size: 12px;
+}
+
+.widgetValue code {
+  font-family: var(--font-mono);
+}
+
+.emptyDetail {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 200px minmax(0, 1fr);
+  }
+}

@@ -101,6 +101,57 @@ export const notebookCells = sqliteTable(
   })
 )
 
+/**
+ * One row per full-notebook execution ("Run now" or a scheduled tick). The
+ * snapshot is the notebook as it was at that moment: every cell's content and
+ * widget metadata, plus each SQL cell's result or error. Results are already
+ * capped at MAX_RESULT_ROWS by executeQuery, which bounds the row size.
+ */
+export const notebookRuns = sqliteTable(
+  'notebook_runs',
+  {
+    id: text('id').primaryKey(),
+    notebookId: text('notebook_id')
+      .notNull()
+      .references(() => notebooks.id, { onDelete: 'cascade' }),
+    trigger: text('trigger').notNull(),
+    status: text('status').notNull(),
+    startedAt: text('started_at').notNull(),
+    finishedAt: text('finished_at'),
+    durationMs: integer('duration_ms'),
+    cellCount: integer('cell_count').notNull().default(0),
+    errorCount: integer('error_count').notNull().default(0),
+    error: text('error'),
+    notebookTitle: text('notebook_title').notNull(),
+    connectionName: text('connection_name').notNull(),
+    inputValuesJson: text('input_values_json').notNull().default('{}'),
+    snapshotJson: text('snapshot_json').notNull().default('[]'),
+  },
+  (table) => ({
+    notebookStartedIdx: index('idx_notebook_runs_notebook_started').on(table.notebookId, table.startedAt),
+  })
+)
+
+/** At most one schedule per notebook; absence means "never scheduled". */
+export const notebookSchedules = sqliteTable(
+  'notebook_schedules',
+  {
+    notebookId: text('notebook_id')
+      .primaryKey()
+      .references(() => notebooks.id, { onDelete: 'cascade' }),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+    intervalMinutes: integer('interval_minutes').notNull().default(60),
+    nextRunAt: text('next_run_at'),
+    lastRunAt: text('last_run_at'),
+    lastRunId: text('last_run_id'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => ({
+    dueIdx: index('idx_notebook_schedules_due').on(table.enabled, table.nextRunAt),
+  })
+)
+
 export const tableEditorBookmarks = sqliteTable(
   'table_editor_bookmarks',
   {

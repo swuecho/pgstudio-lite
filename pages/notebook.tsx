@@ -10,6 +10,7 @@ import { NotebookDashboard } from '../components/notebook/NotebookDashboard'
 import { NotebookHelpPanel } from '../components/notebook/NotebookHelpPanel'
 import { NotebookImportModal } from '../components/notebook/NotebookImportModal'
 import { NotebookParameterPanel } from '../components/notebook/NotebookParameterPanel'
+import { NotebookRunsPanel } from '../components/notebook/NotebookRunsPanel'
 import { NotebookSidebar } from '../components/notebook/NotebookSidebar'
 import { useNotebookPageState } from '../components/notebook/useNotebookPageState'
 import { NOTEBOOK_WIDGET_PRESETS } from '../lib/notebook-widgets'
@@ -96,6 +97,14 @@ export default function NotebookPage() {
               onClick={controller.notebookImport.exportNotebookJson}
             >
               Export
+            </button>
+            <button
+              className={`btn small ${styles.actionButton}`}
+              disabled={!controller.activeNotebookId}
+              title="Run history and schedule for this notebook"
+              onClick={() => controller.setShowRunsPanel(true)}
+            >
+              Runs
             </button>
             <button
               className={`btn small ${styles.actionButton}`}
@@ -208,6 +217,15 @@ export default function NotebookPage() {
       </main>
 
       <SettingsPanel />
+
+      {controller.showRunsPanel && controller.activeNotebookId ? (
+        <NotebookRunsPanel
+          notebookId={controller.activeNotebookId}
+          notebookTitle={controller.activeNotebook?.title || 'Notebook'}
+          runs={controller.runs}
+          onClose={() => controller.setShowRunsPanel(false)}
+        />
+      ) : null}
 
       {controller.notebookImport.showImportModal ? (
         <NotebookImportModal

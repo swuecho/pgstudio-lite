@@ -153,6 +153,39 @@ function reconcileSchema({ sqlite, metaDb }: MetaDbHandles) {
       ON table_foreign_key_display (connection_name, schema_name, table_name);
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS notebook_runs (
+      id text PRIMARY KEY NOT NULL,
+      notebook_id text NOT NULL,
+      trigger text NOT NULL,
+      status text NOT NULL,
+      started_at text NOT NULL,
+      finished_at text,
+      duration_ms integer,
+      cell_count integer DEFAULT 0 NOT NULL,
+      error_count integer DEFAULT 0 NOT NULL,
+      error text,
+      notebook_title text NOT NULL,
+      connection_name text NOT NULL,
+      input_values_json text DEFAULT '{}' NOT NULL,
+      snapshot_json text DEFAULT '[]' NOT NULL,
+      FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON UPDATE no action ON DELETE cascade
+    );
+    CREATE INDEX IF NOT EXISTS idx_notebook_runs_notebook_started ON notebook_runs (notebook_id, started_at);
+    CREATE TABLE IF NOT EXISTS notebook_schedules (
+      notebook_id text PRIMARY KEY NOT NULL,
+      enabled integer DEFAULT false NOT NULL,
+      interval_minutes integer DEFAULT 60 NOT NULL,
+      next_run_at text,
+      last_run_at text,
+      last_run_id text,
+      created_at text NOT NULL,
+      updated_at text NOT NULL,
+      FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON UPDATE no action ON DELETE cascade
+    );
+    CREATE INDEX IF NOT EXISTS idx_notebook_schedules_due ON notebook_schedules (enabled, next_run_at);
+  `)
+
   if (hasTable('query_snippets')) {
     if (!hasColumn('query_snippets', 'connection_name')) {
       sqlite.exec(`ALTER TABLE query_snippets ADD COLUMN connection_name text;`)

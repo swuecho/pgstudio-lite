@@ -1,6 +1,15 @@
 import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCellType, Notebook } from '@/lib/notebook-types'
-export type { NotebookCellType, Notebook } from '@/lib/notebook-types'
+export type {
+  NotebookCellType,
+  Notebook,
+  NotebookRunDetail,
+  NotebookRunSnapshotCell,
+  NotebookRunStatus,
+  NotebookRunSummary,
+  NotebookRunTrigger,
+  NotebookSchedule,
+} from '@/lib/notebook-types'
 
 export type NotebookInputType =
   | 'text'

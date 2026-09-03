@@ -8,6 +8,9 @@ import type {
   NotebookDetail,
   NotebookWidgetMetadata,
   NotebookInputValues,
+  NotebookRunDetail,
+  NotebookRunSummary,
+  NotebookSchedule,
   RunCellResponse,
 } from '@/components/notebook/types'
 
@@ -153,4 +156,44 @@ export async function generateTourNotebook(payload: {
 
 export async function exportNotebook(notebookId: string) {
   return fetchJson<NotebookSpecV1>(`/api/notebooks/${encodeURIComponent(notebookId)}/export`)
+}
+
+// ---- Runs and schedules -------------------------------------------------------
+
+export async function listNotebookRuns(notebookId: string) {
+  return fetchJson<{ items: NotebookRunSummary[] }>(`/api/notebooks/${encodeURIComponent(notebookId)}/runs`)
+}
+
+export async function getNotebookRun(notebookId: string, runId: string) {
+  return fetchJson<{ item: NotebookRunDetail }>(
+    `/api/notebooks/${encodeURIComponent(notebookId)}/runs/${encodeURIComponent(runId)}`
+  )
+}
+
+/** Runs every SQL cell now and returns the stored run; resolves when the run has finished. */
+export async function triggerNotebookRun(notebookId: string) {
+  return fetchJson<{ item: NotebookRunDetail }>(`/api/notebooks/${encodeURIComponent(notebookId)}/runs`, {
+    method: 'POST',
+  })
+}
+
+export async function deleteNotebookRun(notebookId: string, runId: string) {
+  return fetchJson<{ ok: boolean }>(
+    `/api/notebooks/${encodeURIComponent(notebookId)}/runs/${encodeURIComponent(runId)}`,
+    { method: 'DELETE' }
+  )
+}
+
+export async function getNotebookSchedule(notebookId: string) {
+  return fetchJson<{ item: NotebookSchedule }>(`/api/notebooks/${encodeURIComponent(notebookId)}/schedule`)
+}
+
+export async function updateNotebookSchedule(
+  notebookId: string,
+  payload: { enabled: boolean; intervalMinutes: number }
+) {
+  return fetchJson<{ item: NotebookSchedule }>(`/api/notebooks/${encodeURIComponent(notebookId)}/schedule`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
 }

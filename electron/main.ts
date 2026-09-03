@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from 'elect
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { ensureMetaDbReady } from '@/lib/meta-db'
+import { startNotebookScheduler } from '@/lib/notebook-scheduler'
 import { buildAppMenu } from './menu'
 import { installShutdownHandlers } from './lifecycle'
 import { installRuntimePaths } from './paths'
@@ -154,6 +155,11 @@ function main() {
       app.exit(1)
       return
     }
+
+    // Scheduled notebook runs only happen while the app is open; there is no
+    // background agent. Started here rather than at import so a DB failure
+    // above never leaves a ticker running against a closed handle.
+    startNotebookScheduler()
 
     window = createWindow()
   })

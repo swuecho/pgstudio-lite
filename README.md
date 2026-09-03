@@ -9,6 +9,7 @@ It includes:
 - SQL Editor
 - Table Editor
 - Notebook editor with SQL, Markdown, and widget cells
+- Notebook runs: run every cell on demand or on a schedule and keep a snapshot history
 - SQLite-backed local metadata for history, snippets, notebooks, and saved connections
 
 ## Stack
@@ -154,6 +155,21 @@ Connections can also be marked read-only. In read-only mode:
 - write SQL is rejected
 - table insert/update/delete actions are blocked
 - the UI labels the connection as read-only
+
+## Notebook runs and schedules
+
+The **Runs** button on a notebook opens its run history. **Run now** executes
+every SQL cell in order (a failing cell does not stop the others) and stores a
+snapshot: each cell's content, widget values, and results or error at that
+moment. The last 50 runs per notebook are kept.
+
+A notebook can also run on a schedule (5 minutes to 24 hours). Scheduled runs
+only happen while the app is running: the web build starts the ticker with the
+Next server (`instrumentation.ts`), the desktop app starts it in the Electron
+main process. A schedule whose time passed while the app was closed fires on the
+next tick after start-up. Set `PGSTUDIO_DISABLE_SCHEDULER=1` to keep the web
+server from running schedules (useful when several instances share a metadata
+DB).
 
 ## Desktop app
 

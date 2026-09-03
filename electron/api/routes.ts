@@ -12,6 +12,9 @@ import notebookExport from '@/pages/api/notebooks/[id]/export'
 import notebookOptionQuery from '@/pages/api/notebooks/[id]/option-query'
 import notebookPatch from '@/pages/api/notebooks/[id]/patch'
 import notebookRunCell from '@/pages/api/notebooks/[id]/run-cell'
+import notebookRunById from '@/pages/api/notebooks/[id]/runs/[runId]'
+import notebookRuns from '@/pages/api/notebooks/[id]/runs'
+import notebookSchedule from '@/pages/api/notebooks/[id]/schedule'
 import notebooksGenerateTour from '@/pages/api/notebooks/generate-tour'
 import notebooksImport from '@/pages/api/notebooks/import'
 import notebooksIndex from '@/pages/api/notebooks/index'
@@ -86,5 +89,8 @@ export const routes: Route[] = [
   { pattern: '/api/notebooks/:id/export', handler: notebookExport as ApiHandler },
   { pattern: '/api/notebooks/:id/patch', handler: notebookPatch as ApiHandler },
   { pattern: '/api/notebooks/:id/run-cell', handler: notebookRunCell as ApiHandler },
+  { pattern: '/api/notebooks/:id/runs', handler: notebookRuns as ApiHandler },
+  { pattern: '/api/notebooks/:id/runs/:runId', handler: notebookRunById as ApiHandler },
+  { pattern: '/api/notebooks/:id/schedule', handler: notebookSchedule as ApiHandler },
   { pattern: '/api/notebooks/:id/option-query', handler: notebookOptionQuery as ApiHandler },
 ]

@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { closeAllPools } from '@/lib/db/pool'
 import { closeMetaDb } from '@/lib/meta-db'
+import { stopNotebookScheduler } from '@/lib/notebook-scheduler'
 
 /**
  * Close database handles before exit.
@@ -17,6 +18,8 @@ export function installShutdownHandlers() {
     if (quitting) return
     quitting = true
     event.preventDefault()
+    // No new scheduled runs may start while pools are draining.
+    stopNotebookScheduler()
 
     const finish = () => {
       try {
