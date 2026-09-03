@@ -31,7 +31,7 @@ Thanks for helping improve PG Studio Lite. This document covers how to set up a 
    cp .env.example .env.local
    ```
 
-   Set at least `PG_CONNECTION_STRING`. See the main [README](./README.md) for optional variables (`PG_CONNECTION_NAME`, `PG_CONNECTION_READ_ONLY`, `PG_CONNECTIONS_JSON`, `PGSTUDIO_META_DB_PATH`, `SKIP_RUNTIME_MIGRATE`).
+   Set at least `PG_CONNECTION_STRING`. See the main [README](./README.md) for optional variables (`PG_CONNECTION_NAME`, `PG_CONNECTION_READ_ONLY`, `PG_CONNECTIONS_JSON`, `PGSTUDIO_META_DB_PATH`).
 
 3. Start the dev server (port **4180**):
 
@@ -88,7 +88,7 @@ Single-level relative imports (`./sibling`, `../parent`) stay relative; they sur
 | `npm run db:generate`      | Generate Drizzle migrations from schema changes |
 | `npm run db:migrate`       | Apply migrations via Drizzle Kit                |
 
-Migrations also run on server startup unless `SKIP_RUNTIME_MIGRATE=1`. For **discipline when authoring migrations**, see [docs/migrations/README.md](./docs/migrations/README.md).
+Migrations always run when the app opens the metadata DB. Schema changes go in a migration and nowhere else: do not add `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE` fallbacks to `lib/meta-db.ts`. For **discipline when authoring migrations**, see [docs/migrations/README.md](./docs/migrations/README.md).
 
 ## Before you open a pull request
 

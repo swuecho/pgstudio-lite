@@ -85,6 +85,13 @@
       "when": 1772800000000,
       "tag": "0011_notebook_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1772900000000,
+      "tag": "0012_notebook_cells_last_result_json",
+      "breakpoints": true
     }
   ]
 }

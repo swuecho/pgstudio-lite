@@ -123,8 +123,6 @@ Advanced optional:
 - `PGSTUDIO_META_DB_PATH`
   Override the local SQLite metadata DB path.
   Default: `./data/history.db`
-- `SKIP_RUNTIME_MIGRATE`
-  Set to `1` only if migrations are handled outside app startup.
 
 ## Local Persistence
 
@@ -287,7 +285,7 @@ npm run db:generate
 npm run db:migrate
 ```
 
-Migrations also run automatically on server startup unless `SKIP_RUNTIME_MIGRATE=1`.
+Migrations also run automatically whenever the app opens the metadata DB, so `db:migrate` is only needed to inspect or apply them ahead of time. The migration journal is the single source of truth for the schema; `lib/meta-db.ts` never adds tables or columns on its own.
 
 Desktop app:
 
