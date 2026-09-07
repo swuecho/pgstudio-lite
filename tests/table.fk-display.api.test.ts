@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { invokeApi as callApi, type ApiCall } from './helpers/invoke-api'
 import fkDisplayHandler from '../pages/api/tables/[table]/fk-display'
 import * as db from '../lib/db'
 
@@ -26,40 +27,8 @@ vi.mock('../lib/db', () => ({
   })),
 }))
 
-type ApiResult = {
-  statusCode: number
-  payload: unknown
-}
-
-async function invokeApi(input: {
-  method: string
-  query?: Record<string, unknown>
-  body?: unknown
-}): Promise<ApiResult> {
-  let statusCode = 200
-  let payload: unknown = null
-
-  const req = {
-    method: input.method,
-    query: { table: 'users', ...(input.query || {}) },
-    body: input.body,
-  }
-
-  const res = {
-    setHeader: vi.fn(),
-    status(code: number) {
-      statusCode = code
-      return this
-    },
-    json(body: unknown) {
-      payload = body
-      return this
-    },
-  }
-
-  await fkDisplayHandler(req as never, res as never)
-  return { statusCode, payload }
-}
+const invokeApi = (call: ApiCall) =>
+  callApi(fkDisplayHandler, { ...call, query: { table: 'users', ...(call.query || {}) } })
 
 describe('table fk-display API', () => {
   beforeEach(() => {

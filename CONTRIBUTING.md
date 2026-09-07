@@ -15,7 +15,7 @@ Thanks for helping improve PG Studio Lite. This document covers how to set up a 
   The desktop build needs the same addon compiled for Electron's ABI, which is a different one. It is kept out of `node_modules` on purpose — `npm run desktop:native` downloads it to `native/<platform>-<arch>/` and `lib/meta-db.ts` loads it from there — so packaging never disturbs the Node-ABI build that `npm test` and `next dev` use. Never run `electron-rebuild` or `electron-builder install-app-deps` against this repo's `node_modules`.
 
 - **npm**: this repo uses `package-lock.json`; install dependencies with `npm ci` in CI-like workflows, or `npm install` locally.
-- **PostgreSQL**: a reachable instance for the SQL editor, table editor, and notebook SQL cells. The app talks to Postgres over TCP using `pg`.
+- **PostgreSQL**: a reachable instance for the SQL editor, table editor, and notebook SQL cells. The app talks to Postgres over TCP using `pg`. If you have Docker, `npm run db:up` starts one that matches `.env.example` and CI (see [Local Postgres](#local-postgres-with-docker)).
 
 ## Getting started
 
@@ -32,6 +32,8 @@ Thanks for helping improve PG Studio Lite. This document covers how to set up a 
    ```
 
    Set at least `PG_CONNECTION_STRING`. See the main [README](./README.md) for optional variables (`PG_CONNECTION_NAME`, `PG_CONNECTION_READ_ONLY`, `PG_CONNECTIONS_JSON`, `PGSTUDIO_META_DB_PATH`).
+
+   With Docker you can skip editing: the defaults in `.env.example` point at the container started by `npm run db:up`.
 
 3. Start the dev server (port **4180**):
 
@@ -71,23 +73,38 @@ Single-level relative imports (`./sibling`, `../parent`) stay relative; they sur
 
 `lib/meta-db.ts` opens SQLite **lazily**. Import `getMetaDb()` / `getSqlite()` and call them inside the function that queries — never hoist the handle to a module-level `const`. Opening at import time makes every module that transitively reaches `lib/db` pay for a native addon and a file handle, including pure helpers and the tests that cover them.
 
+## Local Postgres with Docker
+
+`docker-compose.yml` runs `postgres:16-alpine` with the same credentials as `.env.example` and the CI `pg-integration` job.
+
+```bash
+npm run db:up        # start, wait for healthy; seeds demo tables on first boot
+npm run db:down      # stop, keep data
+npm run db:reset     # drop the volume and start fresh
+```
+
+The first boot runs `docker/postgres/init/01-demo.sql`, which creates a small `demo` schema (customers, products, orders, order items, a view) with foreign keys, a uuid key, jsonb, arrays, and an enum, so the table editor has something to show. Set `PGSTUDIO_PG_PORT` if 5432 is already taken; the `db:*` and `test:integration:local` scripts all honour it.
+
 ## Commands
 
-| Command                    | Purpose                                         |
-| -------------------------- | ----------------------------------------------- |
-| `npm run dev`              | Development server on port 4180                 |
-| `npm run build`            | Production build                                |
-| `npm run start`            | Run production build (port 4180)                |
-| `npm run typecheck`        | TypeScript (`tsc --noEmit`)                     |
-| `npm run lint`             | ESLint                                          |
-| `npm run test`             | Vitest (single run)                             |
-| `npm run test:integration` | Vitest: real Postgres smoke tests (see below)   |
-| `npm run test:watch`       | Vitest watch mode                               |
-| `npm run format`           | Prettier write                                  |
-| `npm run format:check`     | Prettier check (no writes)                      |
-| `npm run check`            | format:check + lint + typecheck + test          |
-| `npm run db:generate`      | Generate Drizzle migrations from schema changes |
-| `npm run db:migrate`       | Apply migrations via Drizzle Kit                |
+| Command                                  | Purpose                                                   |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `npm run dev`                            | Development server on port 4180                           |
+| `npm run build`                          | Production build                                          |
+| `npm run start`                          | Run production build (port 4180)                          |
+| `npm run typecheck`                      | TypeScript (`tsc --noEmit`)                               |
+| `npm run lint`                           | ESLint                                                    |
+| `npm run test`                           | Vitest (single run)                                       |
+| `npm run test:integration`               | Vitest: real Postgres smoke tests (see below)             |
+| `npm run test:integration:local`         | Same, against the `npm run db:up` container               |
+| `npm run test:coverage`                  | Vitest with a v8 coverage summary + `coverage/index.html` |
+| `npm run db:up` / `db:down` / `db:reset` | Local Postgres via Docker Compose                         |
+| `npm run test:watch`                     | Vitest watch mode                                         |
+| `npm run format`                         | Prettier write                                            |
+| `npm run format:check`                   | Prettier check (no writes)                                |
+| `npm run check`                          | format:check + lint + typecheck + test                    |
+| `npm run db:generate`                    | Generate Drizzle migrations from schema changes           |
+| `npm run db:migrate`                     | Apply migrations via Drizzle Kit                          |
 
 Migrations always run when the app opens the metadata DB. Schema changes go in a migration and nowhere else: do not add `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE` fallbacks to `lib/meta-db.ts`. For **discipline when authoring migrations**, see [docs/migrations/README.md](./docs/migrations/README.md).
 
@@ -117,11 +134,20 @@ See [Desktop app](./README.md#desktop-app) for what the smoke run covers and how
 
 - Tests live under **`tests/`** and use **Vitest** with **jsdom** where UI is involved.
 - Prefer focused tests next to the behavior they protect; reuse existing helpers and fixtures if present.
+- API route tests use `invokeApi(handler, { method, query, body })` from [`tests/helpers/invoke-api.ts`](./tests/helpers/invoke-api.ts), with `lib/db` mocked via `vi.mock`. See `tests/query.api.test.ts` for the pattern.
+- `npm run test:coverage` prints a summary and writes `coverage/index.html`. There are no thresholds; use it to find untested areas before touching them.
 - If a change touches API contracts or parsing, add or extend tests that cover success and validation/error paths where practical.
 
 ### Postgres integration tests
 
-[`tests/pg.integration.test.ts`](./tests/pg.integration.test.ts) exercises **`lib/db`** against a real PostgreSQL instance (no mocked `executeQuery`). They are **skipped** in a normal `npm test` run unless you opt in:
+[`tests/pg.integration.test.ts`](./tests/pg.integration.test.ts) exercises **`lib/db`** against a real PostgreSQL instance (no mocked `executeQuery`). They are **skipped** in a normal `npm test` run unless you opt in. With the Docker container running:
+
+```bash
+npm run db:up
+npm run test:integration:local
+```
+
+Or against any other database:
 
 ```bash
 export PGSTUDIO_PG_INTEGRATION=1

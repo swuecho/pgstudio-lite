@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { invokeApi as callApi } from './helpers/invoke-api'
 import fkOptionsHandler from '../pages/api/tables/[table]/fk-options'
 import * as db from '../lib/db'
 
@@ -9,35 +10,8 @@ vi.mock('../lib/db', () => ({
   })),
 }))
 
-type ApiResult = {
-  statusCode: number
-  payload: unknown
-}
-
-async function invokeApi(query: Record<string, unknown>): Promise<ApiResult> {
-  let statusCode = 200
-  let payload: unknown = null
-
-  const req = {
-    method: 'GET',
-    query: { table: 'orders', ...query },
-  }
-
-  const res = {
-    setHeader: vi.fn(),
-    status(code: number) {
-      statusCode = code
-      return this
-    },
-    json(body: unknown) {
-      payload = body
-      return this
-    },
-  }
-
-  await fkOptionsHandler(req as never, res as never)
-  return { statusCode, payload }
-}
+const invokeApi = (query: Record<string, unknown>) =>
+  callApi(fkOptionsHandler, { query: { table: 'orders', ...query } })
 
 describe('table fk-options API', () => {
   beforeEach(() => {

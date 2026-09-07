@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { invokeApi } from './helpers/invoke-api'
 import notebooksHandler from '../pages/api/notebooks/index'
 import notebookCellsHandler from '../pages/api/notebooks/[id]/cells'
 import runCellHandler from '../pages/api/notebooks/[id]/run-cell'
@@ -25,49 +26,6 @@ vi.mock('../lib/db', () => {
     executeQuery: vi.fn(),
   }
 })
-
-type ApiResult = {
-  statusCode: number
-  payload: unknown
-  headers: Record<string, string>
-}
-
-type ApiHandler = (req: any, res: any) => unknown
-
-function invokeApi(
-  handler: ApiHandler,
-  input: { method: string; query?: Record<string, unknown>; body?: unknown }
-): Promise<ApiResult> | ApiResult {
-  const headers: Record<string, string> = {}
-  let statusCode = 200
-  let payload: unknown = null
-
-  const req = {
-    method: input.method,
-    query: input.query || {},
-    body: input.body,
-  }
-
-  const res = {
-    setHeader(name: string, value: string) {
-      headers[name] = value
-    },
-    status(code: number) {
-      statusCode = code
-      return this
-    },
-    json(body: unknown) {
-      payload = body
-      return this
-    },
-  }
-
-  const maybePromise = handler(req as any, res as any)
-  if (maybePromise && typeof (maybePromise as Promise<unknown>).then === 'function') {
-    return (maybePromise as Promise<unknown>).then(() => ({ statusCode, payload, headers }))
-  }
-  return { statusCode, payload, headers }
-}
 
 function resetNotebookFixtures() {
   ensureMetaDbReady()

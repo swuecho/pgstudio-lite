@@ -36,7 +36,7 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Set `PG_CONNECTION_STRING` in `.env.local` to a reachable PostgreSQL instance.
+3. Set `PG_CONNECTION_STRING` in `.env.local` to a reachable PostgreSQL instance. No Postgres handy? With Docker installed, `npm run db:up` starts one that the `.env.example` defaults already point at, seeded with a small `demo` schema.
 
 Example:
 

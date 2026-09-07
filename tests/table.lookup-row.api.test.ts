@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { invokeApi as callApi } from './helpers/invoke-api'
 import lookupRowHandler from '../pages/api/tables/[table]/lookup-row'
 import * as db from '../lib/db'
 
@@ -9,35 +10,8 @@ vi.mock('../lib/db', () => ({
   })),
 }))
 
-type ApiResult = {
-  statusCode: number
-  payload: unknown
-}
-
-async function invokeApi(input: { table?: string; body?: unknown }): Promise<ApiResult> {
-  let statusCode = 200
-  let payload: unknown = null
-
-  const req = {
-    method: 'POST',
-    query: { table: input.table || 'users' },
-    body: input.body,
-  }
-
-  const res = {
-    status(code: number) {
-      statusCode = code
-      return this
-    },
-    json(body: unknown) {
-      payload = body
-      return this
-    },
-  }
-
-  await lookupRowHandler(req as never, res as never)
-  return { statusCode, payload }
-}
+const invokeApi = ({ table, body }: { table?: string; body?: unknown }) =>
+  callApi(lookupRowHandler, { method: 'POST', query: { table: table || 'users' }, body })
 
 describe('table lookup-row API', () => {
   beforeEach(() => {
@@ -76,19 +50,7 @@ describe('table lookup-row API', () => {
   })
 
   it('rejects non-POST methods', async () => {
-    let statusCode = 200
-    const req = { method: 'GET', query: { table: 'users' }, body: {} }
-    const res = {
-      setHeader: vi.fn(),
-      status(code: number) {
-        statusCode = code
-        return this
-      },
-      json() {
-        return this
-      },
-    }
-    await lookupRowHandler(req as never, res as never)
-    expect(statusCode).toBe(405)
+    const result = await callApi(lookupRowHandler, { method: 'GET', query: { table: 'users' }, body: {} })
+    expect(result.statusCode).toBe(405)
   })
 })

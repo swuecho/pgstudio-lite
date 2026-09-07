@@ -9,16 +9,19 @@ list of things that are easy to get wrong.
 
 ## Commands
 
-| Command                    | What it does                                                  |
-| -------------------------- | ------------------------------------------------------------- |
-| `npm run check`            | Prettier check, ESLint, typecheck, tests — what CI runs first |
-| `npm run dev`              | Dev server on <http://localhost:4180>                         |
-| `npm test`                 | Vitest, single run (~4s)                                      |
-| `npm run test:watch`       | Vitest watch mode                                             |
-| `npm run test:integration` | Real-Postgres tests; needs `PGSTUDIO_PG_INTEGRATION=1`        |
-| `npm run format`           | Prettier write                                                |
-| `npm run db:generate`      | New Drizzle migration from `drizzle/schema.ts`                |
-| `npm run desktop:build`    | Static renderer + Electron main bundle                        |
+| Command                          | What it does                                                  |
+| -------------------------------- | ------------------------------------------------------------- |
+| `npm run check`                  | Prettier check, ESLint, typecheck, tests — what CI runs first |
+| `npm run dev`                    | Dev server on <http://localhost:4180>                         |
+| `npm test`                       | Vitest, single run (~4s)                                      |
+| `npm run test:watch`             | Vitest watch mode                                             |
+| `npm run test:integration`       | Real-Postgres tests; needs `PGSTUDIO_PG_INTEGRATION=1`        |
+| `npm run test:integration:local` | Same, against the Docker Postgres from `npm run db:up`        |
+| `npm run test:coverage`          | Vitest + v8 coverage summary; drill-down in `coverage/`       |
+| `npm run db:up`                  | Local Postgres 16 via Docker Compose, seeds `demo` schema     |
+| `npm run format`                 | Prettier write                                                |
+| `npm run db:generate`            | New Drizzle migration from `drizzle/schema.ts`                |
+| `npm run desktop:build`          | Static renderer + Electron main bundle                        |
 
 Node 22 only (`.nvmrc`, `engine-strict`). If tests fail with `NODE_MODULE_VERSION`,
 run `npm rebuild better-sqlite3`. Never run `electron-rebuild` against `node_modules`;
@@ -56,10 +59,12 @@ staged files. Run `npm run check` before opening a PR.
 
 ## Testing conventions
 
-- API route tests import the handler and call it with a hand-built `req`/`res`
-  (see `tests/query.api.test.ts`), mocking `lib/db` with `vi.mock`.
+- API route tests call `invokeApi(handler, { method, query, body })` from
+  `tests/helpers/invoke-api.ts` and mock `lib/db` with `vi.mock`. Route params
+  such as `[table]` go in `query`. See `tests/query.api.test.ts`.
 - UI tests use Testing Library + jsdom; `tests/setup.ts` loads jest-dom matchers.
-- `tests/pg.integration.test.ts` is skipped unless `PGSTUDIO_PG_INTEGRATION=1`.
+- `tests/pg.integration.test.ts` is skipped unless `PGSTUDIO_PG_INTEGRATION=1`;
+  `npm run db:up && npm run test:integration:local` runs it locally.
 - If a change touches `pages/api/` or `electron/`, run `npm run desktop:build`
   and `npx electron . --smoke --user-data-dir /tmp/pgstudio-smoke`; `next dev`
   does not exercise the desktop protocol handler.

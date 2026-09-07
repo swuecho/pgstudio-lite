@@ -1,0 +1,30 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # One PR per group keeps the noise down; security updates still arrive
+    # individually and immediately.
+    groups:
+      dev-tooling:
+        dependency-type: development
+        patterns: ['*']
+      runtime:
+        dependency-type: production
+        patterns: ['*']
+        # Framework and native-addon majors deserve their own PR and a manual
+        # look (Next changes build behaviour, better-sqlite3 changes the ABI).
+        exclude-patterns: ['next', 'better-sqlite3', 'electron']
+    ignore:
+      - dependency-name: electron
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

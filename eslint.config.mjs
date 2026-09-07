@@ -13,6 +13,7 @@ export default tseslint.config(
       'drizzle/migrations/**',
       'node_modules/**',
       'output/**',
+      'coverage/**',
       'tmp/**',
       // Desktop build outputs and generated assets.
       '.desktop-native/**',

@@ -1,0 +1,33 @@
+# Local PostgreSQL for development and `npm run test:integration:local`.
+#
+#   npm run db:up      start (waits for healthy) and seed demo tables on first boot
+#   npm run db:down    stop, keep data
+#   npm run db:reset   stop, drop the volume, start fresh (re-runs the seed)
+#
+# The image and credentials match the `pg-integration` job in
+# .github/workflows/tests.yml and the defaults in .env.example, so
+# `cp .env.example .env.local && npm run db:up && npm run dev` works unchanged.
+# Set PGSTUDIO_PG_PORT if 5432 is already taken on your machine.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pgstudio-lite-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - '${PGSTUDIO_PG_PORT:-5432}:5432'
+    volumes:
+      - pgstudio-pgdata:/var/lib/postgresql/data
+      # Runs once, on an empty data volume only.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d postgres']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  pgstudio-pgdata:

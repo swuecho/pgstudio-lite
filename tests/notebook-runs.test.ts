@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { invokeApi } from './helpers/invoke-api'
 import runsHandler from '../pages/api/notebooks/[id]/runs'
 import runByIdHandler from '../pages/api/notebooks/[id]/runs/[runId]'
 import scheduleHandler from '../pages/api/notebooks/[id]/schedule'
@@ -43,30 +44,6 @@ const okResult = {
   ],
   totalRows: 1,
   durationMs: 5,
-}
-
-type ApiResult = { statusCode: number; payload: unknown }
-
-async function invokeApi(
-  handler: (req: never, res: never) => unknown,
-  input: { method: string; query?: Record<string, unknown>; body?: unknown }
-): Promise<ApiResult> {
-  let statusCode = 200
-  let payload: unknown = null
-  const req = { method: input.method, query: input.query || {}, body: input.body }
-  const res = {
-    setHeader() {},
-    status(code: number) {
-      statusCode = code
-      return this
-    },
-    json(body: unknown) {
-      payload = body
-      return this
-    },
-  }
-  await handler(req as never, res as never)
-  return { statusCode, payload }
 }
 
 function resetFixtures() {

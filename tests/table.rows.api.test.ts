@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { invokeApi as callApi, type ApiCall } from './helpers/invoke-api'
 import rowsHandler from '../pages/api/tables/[table]/rows'
 import * as db from '../lib/db'
 
@@ -14,40 +15,8 @@ vi.mock('../lib/db', () => ({
   deleteTableRowByPrimaryKey: vi.fn(async () => undefined),
 }))
 
-type ApiResult = {
-  statusCode: number
-  payload: unknown
-}
-
-async function invokeApi(input: {
-  method: string
-  table?: string
-  query?: Record<string, unknown>
-  body?: unknown
-}): Promise<ApiResult> {
-  let statusCode = 200
-  let payload: unknown = null
-
-  const req = {
-    method: input.method,
-    query: { table: input.table || 'notes', ...(input.query || {}) },
-    body: input.body,
-  }
-
-  const res = {
-    status(code: number) {
-      statusCode = code
-      return this
-    },
-    json(body: unknown) {
-      payload = body
-      return this
-    },
-  }
-
-  await rowsHandler(req as never, res as never)
-  return { statusCode, payload }
-}
+const invokeApi = ({ table, ...call }: ApiCall & { table?: string }) =>
+  callApi(rowsHandler, { ...call, query: { table: table || 'notes', ...(call.query || {}) } })
 
 describe('table rows API', () => {
   beforeEach(() => {

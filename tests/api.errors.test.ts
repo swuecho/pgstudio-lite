@@ -1,34 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { createMockRes } from './helpers/invoke-api'
 import { ApiHttpError, logApiErrorIfInternal, methodNotAllowed, normalizeApiError } from '../lib/api/errors'
-
-function createMockResponse() {
-  const headers = new Map<string, string>()
-  let statusCode = 200
-  let payload: unknown = null
-  return {
-    setHeader(key: string, value: string) {
-      headers.set(key, value)
-    },
-    status(code: number) {
-      statusCode = code
-      return {
-        json(body: unknown) {
-          payload = body
-          return body
-        },
-      }
-    },
-    getHeader(key: string) {
-      return headers.get(key)
-    },
-    getStatusCode() {
-      return statusCode
-    },
-    getPayload() {
-      return payload
-    },
-  }
-}
 
 describe('api error helpers', () => {
   it('keeps ApiHttpError unchanged', () => {
@@ -77,11 +49,11 @@ describe('api error helpers', () => {
   })
 
   it('returns 405 with Allow header', () => {
-    const res = createMockResponse()
-    methodNotAllowed(res as any, ['GET', 'POST'])
-    expect(res.getHeader('Allow')).toBe('GET, POST')
-    expect(res.getStatusCode()).toBe(405)
-    expect(res.getPayload()).toEqual({
+    const { res, result } = createMockRes()
+    methodNotAllowed(res, ['GET', 'POST'])
+    expect(result().getHeader('Allow')).toBe('GET, POST')
+    expect(result().statusCode).toBe(405)
+    expect(result().payload).toEqual({
       error: 'Method not allowed',
       code: 'METHOD_NOT_ALLOWED',
     })

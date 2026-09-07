@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { invokeApi as callApi, type ApiCall } from './helpers/invoke-api'
 import queryHandler from '../pages/api/query'
 import { executeQuery } from '../lib/db'
 
@@ -6,44 +7,7 @@ vi.mock('../lib/db', () => ({
   executeQuery: vi.fn(),
 }))
 
-type ApiResult = {
-  statusCode: number
-  payload: unknown
-  headers: Record<string, string>
-}
-
-async function invokeApi(input: {
-  method: string
-  query?: Record<string, unknown>
-  body?: unknown
-}): Promise<ApiResult> {
-  const headers: Record<string, string> = {}
-  let statusCode = 200
-  let payload: unknown = null
-
-  const req = {
-    method: input.method,
-    query: input.query || {},
-    body: input.body,
-  }
-
-  const res = {
-    setHeader(name: string, value: string) {
-      headers[name] = value
-    },
-    status(code: number) {
-      statusCode = code
-      return this
-    },
-    json(body: unknown) {
-      payload = body
-      return this
-    },
-  }
-
-  await queryHandler(req as any, res as any)
-  return { statusCode, payload, headers }
-}
+const invokeApi = (call: ApiCall) => callApi(queryHandler, call)
 
 describe('query API', () => {
   beforeEach(() => {
