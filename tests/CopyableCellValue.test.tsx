@@ -78,6 +78,30 @@ describe('CopyableCellValue', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(long))
   })
 
+  it('falls back to execCommand when the Clipboard API is denied', async () => {
+    installClipboard(vi.fn().mockRejectedValue(new Error('Write permission denied.')))
+    const execCommand = vi.fn(() => true)
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand })
+    try {
+      render(<CopyableCellValue text="denied" />)
+      const cell = screen.getByRole('button')
+      fireEvent.click(cell)
+      await waitFor(() => expect(execCommand).toHaveBeenCalledWith('copy'))
+      await waitFor(() => expect(cell).toHaveAttribute('title', 'Copied!'))
+    } finally {
+      // @ts-expect-error restore jsdom's absence of execCommand
+      delete document.execCommand
+    }
+  })
+
+  it('shows a failure hint when nothing can copy', async () => {
+    installClipboard(vi.fn().mockRejectedValue(new Error('Write permission denied.')))
+    render(<CopyableCellValue text="nope" />)
+    const cell = screen.getByRole('button')
+    fireEvent.click(cell)
+    await waitFor(() => expect(cell).toHaveAttribute('title', 'Copy failed'))
+  })
+
   it('does not throw when clipboard API is unavailable', () => {
     Object.defineProperty(globalThis.navigator, 'clipboard', {
       configurable: true,

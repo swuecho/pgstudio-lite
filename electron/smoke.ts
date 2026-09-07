@@ -47,6 +47,24 @@ export function runSmokeChecks(window: BrowserWindow) {
       `)
       record('renderer served over app://', origin.origin === 'app://pgstudio', JSON.stringify(origin))
 
+      // executeJavaScript(..., true) counts as a user gesture, so this checks
+      // the permission handler in main.ts rather than gesture plumbing. The
+      // API also refuses when the document is not focused, which needs a
+      // visible window; if the runner cannot give us focus, note it instead
+      // of failing, since that says nothing about the permission.
+      window.show()
+      app.focus({ steal: true })
+      window.focus()
+      window.webContents.focus()
+      const clip = await run<{ ok: boolean; error?: string }>(`
+        navigator.clipboard.writeText('pgstudio-smoke').then(() => ({ ok: true }), (e) => ({ ok: false, error: String(e) }))
+      `)
+      if (!clip.ok && /not focused/i.test(clip.error ?? '')) {
+        write(`note: window could not take focus, clipboard permission not exercised (${clip.error})`)
+      } else {
+        record('clipboard write permitted', clip.ok === true, JSON.stringify(clip))
+      }
+
       const nav = await run<Record<string, unknown>>(`
         fetch('/activity').then(r => ({ ok: r.ok, status: r.status, type: r.headers.get('Content-Type'),
                                         csp: !!r.headers.get('Content-Security-Policy') }))

@@ -19,6 +19,7 @@ import { buildTraceHref } from '@/lib/trace-url'
 import { formatExplainPlan } from './utils'
 import { ExplainPlanTree } from './ExplainPlanTree'
 import { ResultChart } from './ResultChart'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 type StatementResult = QueryResult['statements'][number]
 
@@ -81,7 +82,7 @@ function exportStatement(
 
 async function copyStatementTsv(statement: StatementResult, formatCell: (value: unknown) => string) {
   if (statement.fields.length === 0 || statement.rows.length === 0) return
-  await navigator.clipboard.writeText(rowsToTsv(statement.fields, statement.rows, formatCell))
+  await copyTextToClipboard(rowsToTsv(statement.fields, statement.rows, formatCell))
 }
 
 type SqlResultsPanelProps = {

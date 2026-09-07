@@ -3,6 +3,7 @@ import { useBottomPanelResizer } from '@/hooks/useBottomPanelResizer'
 import { formatCellContentForView } from '@/lib/format-cell-content'
 import { getColumnKind } from '@/lib/table-column-kind'
 import styles from './CellContentPanel.module.css'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 export type CellContentPanelProps = {
   columnName: string
@@ -35,15 +36,12 @@ export function CellContentPanel({
   }, [])
 
   const handleCopy = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopied(true)
-        if (timerRef.current) clearTimeout(timerRef.current)
-        timerRef.current = setTimeout(() => setCopied(false), 900)
-      })
-      .catch(() => {})
+    void copyTextToClipboard(text).then((ok) => {
+      if (!ok) return
+      setCopied(true)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setCopied(false), 900)
+    })
   }, [text])
 
   useEffect(() => {

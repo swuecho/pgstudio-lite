@@ -128,8 +128,19 @@ function main() {
 
   app.whenReady().then(() => {
     // No remote content is loaded, so nothing legitimately needs camera, mic,
-    // notifications or geolocation.
-    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+    // notifications or geolocation. The clipboard is the exception: every
+    // click-to-copy cell uses navigator.clipboard.writeText, which Chromium
+    // gates behind `clipboard-sanitized-write`, and the notebook import panel
+    // pastes with readText (`clipboard-read`). Grant those to our own origin.
+    const isAllowedPermission = (permission: string, requestingUrl: string | undefined) =>
+      (permission === 'clipboard-sanitized-write' || permission === 'clipboard-read') &&
+      Boolean(requestingUrl?.startsWith(`${APP_ORIGIN}/`))
+    session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) =>
+      callback(isAllowedPermission(permission, details.requestingUrl ?? contents.getURL()))
+    )
+    session.defaultSession.setPermissionCheckHandler((_contents, permission, requestingOrigin) =>
+      isAllowedPermission(permission, `${requestingOrigin}/`)
+    )
 
     registerAppProtocol()
 

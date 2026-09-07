@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getTableDdl } from '@/features/table/table.service'
 import styles from './TableDdlModal.module.css'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 type TableDdlModalProps = {
   connectionName: string
@@ -38,15 +39,13 @@ export function TableDdlModal({ connectionName, schema, table, onClose }: TableD
   }, [])
 
   const handleCopy = useCallback(() => {
-    if (!ddl || typeof navigator === 'undefined' || !navigator.clipboard) return
-    navigator.clipboard
-      .writeText(ddl)
-      .then(() => {
-        setCopied(true)
-        if (timerRef.current) clearTimeout(timerRef.current)
-        timerRef.current = setTimeout(() => setCopied(false), 900)
-      })
-      .catch(() => {})
+    if (!ddl) return
+    void copyTextToClipboard(ddl).then((ok) => {
+      if (!ok) return
+      setCopied(true)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setCopied(false), 900)
+    })
   }, [ddl])
 
   return (

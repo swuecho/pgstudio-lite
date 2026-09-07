@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 type CopyableCellValueProps = {
   text: string
@@ -35,7 +36,8 @@ export function CopyableCellValue({
   onCellFocus,
   'data-grid-cell': dataGridCell,
 }: CopyableCellValueProps) {
-  const [copied, setCopied] = useState(false)
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const copied = copyState === 'copied'
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -45,15 +47,11 @@ export function CopyableCellValue({
   }, [])
 
   const handleClick = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopied(true)
-        if (timerRef.current) clearTimeout(timerRef.current)
-        timerRef.current = setTimeout(() => setCopied(false), 900)
-      })
-      .catch(() => {})
+    void copyTextToClipboard(text).then((ok) => {
+      setCopyState(ok ? 'copied' : 'failed')
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setCopyState('idle'), ok ? 900 : 1800)
+    })
   }, [text])
 
   const baseDisplay = displayText ?? text
@@ -62,11 +60,13 @@ export function CopyableCellValue({
   const shortenedUuid = displayText !== undefined && displayText !== text
   const copyHint = copied
     ? 'Copied!'
-    : shortenedUuid
-      ? 'Click to copy full UUID'
-      : truncated
-        ? `Click to copy (full value is ${text.length} chars)`
-        : 'Click to copy'
+    : copyState === 'failed'
+      ? 'Copy failed'
+      : shortenedUuid
+        ? 'Click to copy full UUID'
+        : truncated
+          ? `Click to copy (full value is ${text.length} chars)`
+          : 'Click to copy'
   const computedTitle = title || copyHint
 
   return (

@@ -13,6 +13,7 @@ import {
   type NotebookDiffSummary,
 } from '@/lib/notebook-ui'
 import { exportNotebook, importNotebook, type NotebookSpecV1 } from '@/features/notebook/notebook.service'
+import { copyTextToClipboard as copyToClipboard } from '@/lib/clipboard'
 
 type ValidationDetail = { path: string; message: string; code?: string }
 
@@ -205,10 +206,7 @@ export function useNotebookImport(params: {
   }
 
   function copyTextToClipboard(text: string, successLabel: string) {
-    void navigator.clipboard
-      .writeText(text)
-      .then(() => setStatus(successLabel))
-      .catch(() => setStatus('Clipboard copy failed'))
+    void copyToClipboard(text).then((ok) => setStatus(ok ? successLabel : 'Clipboard copy failed'))
   }
 
   function copyGeneratePrompt() {

@@ -5,6 +5,7 @@ import { buildTableEditorHref } from '@/lib/table-editor-url'
 import type { ColumnForeignKey, ColumnInfo } from './types'
 import { formatCellDisplayValue, formatForeignKeyTarget } from './foreignKeyUtils'
 import styles from './ForeignKeyPopover.module.css'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 const MAX_DISPLAY_COLUMNS = 8
 
@@ -62,7 +63,7 @@ export function ForeignKeyPopover({
   async function copyValue() {
     const text = formatCellDisplayValue(cellValue, 10_000)
     if (!text) return
-    await navigator.clipboard.writeText(text)
+    await copyTextToClipboard(text)
   }
 
   return createPortal(

@@ -6,6 +6,7 @@ import type { NotebookInputDescriptor } from './notebookInputModel'
 import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell } from './types'
 import styles from './NotebookPage.module.css'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 type SqlCellBodyProps = {
   cell: NotebookCell
@@ -160,8 +161,7 @@ type CellErrorPanelProps = {
 
 function CellErrorPanel({ message, busy, onRetry }: CellErrorPanelProps) {
   const handleCopy = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return
-    void navigator.clipboard.writeText(message).catch(() => {})
+    void copyTextToClipboard(message)
   }, [message])
   return (
     <div className="cell-error" role="alert">
