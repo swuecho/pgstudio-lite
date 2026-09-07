@@ -31,7 +31,28 @@ env:
   CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
 jobs:
+  draft-release:
+    # electron-builder would create the draft itself, but with three jobs (and
+    # both mac architectures inside one job) publishing at the same moment each
+    # saw "no release yet" and created its own. Create it once, up front, so
+    # every job uploads into the same draft.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists; electron-builder will use it if it is still a draft"
+          else
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
   build:
+    needs: draft-release
+    # Manual runs skip draft-release; still build.
+    if: always() && (needs.draft-release.result == 'success' || needs.draft-release.result == 'skipped')
     name: build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:

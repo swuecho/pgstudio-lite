@@ -207,12 +207,13 @@ and the tag is the version. Push a `v*` tag:
 git tag v0.4.0 && git push origin v0.4.0
 ```
 
-The workflow writes the tag's version into `package.json` for the build (the
-committed `version` field is not used for releases), packages all three
-platforms, and uploads the artifacts to a draft GitHub release named after the
-tag; publish the draft after checking the assets. If a published release with
-that tag already exists, electron-builder skips the upload, so create the
-release from the draft rather than ahead of time. A manual run from the Actions
+The workflow creates a draft GitHub release named after the tag with generated
+notes, writes the tag's version into `package.json` for the build (the committed
+`version` field is not used for releases), packages all three platforms, and
+uploads the artifacts into that draft; publish it after checking the assets. If
+a published release with that tag already exists, electron-builder skips the
+upload, so let the workflow create the release rather than making one ahead of
+time. A manual run from the Actions
 tab builds everything and keeps the artifacts on the run without publishing.
 
 ### How it differs from the web build
