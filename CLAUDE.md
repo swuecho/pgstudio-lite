@@ -53,7 +53,7 @@ staged files. Run `npm run check` before opening a PR.
 - `pages/` — routes and `pages/api/*` handlers. Page files stay thin; UI lives in `components/<area>/`.
 - `components/` — `sql-editor`, `table-editor`, `notebook`, `activity`, `trace`, `settings`, `shared`.
 - `features/<area>/*.service.ts` — client-side fetch wrappers used by React Query hooks.
-- `lib/` — server logic. `lib/db/` is Postgres access, `lib/meta-db.ts` and `lib/notebook-db.ts` are SQLite.
+- `lib/` — server logic. `lib/db/` is Postgres access; `lib/meta-db.ts` and `lib/notebook-db.ts` (barrel over `lib/notebook-db/`) are SQLite.
 - `electron/` — main process, `app://` protocol, and the API shim that dispatches `/api/*` to the same handlers.
 - `tests/` — Vitest, flat directory, `*.test.ts(x)`. Each worker gets its own SQLite file under the OS tmpdir.
 
