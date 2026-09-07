@@ -4,6 +4,8 @@ name: Release
 #
 #  - A `v*` tag (e.g. v0.4.0) builds every platform and uploads the artifacts to
 #    a draft GitHub release named after the tag. Publish the draft by hand.
+#  - The tag is the version. It is written into package.json before packaging
+#    (not committed), so the file's own `version` field is irrelevant here.
 #  - Manual runs (workflow_dispatch) build everything and keep the artifacts on
 #    the workflow run only; nothing is published.
 #
@@ -29,24 +31,28 @@ env:
   CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
 jobs:
-  verify-version:
+  draft-release:
+    # electron-builder would create the draft itself, but with three jobs (and
+    # both mac architectures inside one job) publishing at the same moment each
+    # saw "no release yet" and created its own. Create it once, up front, so
+    # every job uploads into the same draft.
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Tag matches package.json version
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF_NAME#v}"
-          version="$(node -p "require('./package.json').version")"
-          if [ "$tag" != "$version" ]; then
-            echo "tag v$tag does not match package.json version $version" >&2
-            exit 1
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists; electron-builder will use it if it is still a draft"
+          else
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --title "$GITHUB_REF_NAME" --generate-notes
           fi
 
   build:
-    needs: verify-version
+    needs: draft-release
+    # Manual runs skip draft-release; still build.
+    if: always() && (needs.draft-release.result == 'success' || needs.draft-release.result == 'skipped')
     name: build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -66,6 +72,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Set version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
 
       - name: Fetch Electron-ABI better-sqlite3
         run: npm run desktop:native
@@ -87,9 +98,12 @@ jobs:
 
       - name: Generate app icon
         shell: bash
+        # Linux: no display without xvfb, and Electron's SUID sandbox helper is
+        # not installed with root ownership under node_modules, so the sandbox
+        # must be disabled for this one headless run.
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a npm run desktop:icon
+            xvfb-run -a npm run desktop:icon -- --no-sandbox
           else
             npm run desktop:icon
           fi
