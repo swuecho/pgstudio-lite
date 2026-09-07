@@ -77,9 +77,11 @@ writeFileSync(
 
 // --ignore-scripts: skip the Node-ABI build; the Electron one is fetched below.
 console.log(`staging better-sqlite3@${sqliteVersion} in ${stagingDir}`)
+// On Windows npm is `npm.cmd`, which Node will only run through a shell.
 execFileSync('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund'], {
   cwd: stagingDir,
   stdio: 'inherit',
+  shell: process.platform === 'win32',
 })
 
 const moduleDir = join(stagingDir, 'node_modules', 'better-sqlite3')

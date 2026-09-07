@@ -75,8 +75,8 @@ win:
   artifactName: ${productName}-${version}-${arch}-win.${ext}
 
 nsis:
+  # Assisted installer (per-user, choice of directory) rather than one-click.
   oneClick: false
-  allowToChangeInstallationDir: true
   artifactName: ${productName}-${version}-${arch}-setup.${ext}
 
 linux:

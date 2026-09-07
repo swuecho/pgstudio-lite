@@ -77,9 +77,12 @@ jobs:
 
       - name: Generate app icon
         shell: bash
+        # Linux: no display without xvfb, and Electron's SUID sandbox helper is
+        # not installed with root ownership under node_modules, so the sandbox
+        # must be disabled for this one headless run.
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a npm run desktop:icon
+            xvfb-run -a npm run desktop:icon -- --no-sandbox
           else
             npm run desktop:icon
           fi
