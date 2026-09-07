@@ -2,7 +2,12 @@ import { and, eq } from 'drizzle-orm'
 import { notebookCells, notebooks } from '@/drizzle/schema'
 import { executeQuery } from '@/lib/db'
 import { getMetaDb } from '@/lib/meta-db'
-import { compileSqlTemplate, extractTemplateKeys } from '@/lib/notebook-params'
+import {
+  buildExecutedQueryInfo,
+  compileSqlTemplate,
+  extractTemplateKeys,
+  type ExecutedQueryInfo,
+} from '@/lib/notebook-params'
 import { getWidgetParamValues, isWidgetMetadata } from '@/lib/notebook-widgets'
 import { notebookDbError, toNotebookCell } from './shared'
 
@@ -50,15 +55,25 @@ export async function runNotebookSqlCell(input: {
 
     let compiledQueryText = input.query
     let compiledValues: unknown[] | undefined
+    let executedQuery: ExecutedQueryInfo | undefined
     if (templateKeys.length > 0) {
       const resolvedValues: Record<string, unknown> = {}
+      const sourceByKey: Record<string, 'request' | 'widget'> = {}
       for (const key of templateKeys) {
         if (widgetValueByKey.has(key)) {
-          resolvedValues[key] = input.inputValues?.[key] ?? widgetValueByKey.get(key)
+          const requestValue = input.inputValues?.[key]
+          if (requestValue !== undefined && requestValue !== null) {
+            resolvedValues[key] = requestValue
+            sourceByKey[key] = 'request'
+          } else {
+            resolvedValues[key] = widgetValueByKey.get(key)
+            sourceByKey[key] = 'widget'
+          }
           continue
         }
         if (input.inputValues && key in input.inputValues) {
           resolvedValues[key] = input.inputValues[key]
+          sourceByKey[key] = 'request'
           continue
         }
         throw notebookDbError(400, `Unknown input key '{{${key}}}'`)
@@ -66,13 +81,15 @@ export async function runNotebookSqlCell(input: {
       const compiled = compileSqlTemplate(input.query, resolvedValues)
       compiledQueryText = compiled.text
       compiledValues = compiled.values
+      executedQuery = buildExecutedQueryInfo({ ...compiled, sourceByKey })
     }
 
-    const result = await executeQuery({
+    const executed = await executeQuery({
       query: compiledQueryText,
       connectionName: notebook.connectionName,
       values: compiledValues,
     })
+    const result = executedQuery ? { ...executed, executedQuery } : executed
     getMetaDb()
       .update(notebookCells)
       .set({

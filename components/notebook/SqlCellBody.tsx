@@ -1,6 +1,7 @@
 import { memo, useCallback } from 'react'
 import { SqlCellEditor } from './SqlCellEditor'
 import { CellResult } from './CellResult'
+import { ExecutedQueryPanel } from './ExecutedQueryPanel'
 import { toCompactSqlPreview } from './cellPresentation'
 import type { NotebookInputDescriptor } from './notebookInputModel'
 import type { QueryResult } from '../sql-editor/types'
@@ -127,6 +128,7 @@ export const SqlCellBody = memo(function SqlCellBody({
         {staleResult ? (
           <div className="empty-state">Current SQL differs from the last executed query.</div>
         ) : null}
+        {lastResult?.executedQuery ? <ExecutedQueryPanel info={lastResult.executedQuery} /> : null}
         {lastResult ? (
           <CellResult result={lastResult} notebookId={cell.notebook_id} cellId={cell.id} />
         ) : null}

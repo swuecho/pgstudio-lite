@@ -148,6 +148,62 @@ describe('notebook API e2e', () => {
     expect(vi.mocked(executeQuery)).toHaveBeenCalledTimes(1)
   })
 
+  it('run cell flow: reports the compiled query and bound values it sent to Postgres', async () => {
+    const notebookId = await createNotebookFixture('Notebook C2')
+    const widgetResponse = await invokeApi(notebookCellsHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: {
+        type: 'widget',
+        content: '',
+        metadata: { widgetType: 'text', key: 'org', label: 'Organization', value: 'from-widget' },
+      },
+    })
+    expect(widgetResponse.statusCode).toBe(200)
+    const cellResponse = await invokeApi(notebookCellsHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: { type: 'sql', content: 'select 1;' },
+    })
+    const cellId = (cellResponse.payload as { item: { id: string } }).item.id
+    const query = 'select * from distribution_stores where organization_id = {{org}} and status = {{status}}'
+
+    const response = await invokeApi(runCellHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: { cellId, query, inputValues: { status: '' } },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(vi.mocked(executeQuery)).toHaveBeenCalledWith({
+      query: 'select * from distribution_stores where organization_id = $1 and status = $2',
+      connectionName: 'default',
+      values: ['from-widget', ''],
+    })
+    expect(response.payload).toMatchObject({
+      executedQuery: {
+        text: 'select * from distribution_stores where organization_id = $1 and status = $2',
+        values: ['from-widget', ''],
+        params: [
+          { key: 'org', placeholder: '$1', value: 'from-widget', valueType: 'string', source: 'widget' },
+          {
+            key: 'status',
+            placeholder: '$2',
+            value: '',
+            valueType: 'string',
+            source: 'request',
+            warning: 'Value is an empty string.',
+          },
+        ],
+      },
+    })
+
+    const stored = getSqlite()
+      .prepare('select last_result_json from notebook_cells where id = ?')
+      .get(cellId) as { last_result_json: string }
+    expect(JSON.parse(stored.last_result_json).executedQuery.values).toEqual(['from-widget', ''])
+  })
+
   it('run cell failure: rejects empty query', async () => {
     const notebookId = await createNotebookFixture('Notebook D')
     const cellResponse = await invokeApi(notebookCellsHandler, {

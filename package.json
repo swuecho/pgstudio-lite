@@ -1,6 +1,6 @@
 {
   "name": "pgstudio-lite",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "PostgreSQL SQL + Table Editor (Next.js + TypeScript) inspired by Supabase Studio, with SQLite-backed query history",
   "license": "MIT",

@@ -44,6 +44,12 @@ asarUnpack: []
 npmRebuild: false
 
 mac:
+  # electron-builder omits the arch from x64 macOS artifacts by default, so the
+  # Intel build shipped as the unsuffixed `PgStudio Lite-<version>.dmg` and
+  # looked like the default download. On Apple Silicon it runs under Rosetta
+  # and is several times slower. Name every arch explicitly; these templates
+  # match the default arm64 names, so only the x64 files are renamed.
+  artifactName: ${productName}-${version}-${arch}-mac.${ext}
   target:
     - target: dmg
       arch: [arm64, x64]
@@ -55,3 +61,4 @@ mac:
 
 dmg:
   title: ${productName}
+  artifactName: ${productName}-${version}-${arch}.${ext}

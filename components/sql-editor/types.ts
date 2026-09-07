@@ -1,3 +1,5 @@
+import type { ExecutedQueryInfo } from '@/lib/notebook-params'
+
 export type QueryResult = {
   connectionName?: string
   ranAt?: string
@@ -14,6 +16,8 @@ export type QueryResult = {
   }>
   totalRows: number
   durationMs: number
+  /** Notebook cells only: the compiled SQL and bound `{{key}}` values Postgres actually received. */
+  executedQuery?: ExecutedQueryInfo
 }
 
 export type HistoryItem = {
