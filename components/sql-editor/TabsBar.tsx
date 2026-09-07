@@ -29,6 +29,7 @@ export function SqlTabsBar({
             onDoubleClick={() => onRenameTab(tab.id)}
           >
             {tab.title}
+            {tab.connectionName ? <span className="history-meta"> · {tab.connectionName}</span> : null}
             {tab.snippetId && tab.dirty ? (
               <span className={styles.tabUnsavedBadge}>Unsaved</span>
             ) : tab.dirty ? (

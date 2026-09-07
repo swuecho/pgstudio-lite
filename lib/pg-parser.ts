@@ -77,7 +77,10 @@ export async function parseSql(
     if (errorPtr) {
       const messagePtr = module.getValue(errorPtr, 'i32')
       const message = messagePtr ? module.UTF8ToString(messagePtr) : 'Unknown error'
-      throw new Error(message)
+      const cursorPosition = module.getValue(errorPtr + 16, 'i32')
+      throw Object.assign(new Error(message), {
+        position: cursorPosition > 0 ? String(cursorPosition) : undefined,
+      })
     }
 
     if (!parseTreePtr) {

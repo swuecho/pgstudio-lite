@@ -57,12 +57,19 @@ export function useSqlEditorTabs() {
 
   function createQueryTab(
     initialQuery = '-- New query\n',
-    options: { title?: string; snippetId?: string; snippetConnectionName?: string; dirty?: boolean } = {}
+    options: {
+      title?: string
+      snippetId?: string
+      snippetConnectionName?: string
+      dirty?: boolean
+      connectionName?: string
+    } = {}
   ) {
     const nextIndex = queryTabs.length + 1
     const id = `tab-${Date.now()}-${Math.floor(Math.random() * 1000)}`
     const tab: QueryTab = {
       id,
+      connectionName: options.connectionName,
       title: options.title || `Query ${nextIndex}`,
       query: initialQuery,
       dirty: options.dirty ?? false,
@@ -105,6 +112,7 @@ export function useSqlEditorTabs() {
                 dirty: false,
                 snippetId: item.id,
                 snippetConnectionName: connectionName,
+                connectionName,
               }
             : tab
         )
@@ -117,6 +125,7 @@ export function useSqlEditorTabs() {
       title: item.title,
       snippetId: item.id,
       snippetConnectionName: connectionName,
+      connectionName,
       dirty: false,
     })
   }

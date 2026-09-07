@@ -87,3 +87,36 @@ describe('query API', () => {
     })
   })
 })
+
+it('passes an explicit display limit without rewriting SQL', async () => {
+  vi.mocked(executeQuery).mockResolvedValue({} as any)
+  await invokeApi({
+    method: 'POST',
+    body: { query: '  select 1;', connectionName: 'default', rowLimit: 100 },
+  })
+  expect(executeQuery).toHaveBeenLastCalledWith({
+    query: '  select 1;',
+    connectionName: 'default',
+    rowLimit: 100,
+  })
+})
+
+it.each([0, 501, 1.5, '100'])('rejects invalid result limit %s', async (rowLimit) => {
+  expect((await invokeApi({ method: 'POST', body: { query: 'select 1', rowLimit } })).statusCode).toBe(400)
+})
+
+it('returns structured database diagnostics', async () => {
+  vi.mocked(executeQuery).mockRejectedValue(
+    Object.assign(new Error('Missing column'), {
+      statusCode: 400,
+      code: '42703',
+      details: { position: 8, hint: 'Try id' },
+    })
+  )
+  const response = await invokeApi({ method: 'POST', body: { query: 'select missing' } })
+  expect(response.payload).toMatchObject({
+    error: 'Missing column',
+    code: '42703',
+    details: { position: 8, hint: 'Try id' },
+  })
+})

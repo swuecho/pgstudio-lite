@@ -3,6 +3,7 @@ import type { NextApiResponse } from 'next'
 type ErrorPayload = {
   error: string
   code?: string
+  details?: unknown
 }
 
 export class ApiHttpError extends Error {
@@ -84,5 +85,9 @@ export function sendApiError(res: NextApiResponse, error: unknown) {
   return res.status(normalized.statusCode).json({
     error: normalized.message,
     code: normalized.code,
+    details:
+      normalized.statusCode < 500 && error && typeof error === 'object' && 'details' in error
+        ? error.details
+        : undefined,
   } satisfies ErrorPayload)
 }

@@ -1,4 +1,7 @@
 export type QueryResult = {
+  connectionName?: string
+  ranAt?: string
+  rowLimit?: number
   statements: Array<{
     command: string
     rowCount: number
@@ -35,6 +38,8 @@ export type SnippetItem = {
 export type Connection = { id?: string; name: string; isDefault?: boolean; readOnly?: boolean }
 
 export type QueryTab = {
+  connectionName?: string
+  rowLimit?: number
   id: string
   title: string
   query: string

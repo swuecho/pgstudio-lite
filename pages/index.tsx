@@ -73,15 +73,23 @@ export default function SqlEditorPage() {
     {
       id: 'run',
       title: 'Run current query',
-      description: 'Execute the active selection or tab.',
+      description: 'Execute the selection or statement under the cursor.',
       onSelect: () => {
         void state.runCurrentQuery()
       },
     },
     {
+      id: 'run-all',
+      title: 'Run all statements',
+      description: 'Execute every statement in this tab.',
+      onSelect: () => {
+        void state.runCurrentQuery(true)
+      },
+    },
+    {
       id: 'explain',
       title: 'Explain query',
-      description: 'Run EXPLAIN on the active selection or tab.',
+      description: 'Run EXPLAIN on the selection or current statement.',
       onSelect: () => {
         void state.runExplainQuery()
       },
@@ -268,7 +276,14 @@ export default function SqlEditorPage() {
             <span className={`${styles.statusPill} ${styles[state.status.tone] || ''}`}>
               {state.status.text}
             </span>
-            <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
+            <select
+              aria-label="Tab connection"
+              value={state.connectionName}
+              onChange={(e) => state.setConnectionName(e.target.value)}
+            >
+              {state.connectionName && !state.connections.some((c) => c.name === state.connectionName) ? (
+                <option value={state.connectionName}>{state.connectionName} (unavailable)</option>
+              ) : null}
               {state.connections.map((c) => (
                 <option key={c.name} value={c.name}>
                   {c.name}
@@ -294,6 +309,7 @@ export default function SqlEditorPage() {
 
         <div className={styles.editorPanelBody} ref={editorPanelBodyRef}>
           <EditorPane
+            queryError={state.queryError}
             tabId={state.activeQueryTabId}
             value={state.activeQueryTab?.query || ''}
             onChangeValue={(value) => state.setActiveTabQuery(value)}
@@ -322,6 +338,17 @@ export default function SqlEditorPage() {
             onMouseDown={startResize}
           />
 
+          {state.queryError ? (
+            <div
+              role="alert"
+              style={{ padding: '8px 12px', color: 'var(--danger, #dc2626)', whiteSpace: 'pre-wrap' }}
+            >
+              {state.queryError.message}
+              {state.queryError.detail ? <div>{state.queryError.detail}</div> : null}
+              {state.queryError.hint ? <div>Hint: {state.queryError.hint}</div> : null}
+              {state.result ? <div>Previous successful results are shown below.</div> : null}
+            </div>
+          ) : null}
           <ErrorBoundary fallbackTitle="Failed to render query results">
             <SqlResultsPanel
               result={state.result}
@@ -332,6 +359,33 @@ export default function SqlEditorPage() {
           </ErrorBoundary>
 
           <div className={styles.editorFooter} ref={editorFooterRef}>
+            <label>
+              Display rows{' '}
+              <select
+                aria-label="Result row limit"
+                value={state.rowLimit}
+                onChange={(event) => state.setRowLimit(Number(event.target.value))}
+              >
+                {[100, 250, 500].map((limit) => (
+                  <option key={limit} value={limit}>
+                    {limit}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span
+              className="history-meta"
+              title="Limits rows displayed and exported; SQL executes unchanged."
+            >
+              per statement
+            </span>
+            <button
+              className="btn"
+              disabled={state.running || state.explaining}
+              onClick={() => void state.runCurrentQuery(true)}
+            >
+              Run all
+            </button>
             <button
               className="btn"
               disabled={state.running || state.explaining}

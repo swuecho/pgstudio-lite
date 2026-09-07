@@ -154,6 +154,14 @@ Connections can also be marked read-only. In read-only mode:
 - table insert/update/delete actions are blocked
 - the UI labels the connection as read-only
 
+## SQL query workflow
+
+- **Run statement** (Cmd/Ctrl+Enter) executes selected text, or the highlighted statement under the cursor. **Run all** executes the entire tab.
+- Each tab keeps its own connection and display limit. A deleted connection must be replaced explicitly before running that tab.
+- **Display rows** selects 100, 250, or 500 rows per statement. SQL executes unchanged; the limit applies to displayed/exported rows, not database work. Use an explicit SQL `LIMIT` to reduce query work. Results are still buffered before the display limit is applied.
+- Results show their source connection and execution time. Table and trace links keep that source even after changing the tab's connection. Older saved results without a source need to be rerun to enable those links.
+- Failed queries preserve the previous successful results and show database details/hints. Errors with a reported position are underlined while the editor still matches the submitted SQL.
+
 ## Notebook runs and schedules
 
 The **Runs** button on a notebook opens its run history. **Run now** executes

@@ -193,3 +193,15 @@ inner join public.warehouses w on wst.warehouse_id = w.id`
     expect(await splitStatements("select 'こんにちは;世界'")).toEqual(["select 'こんにちは;世界'"])
   })
 })
+
+it('splits Unicode SQL using PostgreSQL byte offsets', async () => {
+  expect(await splitStatements("select '你好😀'; select '世界'; select 3;")).toEqual([
+    "select '你好😀'",
+    "select '世界'",
+    'select 3',
+  ])
+})
+
+it('preserves parser error position including leading whitespace', async () => {
+  await expect(splitStatements('  selec 1')).rejects.toMatchObject({ position: '3' })
+})

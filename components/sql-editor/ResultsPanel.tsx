@@ -99,6 +99,7 @@ type SqlCellView = {
 }
 
 export function SqlResultsPanel({ result, formatCell, connectionName, style }: SqlResultsPanelProps) {
+  connectionName = result?.connectionName || ''
   const [cellView, setCellView] = useState<SqlCellView | null>(null)
   const [viewModes, setViewModes] = useState<Record<number, 'table' | 'chart'>>({})
 
@@ -108,7 +109,11 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
       style={style}
     >
       <div className={styles.resultsHead}>
-        <span>Results</span>
+        <span>
+          Results
+          {result?.connectionName ? ` · ${result.connectionName}` : result ? ' · connection unknown' : ''}
+          {result?.ranAt ? ` · ${new Date(result.ranAt).toLocaleTimeString()}` : ''}
+        </span>
         <span className="history-meta">{result ? `${result.totalRows} rows` : ''}</span>
       </div>
       <div className={styles.resultsBody}>
@@ -172,7 +177,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                       </button>
                     </div>
                   ) : null}
-                  {statement.tableTarget ? (
+                  {statement.tableTarget && connectionName ? (
                     <Link
                       className={styles.resultOpenLink}
                       href={{
@@ -190,7 +195,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
                 </div>
                 {statement.truncated ? (
                   <div className={styles.resultAlert}>
-                    Export includes {statement.returnedRowCount} displayed rows (capped at server limit).
+                    Export includes {statement.returnedRowCount} displayed rows (display limit).
                   </div>
                 ) : null}
                 {isExplainStatement(statement) ? (
@@ -247,7 +252,7 @@ function ResultRowsTable({
   cellView,
   onOpenCellView,
 }: ResultRowsTableProps) {
-  const traceTarget = getTraceTarget(statement)
+  const traceTarget = connectionName ? getTraceTarget(statement) : null
   const { containerRef, cellProps, onKeyDown } = useGridKeyboardNav({
     rowCount: statement.rows.length,
     colCount: statement.fields.length,

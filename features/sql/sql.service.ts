@@ -11,10 +11,10 @@ export async function getConnections() {
   return fetchJson<{ connections: Connection[]; configured: boolean }>('/api/connections')
 }
 
-export async function runQuery(connectionName: string, query: string) {
+export async function runQuery(connectionName: string, query: string, rowLimit?: number) {
   return fetchJson<QueryResult>('/api/query', {
     method: 'POST',
-    body: JSON.stringify({ connectionName, query }),
+    body: JSON.stringify({ connectionName, query, rowLimit }),
   })
 }
 

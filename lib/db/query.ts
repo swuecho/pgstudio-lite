@@ -28,12 +28,27 @@ export async function splitStatements(sql: string): Promise<string[]> {
   const trimmed = sql.trim()
   if (!trimmed) return []
   await getSqlParser()
-  const { stmts } = await parseSql(trimmed)
+  let parsed: Awaited<ReturnType<typeof parseSql>>
+  try {
+    parsed = await parseSql(trimmed)
+  } catch (error) {
+    const positioned = error as Error & { position?: string }
+    if (positioned.position)
+      positioned.position = String(
+        Number(positioned.position) + Array.from(sql.slice(0, sql.indexOf(trimmed))).length
+      )
+    throw error
+  }
+  const { stmts } = parsed
   if (!stmts || stmts.length === 0) return []
   return stmts.map((s) => {
     const start = s.stmt_location ?? 0
     const end = s.stmt_len != null ? start + s.stmt_len : trimmed.length
-    return trimmed.slice(start, end).trim().replace(/;+$/, '')
+    return Buffer.from(trimmed)
+      .subarray(start, s.stmt_len != null ? end : undefined)
+      .toString('utf8')
+      .trim()
+      .replace(/;+$/, '')
   })
 }
 
@@ -185,11 +200,14 @@ export async function executeQuery({
   query,
   connectionName,
   values,
+  rowLimit = MAX_RESULT_ROWS,
 }: {
   query: string
   connectionName?: string
+  rowLimit?: number
   values?: unknown[]
 }) {
+  const resultLimit = Math.max(1, Math.min(MAX_RESULT_ROWS, Math.floor(rowLimit) || MAX_RESULT_ROWS))
   const connection = getConnectionByName(connectionName)
   const startedAt = new Date()
   const startedTs = Date.now()
@@ -197,6 +215,8 @@ export async function executeQuery({
 
   const pool = getPool(connection.connectionString)
 
+  let statementOffset = 0
+  let statementSearchOffset = 0
   try {
     const client = await pool.connect()
     try {
@@ -241,13 +261,14 @@ export async function executeQuery({
       await client.query(`set statement_timeout = ${QUERY_STATEMENT_TIMEOUT_MS}`)
 
       for (const statement of statements) {
+        statementOffset = query.indexOf(statement, statementSearchOffset)
+        statementSearchOffset = statementOffset + statement.length
         const result = values
           ? await client.query({ text: statement, values })
           : await client.query(statement)
         const pgFields = result.fields.map((f: { name: string }) => f.name)
         const outputColumns = await extractSelectOutputColumnNames(statement)
-        const rawRows =
-          result.rows.length > MAX_RESULT_ROWS ? result.rows.slice(0, MAX_RESULT_ROWS) : result.rows
+        const rawRows = result.rows.length > resultLimit ? result.rows.slice(0, resultLimit) : result.rows
         const { fields, rows } = narrowResultToSelectList(
           pgFields,
           rawRows as Record<string, unknown>[],
@@ -266,7 +287,7 @@ export async function executeQuery({
           command: result.command,
           rowCount: result.rowCount ?? 0,
           returnedRowCount: rows.length,
-          truncated: result.rows.length > MAX_RESULT_ROWS,
+          truncated: result.rows.length > resultLimit,
           fields,
           rows,
           tableTarget,
@@ -295,6 +316,8 @@ export async function executeQuery({
         .run()
 
       return {
+        connectionName: connection.name,
+        rowLimit: resultLimit,
         id: historyId,
         status: 'success' as const,
         durationMs,
@@ -348,6 +371,17 @@ export async function executeQuery({
     } else {
       err.statusCode = (error as { statusCode?: number })?.statusCode || 400
     }
+    const pgError = error as { position?: string; hint?: string; detail?: string; code?: string }
+    Object.assign(err, {
+      code: pgError.code,
+      details: {
+        position: pgError.position
+          ? Array.from(query.slice(0, Math.max(0, statementOffset))).length + Number(pgError.position)
+          : undefined,
+        hint: pgError.hint,
+        detail: pgError.detail,
+      },
+    })
     throw err
   }
 }

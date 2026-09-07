@@ -127,3 +127,28 @@
     padding: 0 10px;
   }
 }
+
+.editorFooter {
+  flex-shrink: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.editorFooter > button,
+.editorFooter > label {
+  flex-shrink: 0;
+}
+
+.editorFooter > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editorFooter select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+}

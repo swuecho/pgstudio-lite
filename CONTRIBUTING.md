@@ -85,6 +85,7 @@ Single-level relative imports (`./sibling`, `../parent`) stay relative; they sur
 | `npm run test:watch`       | Vitest watch mode                               |
 | `npm run format`           | Prettier write                                  |
 | `npm run format:check`     | Prettier check (no writes)                      |
+| `npm run check`            | format:check + lint + typecheck + test          |
 | `npm run db:generate`      | Generate Drizzle migrations from schema changes |
 | `npm run db:migrate`       | Apply migrations via Drizzle Kit                |
 
@@ -92,14 +93,13 @@ Migrations always run when the app opens the metadata DB. Schema changes go in a
 
 ## Before you open a pull request
 
+A pre-commit hook (installed by `npm install` via `simple-git-hooks`) runs Prettier and ESLint on the files you stage, so formatting problems never reach CI. If the hook is missing after a fresh clone, run `npx simple-git-hooks` once.
+
 Run the same checks you expect CI to exercise:
 
 ```bash
-npm run format:check
-npm run lint
-npm run typecheck
+npm run check   # format:check, lint, typecheck, test
 npm run build
-npm run test
 ```
 
 If Prettier reports issues, fix them with `npm run format`.

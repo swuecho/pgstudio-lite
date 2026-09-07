@@ -14,6 +14,7 @@ import {
   resolveAvailableAlias,
   resolveTableForDotContext,
 } from '@/lib/sql-completion-context'
+import { currentStatementRange } from '@/lib/sql-statement-range'
 import { getCurrentTheme } from './utils'
 import { SchemaTable } from './types'
 
@@ -31,6 +32,7 @@ if (typeof window !== 'undefined') {
 loader.config({ paths: { vs: '/api/monaco' } })
 
 type EditorPaneProps = {
+  queryError?: { message: string; offset?: number; query: string }
   tabId: string
   value: string
   onChangeValue: (value: string) => void
@@ -46,6 +48,7 @@ type EditorPaneProps = {
 }
 
 export const EditorPane = memo(function EditorPane({
+  queryError,
   tabId,
   value,
   onChangeValue,
@@ -59,6 +62,9 @@ export const EditorPane = memo(function EditorPane({
   tableColumnsByKeyRef,
   ensureColumnsForTable,
 }: EditorPaneProps) {
+  const monacoRef = useRef<typeof import('monaco-editor') | null>(null)
+  const errorRef = useRef(queryError)
+  errorRef.current = queryError
   const editorRef = useRef<MonacoEditorNs.IStandaloneCodeEditor | null>(null)
   const draftRef = useRef(value)
   const tabIdRef = useRef(tabId)
@@ -81,6 +87,36 @@ export const EditorPane = memo(function EditorPane({
   onSaveSnippetRef.current = onSaveSnippet
   onSelectionChangeRef.current = onSelectionChange
   onMountEditorRef.current = onMountEditor
+
+  const updateErrorMarker = () => {
+    const model = editorRef.current?.getModel()
+    const monaco = monacoRef.current
+    if (!model || !monaco) return
+    const error = errorRef.current
+    const point =
+      error?.offset !== undefined && error.query === model.getValue() && error.offset >= 0
+        ? model.getPositionAt(error.offset)
+        : null
+    monaco.editor.setModelMarkers(
+      model,
+      'query-error',
+      point && error
+        ? [
+            {
+              message: error.message,
+              severity: monaco.MarkerSeverity.Error,
+              startLineNumber: point.lineNumber,
+              startColumn: point.column,
+              endLineNumber: point.lineNumber,
+              endColumn: point.column + 1,
+            },
+          ]
+        : []
+    )
+  }
+  useEffect(() => {
+    updateErrorMarker()
+  }, [queryError, tabId])
 
   const flushToParent = (next?: string) => {
     if (persistTimerRef.current) {
@@ -150,8 +186,39 @@ export const EditorPane = memo(function EditorPane({
         defaultValue={value}
         onChange={(next) => schedulePersist(next || '')}
         onMount={(editor, monaco) => {
+          monacoRef.current = monaco
           editorRef.current = editor
           draftRef.current = editor.getValue()
+          const statementHighlight = editor.createDecorationsCollection()
+          const highlightStatement = () => {
+            const model = editor.getModel()
+            const position = editor.getPosition()
+            const selection = editor.getSelection()
+            const range =
+              model && position && selection?.isEmpty()
+                ? currentStatementRange(model.getValue(), model.getOffsetAt(position))
+                : null
+            statementHighlight.set(
+              range && model
+                ? [
+                    {
+                      range: monaco.Range.fromPositions(
+                        model.getPositionAt(range.start),
+                        model.getPositionAt(range.end)
+                      ),
+                      options: { isWholeLine: true, className: 'sql-current-statement' },
+                    },
+                  ]
+                : []
+            )
+          }
+          highlightStatement()
+          updateErrorMarker()
+          editor.onDidChangeCursorPosition(highlightStatement)
+          editor.onDidChangeModelContent(() => {
+            highlightStatement()
+            updateErrorMarker()
+          })
           onMountEditorRef.current(editor)
           monaco.editor.defineTheme('supabase-light', {
             base: 'vs',

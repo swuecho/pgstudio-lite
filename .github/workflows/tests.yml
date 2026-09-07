@@ -2,10 +2,17 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
+# A new push to the same branch or PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  # Static checks run once here; the jobs below only run if they pass.
+  checks:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,6 +37,23 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+  test:
+    needs: checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build
         run: npm run build
 
@@ -40,6 +64,7 @@ jobs:
     # The desktop static export and the Electron main bundle are only exercised
     # by `npm run desktop:*`, so build both here. Without this, a change to
     # pages/api or electron/ could break the packaged app while CI stays green.
+    needs: checks
     runs-on: macos-latest
 
     steps:
@@ -74,6 +99,7 @@ jobs:
         run: cat "$RUNNER_TEMP/pgstudio-smoke/smoke.log" || true
 
   pg-integration:
+    needs: checks
     runs-on: ubuntu-latest
 
     services:
@@ -109,15 +135,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Prettier
-        run: npm run format:check
-
-      - name: ESLint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
 
       - name: Run Postgres integration tests
         run: npm run test:integration
