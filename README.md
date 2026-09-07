@@ -179,18 +179,39 @@ DB).
 
 ## Desktop app
 
-The desktop build packages the same codebase as a macOS app with no Node install
-and no dev server. Run it with:
+The desktop build packages the same codebase as a macOS, Windows or Linux app
+with no Node install and no dev server. Run it with:
 
 ```bash
 npm run desktop:preview
 ```
 
-Build distributables (unsigned `.dmg` + `.zip`, arm64 and x64) into `release/`:
+Build unsigned distributables for the OS you are on into `release/`:
 
 ```bash
 npm run desktop:dist
 ```
+
+On macOS this produces `.dmg` + `.zip` for both arm64 and x64, so it needs the
+Intel addon as well: `PGSTUDIO_NATIVE_ARCH=x64 npm run desktop:native` once
+before building. Install the file whose name matches your Mac; the `-x64` build
+runs under Rosetta on Apple Silicon and is several times slower. Windows gets an
+NSIS installer + `.zip` (x64), Linux an AppImage + `.deb` (x64).
+
+### Releasing
+
+Releases are built by [.github/workflows/release.yml](.github/workflows/release.yml).
+Bump `version` in `package.json`, commit, then push a matching tag:
+
+```bash
+git tag v0.4.0 && git push origin v0.4.0
+```
+
+The workflow packages all three platforms and uploads the artifacts to a draft
+GitHub release named after the tag; publish the draft after checking the assets.
+It refuses to run if the tag and `package.json` disagree. A manual run from the
+Actions tab builds everything and keeps the artifacts on the run without
+publishing.
 
 ### How it differs from the web build
 

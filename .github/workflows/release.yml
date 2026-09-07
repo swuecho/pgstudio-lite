@@ -1,0 +1,127 @@
+name: Release
+
+# Builds the desktop app for macOS (arm64 + x64), Windows (x64) and Linux (x64).
+#
+#  - A `v*` tag (e.g. v0.4.0) builds every platform and uploads the artifacts to
+#    a draft GitHub release named after the tag. Publish the draft by hand.
+#  - Manual runs (workflow_dispatch) build everything and keep the artifacts on
+#    the workflow run only; nothing is published.
+#
+# Each OS packages on its own runner: electron-builder.yml picks the Electron-ABI
+# better-sqlite3 addon from `native/${platform}-${arch}`, and `${platform}` is
+# the build host, not the target.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # identity is null in electron-builder.yml; this also stops the mac runner
+  # from looking for a signing certificate at all.
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+jobs:
+  verify-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$version" ]; then
+            echo "tag v$tag does not match package.json version $version" >&2
+            exit 1
+          fi
+
+  build:
+    needs: verify-version
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch Electron-ABI better-sqlite3
+        run: npm run desktop:native
+
+      - name: Fetch Electron-ABI better-sqlite3 (macOS x64)
+        # The mac job packages both architectures; prebuild-install can fetch
+        # the other arch's addon without building anything.
+        if: runner.os == 'macOS'
+        run: npm run desktop:native
+        env:
+          PGSTUDIO_NATIVE_ARCH: x64
+
+      - name: Install xvfb
+        # The icon is rasterized by Electron, which needs a display on Linux.
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Generate app icon
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a npm run desktop:icon
+          else
+            npm run desktop:icon
+          fi
+
+      - name: Build static renderer
+        run: npm run desktop:renderer
+
+      - name: Build Electron main process
+        run: npm run desktop:main
+
+      - name: Package
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF}" != "${GITHUB_REF#refs/tags/}" ]; then publish=always; else publish=never; fi
+          case "$RUNNER_OS" in
+            macOS)   npx electron-builder --mac   --publish "$publish" ;;
+            Windows) npx electron-builder --win   --publish "$publish" ;;
+            Linux)   npx electron-builder --linux --publish "$publish" ;;
+          esac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pgstudio-lite-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.blockmap
+            release/latest*.yml
