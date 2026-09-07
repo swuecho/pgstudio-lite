@@ -2,21 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getForeignKeyOptions, type ForeignKeyOption } from '@/features/table/table.service'
 import { FK_DISPLAY_CONFIG_CHANGED_EVENT, ForeignKeyCombobox } from './ForeignKeyCombobox'
 import type { ColumnInfo, RowData } from './types'
+import type { CommitRowChange } from './useGridRowChanges'
 import styles from './TableEditorStyles.module.css'
-
-type CommitFn = (
-  row: RowData,
-  column: string,
-  nextValue: unknown,
-  dataType: string,
-  onCancel?: () => void
-) => 'unchanged' | 'pending'
 
 type CellForeignKeyEditorProps = {
   connectionName: string
   column: ColumnInfo
   row: RowData
-  onCommit: CommitFn
+  onCommit: CommitRowChange
 }
 
 const FK_CELL_EDIT_EVENT = 'pgstudio:fk-cell-edit'
