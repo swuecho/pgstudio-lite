@@ -1,10 +1,10 @@
 import { NavRail } from '@/components/shared/NavRail'
-import type { RefObject } from 'react'
+import { memo, type RefObject } from 'react'
 import { RelationKindBadge } from '../shared/RelationKindBadge'
 import { HistoryItem, SchemaTable, SnippetItem } from './types'
 import styles from './Sidebar.module.css'
 
-type SqlSidebarProps = {
+export type SqlSidebarProps = {
   searchInputRef: RefObject<HTMLInputElement | null>
   connectionName: string
   activeNavTab: 'history' | 'snippets' | 'explorer'
@@ -48,7 +48,7 @@ type SqlSidebarProps = {
   onWidthResizerMouseDown?: (event: React.MouseEvent) => void
 }
 
-export function SqlSidebar({
+export const SqlSidebar = memo(function SqlSidebar({
   searchInputRef,
   connectionName,
   activeNavTab,
@@ -357,4 +357,4 @@ export function SqlSidebar({
       </aside>
     </>
   )
-}
+})

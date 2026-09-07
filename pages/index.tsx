@@ -1,19 +1,26 @@
+import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useRouter } from 'next/router'
 import { PageHead } from '@/components/shared/PageHead'
+import { useLatestRef } from '@/hooks/useLatestRef'
 import { useQuickActionsHotkey } from '@/hooks/useQuickActionsHotkey'
-import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react'
+import { type MouseEvent as ReactMouseEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { SettingsButton } from '../components/settings/SettingsButton'
 import { ConfirmDialog, PromptDialog, QuickActionsDialog } from '../components/shared/Dialog'
 import { ErrorBoundary } from '../components/shared/ErrorBoundary'
 import { EditorPane } from '../components/sql-editor/EditorPane'
 import { SqlResultsPanel } from '../components/sql-editor/ResultsPanel'
-import { SqlSidebar } from '../components/sql-editor/Sidebar'
+import { SqlSidebar, type SqlSidebarProps } from '../components/sql-editor/Sidebar'
 import { SqlTabsBar } from '../components/sql-editor/TabsBar'
 import { useSqlEditorState } from '../components/sql-editor/useSqlEditorState'
 import { formatCell, formatTime } from '../components/sql-editor/utils'
 import { useSidebarResizer } from '../hooks/useSidebarResizer'
 import styles from './SqlEditorPage.module.css'
+
+/** The sidebar's callbacks, minus the resizer which the page wires separately. */
+type SidebarHandlers = {
+  [K in keyof SqlSidebarProps as K extends `on${string}` ? K : never]-?: NonNullable<SqlSidebarProps[K]>
+}
 
 export default function SqlEditorPage() {
   const MIN_EDITOR_HEIGHT = 140
@@ -162,6 +169,57 @@ export default function SqlEditorPage() {
     setSaveSnippetState(null)
   }
 
+  // The sidebar, editor and results panel are memoized so a debounced query
+  // edit (which recreates the tabs array) no longer re-renders the schema tree
+  // or a 500-row result table. Handlers are created once and read the latest
+  // state through a ref.
+  const latest = useLatestRef({ state, openSaveSnippetDialog, handleWidthResizerMouseDown })
+  const sidebarHandlers = useMemo(
+    (): SidebarHandlers => ({
+      onChangeNavTab: (tab) => latest.current.state.setActiveNavTab(tab),
+      onChangeHistorySearch: (value) => latest.current.state.setHistorySearch(value),
+      onRefreshHistory: () => void latest.current.state.loadHistory(),
+      onClearHistory: () => void latest.current.state.clearHistory(),
+      onRefreshSnippets: () => void latest.current.state.loadSnippets(),
+      onSaveSnippet: (forceCreate) => latest.current.openSaveSnippetDialog(Boolean(forceCreate)),
+      onRefreshSchema: () => void latest.current.state.loadSchema(),
+      onInsertTemplate: () =>
+        latest.current.state.insertIntoEditor('select * from public.your_table limit 100;'),
+      onToggleSchema: (schema) => latest.current.state.toggleSchema(schema),
+      onToggleTable: (schema, table) => latest.current.state.toggleTable(schema, table),
+      onLoadHistoryQuery: (queryText) => latest.current.state.setActiveTabQuery(queryText, false, null),
+      onLoadSnippetQuery: (queryText) => latest.current.state.setActiveTabQuery(queryText, false, null),
+      onEditSnippet: (item) => latest.current.state.openSnippetInTab(item),
+      onDuplicateSnippet: (item) =>
+        setDuplicateSnippetState({ id: item.id, title: latest.current.state.getDuplicateSnippetTitle(item) }),
+      onRenameSnippet: (item, nextTitle) => void latest.current.state.renameSnippet(item, nextTitle),
+      onDeleteSnippet: (item) => setDeleteSnippetId(item.id),
+      onChangeRenameDraft: (value) => latest.current.state.setRenameDraft(value),
+      onBeginRenameSnippet: (item) => latest.current.state.beginRenameSnippet(item),
+      onCancelRenameSnippet: () => latest.current.state.cancelRenameSnippet(),
+      onInsertTableName: (schema, table) => latest.current.state.insertIntoEditor(`${schema}.${table}`),
+      onInsertColumnName: (column) => latest.current.state.insertIntoEditor(column),
+      onWidthResizerMouseDown: (event) => latest.current.handleWidthResizerMouseDown(event),
+    }),
+    [latest]
+  )
+  const editorHandlers = useMemo(
+    () => ({
+      onChangeValue: (value: string) => latest.current.state.setActiveTabQuery(value),
+      onPersistTabQuery: (tabId: string, value: string) => latest.current.state.setTabQuery(tabId, value),
+      onMountEditor: (editor: MonacoEditorNs.IStandaloneCodeEditor) =>
+        latest.current.state.setEditorRef(editor),
+      onSelectionChange: (hasSelection: boolean) => latest.current.state.setHasSelection(hasSelection),
+      onRunQuery: () => void latest.current.state.runCurrentQuery(),
+      onExplainQuery: () => void latest.current.state.runExplainQuery(),
+      onSaveSnippet: () => latest.current.openSaveSnippetDialog(false),
+      ensureColumnsForTable: (schema: string, table: string) =>
+        latest.current.state.ensureColumnsForTable(schema, table),
+    }),
+    [latest]
+  )
+  const resultsStyle = useMemo(() => ({ flexBasis: `${resultsHeight}px` }), [resultsHeight])
+
   useEffect(() => {
     return () => {
       document.body.classList.remove('resizing-sql-split')
@@ -208,25 +266,7 @@ export default function SqlEditorPage() {
         searchInputRef={sidebarSearchRef}
         connectionName={state.connectionName}
         activeNavTab={state.activeNavTab}
-        onChangeNavTab={state.setActiveNavTab}
         historySearch={state.historySearch}
-        onChangeHistorySearch={state.setHistorySearch}
-        onRefreshHistory={() => {
-          void state.loadHistory()
-        }}
-        onClearHistory={() => {
-          void state.clearHistory()
-        }}
-        onRefreshSnippets={() => {
-          void state.loadSnippets()
-        }}
-        onSaveSnippet={(forceCreate) => {
-          openSaveSnippetDialog(Boolean(forceCreate))
-        }}
-        onRefreshSchema={() => {
-          void state.loadSchema()
-        }}
-        onInsertTemplate={() => state.insertIntoEditor('select * from public.your_table limit 100;')}
         canSaveAs={Boolean(state.activeQueryTab?.snippetId)}
         savingSnippet={state.savingSnippet}
         loadingHistory={state.loadingHistory}
@@ -236,32 +276,13 @@ export default function SqlEditorPage() {
         filteredSnippets={state.filteredSnippets}
         schemaGroups={state.schemaGroups}
         expandedSchemas={state.expandedSchemas}
-        onToggleSchema={state.toggleSchema}
         expandedTables={state.expandedTables}
-        onToggleTable={state.toggleTable}
         loadingColumnsByKey={state.loadingColumnsByKey}
         tableColumnsByKey={state.tableColumnsByKey}
-        onLoadHistoryQuery={(queryText) => state.setActiveTabQuery(queryText, false, null)}
-        onLoadSnippetQuery={(queryText) => state.setActiveTabQuery(queryText, false, null)}
-        onEditSnippet={state.openSnippetInTab}
-        onDuplicateSnippet={(item) => {
-          setDuplicateSnippetState({ id: item.id, title: state.getDuplicateSnippetTitle(item) })
-        }}
-        onRenameSnippet={(item, nextTitle) => {
-          void state.renameSnippet(item, nextTitle)
-        }}
-        onDeleteSnippet={(item) => {
-          setDeleteSnippetId(item.id)
-        }}
         renamingSnippetId={state.renamingSnippetId}
         renameDraft={state.renameDraft}
-        onChangeRenameDraft={state.setRenameDraft}
-        onBeginRenameSnippet={state.beginRenameSnippet}
-        onCancelRenameSnippet={state.cancelRenameSnippet}
-        onInsertTableName={(schema, table) => state.insertIntoEditor(`${schema}.${table}`)}
-        onInsertColumnName={state.insertIntoEditor}
         formatTime={formatTime}
-        onWidthResizerMouseDown={handleWidthResizerMouseDown}
+        {...sidebarHandlers}
       />
 
       <SettingsPanel />
@@ -312,22 +333,9 @@ export default function SqlEditorPage() {
             queryError={state.queryError}
             tabId={state.activeQueryTabId}
             value={state.activeQueryTab?.query || ''}
-            onChangeValue={(value) => state.setActiveTabQuery(value)}
-            onPersistTabQuery={(tabId, value) => state.setTabQuery(tabId, value)}
-            onMountEditor={state.setEditorRef}
-            onSelectionChange={state.setHasSelection}
-            onRunQuery={() => {
-              void state.runCurrentQuery()
-            }}
-            onExplainQuery={() => {
-              void state.runExplainQuery()
-            }}
-            onSaveSnippet={() => {
-              openSaveSnippetDialog(false)
-            }}
             schemaTablesRef={state.schemaTablesRef}
             tableColumnsByKeyRef={state.tableColumnsByKeyRef}
-            ensureColumnsForTable={state.ensureColumnsForTable}
+            {...editorHandlers}
           />
 
           <div
@@ -354,7 +362,7 @@ export default function SqlEditorPage() {
               result={state.result}
               formatCell={formatCell}
               connectionName={state.connectionName}
-              style={{ flexBasis: `${resultsHeight}px` }}
+              style={resultsStyle}
             />
           </ErrorBoundary>
 

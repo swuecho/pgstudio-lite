@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useGridKeyboardNav } from '@/hooks/useGridKeyboardNav'
 import styles from './ResultsPanel.module.css'
 import type { CSSProperties } from 'react'
@@ -99,7 +99,12 @@ type SqlCellView = {
   value: unknown
 }
 
-export function SqlResultsPanel({ result, formatCell, connectionName, style }: SqlResultsPanelProps) {
+export const SqlResultsPanel = memo(function SqlResultsPanel({
+  result,
+  formatCell,
+  connectionName,
+  style,
+}: SqlResultsPanelProps) {
   connectionName = result?.connectionName || ''
   const [cellView, setCellView] = useState<SqlCellView | null>(null)
   const [viewModes, setViewModes] = useState<Record<number, 'table' | 'chart'>>({})
@@ -233,7 +238,7 @@ export function SqlResultsPanel({ result, formatCell, connectionName, style }: S
       ) : null}
     </div>
   )
-}
+})
 
 type ResultRowsTableProps = {
   statement: StatementResult
