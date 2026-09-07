@@ -1,5 +1,5 @@
 import type { QueryResult } from '../sql-editor/types'
-import type { NotebookCell, NotebookWidgetMetadata } from './types'
+import type { NotebookCell, NotebookWidgetMetadata, NotebookCellUiState } from './types'
 import {
   getWidgetParamValues,
   isInputLikeWidgetType,
@@ -227,10 +227,7 @@ export function getCellUiStateByCell(input: {
   runningCellId: string
   staleResultByCell: Record<string, boolean>
 }) {
-  const stateByCell: Record<
-    string,
-    'idle' | 'saving' | 'save_failed' | 'queued' | 'running' | 'stale_result'
-  > = {}
+  const stateByCell: Record<string, NotebookCellUiState> = {}
 
   for (const cell of input.sortedCells) {
     if (input.runningCellId === cell.id) {

@@ -108,6 +108,9 @@ export type NotebookInputCellMetadata = {
 
 export type NotebookCellMetadata = NotebookWidgetMetadata | null
 
+/** Per-cell status shown in the cell header; derived in cellSyncHelpers. */
+export type NotebookCellUiState = 'idle' | 'saving' | 'save_failed' | 'queued' | 'running' | 'stale_result'
+
 export type NotebookCell = {
   id: string
   notebook_id: string
