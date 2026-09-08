@@ -205,6 +205,26 @@ export function getStaleResultByCell(input: {
   return staleByCell
 }
 
+/**
+ * A SQL result is out of date when a `{{key}}` value bound at run time no
+ * longer matches the notebook's current input values. Cells without a stored
+ * result, or whose result bound no parameters, are never flagged here.
+ */
+export function getParamStaleByCell(input: {
+  sortedCells: NotebookCell[]
+  resultsByCell: Record<string, QueryResult>
+  inputValues: Record<string, unknown>
+}) {
+  const staleByCell: Record<string, boolean> = {}
+  for (const cell of input.sortedCells) {
+    if (cell.type !== 'sql') continue
+    const params = input.resultsByCell[cell.id]?.executedQuery?.params
+    if (!params?.length) continue
+    staleByCell[cell.id] = params.some((param) => !isSameValue(param.value, input.inputValues[param.key]))
+  }
+  return staleByCell
+}
+
 export function markQueuedCells(queuedRunByCell: Record<string, boolean>, cellIds: string[]) {
   if (!cellIds.length) return queuedRunByCell
   const next = { ...queuedRunByCell }

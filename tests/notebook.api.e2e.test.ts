@@ -630,4 +630,254 @@ describe('notebook API e2e', () => {
       ]),
     })
   })
+
+  it('import create: remaps cell ids already used by another notebook and follows action targets', async () => {
+    const spec = {
+      spec_version: '1.0',
+      title: 'Docs example',
+      cells: [
+        { id: 'md_intro', type: 'markdown', content: '# Intro' },
+        { id: 'sql_1', type: 'sql', content: 'select 1;' },
+        {
+          id: 'run_btn',
+          type: 'widget',
+          content: '',
+          metadata: {
+            widgetType: 'actions',
+            label: 'Run',
+            config: { action: 'run-targets', targetCellIds: ['sql_1'] },
+          },
+        },
+      ],
+    }
+
+    const first = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: { mode: 'create', notebook: spec },
+    })
+    expect(first.statusCode).toBe(200)
+    expect((first.payload as { warnings: string[] }).warnings).toEqual([])
+
+    const second = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: { mode: 'create', notebook: spec },
+    })
+    expect(second.statusCode).toBe(200)
+    const payload = second.payload as {
+      notebook_id: string
+      warnings: string[]
+      notebook: { cells: Array<{ id: string; metadata?: { config?: { targetCellIds?: string[] } } }> }
+    }
+    expect(payload.notebook_id).not.toBe((first.payload as { notebook_id: string }).notebook_id)
+    expect(payload.warnings).toHaveLength(3)
+    expect(payload.warnings[0]).toMatch(/cell id 'md_intro' is already used by another notebook/)
+
+    const ids = payload.notebook.cells.map((cell) => cell.id)
+    expect(ids).not.toContain('md_intro')
+    expect(ids).not.toContain('sql_1')
+    expect(new Set(ids).size).toBe(3)
+    // The actions widget now points at the remapped SQL cell, not the other notebook's.
+    expect(payload.notebook.cells[2].metadata?.config?.targetCellIds).toEqual([ids[1]])
+
+    // The first notebook is untouched and keeps its readable ids.
+    const firstExport = await invokeApi(notebookExportHandler, {
+      method: 'GET',
+      query: { id: (first.payload as { notebook_id: string }).notebook_id },
+    })
+    expect((firstExport.payload as { cells: Array<{ id: string }> }).cells.map((cell) => cell.id)).toEqual([
+      'md_intro',
+      'sql_1',
+      'run_btn',
+    ])
+  })
+
+  it('import validate_only: reports the id remap it would perform without writing anything', async () => {
+    const spec = {
+      spec_version: '1.0',
+      title: 'Validate collisions',
+      cells: [{ id: 'shared_id', type: 'markdown', content: '# A' }],
+    }
+    await invokeApi(notebookImportHandler, { method: 'POST', body: { mode: 'create', notebook: spec } })
+
+    const response = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: { mode: 'create', validate_only: true, notebook: spec },
+    })
+    expect(response.statusCode).toBe(200)
+    const payload = response.payload as { warnings: string[]; notebook: { cells: Array<{ id: string }> } }
+    expect(payload.warnings).toHaveLength(1)
+    expect(payload.notebook.cells[0].id).not.toBe('shared_id')
+    expect(getSqlite().prepare('SELECT count(*) AS n FROM notebooks').get()).toEqual({ n: 1 })
+  })
+
+  it('patch flow: keeps stored results on cells the patch did not remove', async () => {
+    const importResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'create',
+        notebook: {
+          spec_version: '1.0',
+          title: 'Before',
+          cells: [
+            { id: 'sql-keep', type: 'sql', content: 'select 1 as v;' },
+            { id: 'sql-edit', type: 'sql', content: 'select 2 as v;' },
+            { id: 'sql-to-md', type: 'sql', content: 'select 3 as v;' },
+            { id: 'sql-drop', type: 'sql', content: 'select 4 as v;' },
+          ],
+        },
+      },
+    })
+    const notebookId = (importResponse.payload as { notebook_id: string }).notebook_id
+
+    for (const cellId of ['sql-keep', 'sql-edit', 'sql-to-md', 'sql-drop']) {
+      const runResponse = await invokeApi(runCellHandler, {
+        method: 'POST',
+        query: { id: notebookId },
+        body: { cellId, query: 'select 1;' },
+      })
+      expect(runResponse.statusCode).toBe(200)
+    }
+
+    const patchResponse = await invokeApi(notebookPatchHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: {
+        spec_version: '1.0',
+        ops: [
+          { op: 'replace', path: '/title', value: 'After' },
+          { op: 'replace', path: '/cells/1/content', value: 'select 20 as v;' },
+          { op: 'replace', path: '/cells/2/type', value: 'markdown' },
+          { op: 'remove', path: '/cells/3' },
+          { op: 'add', path: '/cells/0', value: { id: 'md-new', type: 'markdown', content: '# New' } },
+        ],
+      },
+    })
+    expect(patchResponse.statusCode).toBe(200)
+
+    const cells = getSqlite()
+      .prepare(
+        'SELECT id, position, type, content, last_run_status, last_result_json IS NOT NULL AS has_result FROM notebook_cells WHERE notebook_id = ? ORDER BY position'
+      )
+      .all(notebookId)
+    expect(cells).toEqual([
+      { id: 'md-new', position: 0, type: 'markdown', content: '# New', last_run_status: null, has_result: 0 },
+      {
+        id: 'sql-keep',
+        position: 1,
+        type: 'sql',
+        content: 'select 1 as v;',
+        last_run_status: 'success',
+        has_result: 1,
+      },
+      // Edited SQL keeps its (now stale) result, like an edit in the editor does.
+      {
+        id: 'sql-edit',
+        position: 2,
+        type: 'sql',
+        content: 'select 20 as v;',
+        last_run_status: 'success',
+        has_result: 1,
+      },
+      // A type change drops the SQL result.
+      {
+        id: 'sql-to-md',
+        position: 3,
+        type: 'markdown',
+        content: 'select 3 as v;',
+        last_run_status: null,
+        has_result: 0,
+      },
+    ])
+    expect((patchResponse.payload as { notebook: { title: string } }).notebook.title).toBe('After')
+  })
+
+  it('import replace: reorders surviving cells without tripping the unique position index', async () => {
+    const importResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'create',
+        notebook: {
+          spec_version: '1.0',
+          title: 'Order',
+          cells: [
+            { id: 'a', type: 'markdown', content: 'a' },
+            { id: 'b', type: 'markdown', content: 'b' },
+            { id: 'c', type: 'markdown', content: 'c' },
+          ],
+        },
+      },
+    })
+    const notebookId = (importResponse.payload as { notebook_id: string }).notebook_id
+
+    const replaceResponse = await invokeApi(notebookImportHandler, {
+      method: 'POST',
+      body: {
+        mode: 'replace',
+        target_notebook_id: notebookId,
+        notebook: {
+          spec_version: '1.0',
+          title: 'Order',
+          cells: [
+            { id: 'c', type: 'markdown', content: 'c' },
+            { id: 'a', type: 'markdown', content: 'a' },
+            { id: 'b', type: 'markdown', content: 'b' },
+          ],
+        },
+      },
+    })
+    expect(replaceResponse.statusCode).toBe(200)
+    expect(
+      (replaceResponse.payload as { notebook: { cells: Array<{ id: string; position: number }> } }).notebook
+        .cells
+    ).toEqual([
+      expect.objectContaining({ id: 'c', position: 0 }),
+      expect.objectContaining({ id: 'a', position: 1 }),
+      expect.objectContaining({ id: 'b', position: 2 }),
+    ])
+  })
+
+  it('cell type change: converting a SQL cell to Markdown drops its run columns and keeps the text', async () => {
+    const notebookId = await createNotebookFixture()
+    const addResponse = await invokeApi(notebookCellsHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: { type: 'sql', content: 'select 1 as v;' },
+    })
+    const cellId = (addResponse.payload as { item: { id: string } }).item.id
+
+    const runResponse = await invokeApi(runCellHandler, {
+      method: 'POST',
+      query: { id: notebookId },
+      body: { cellId, query: 'select 1 as v;' },
+    })
+    expect(runResponse.statusCode).toBe(200)
+
+    const convertResponse = await invokeApi(notebookCellsHandler, {
+      method: 'PATCH',
+      query: { id: notebookId },
+      body: { cellId, type: 'markdown', content: 'select 1 as v; -- now a note' },
+    })
+    expect(convertResponse.statusCode).toBe(200)
+    expect((convertResponse.payload as { item: unknown }).item).toMatchObject({
+      type: 'markdown',
+      content: 'select 1 as v; -- now a note',
+      last_run_status: null,
+      last_run_at: null,
+      last_row_count: null,
+      last_result_json: null,
+      last_error: null,
+    })
+
+    // Converting back does not resurrect anything; the cell simply has no run yet.
+    const backResponse = await invokeApi(notebookCellsHandler, {
+      method: 'PATCH',
+      query: { id: notebookId },
+      body: { cellId, type: 'sql' },
+    })
+    expect((backResponse.payload as { item: unknown }).item).toMatchObject({
+      type: 'sql',
+      last_run_status: null,
+      last_result_json: null,
+    })
+  })
 })

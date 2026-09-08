@@ -1,8 +1,27 @@
 import dynamic from 'next/dynamic'
 import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getCurrentTheme } from '../sql-editor/utils'
+
+/**
+ * The editor grows with its SQL between these bounds so short cells stay
+ * compact and long ones do not need an inner scrollbar until they are tall.
+ */
+const MIN_EDITOR_HEIGHT = 120
+const MAX_EDITOR_HEIGHT = 520
+const ESTIMATED_LINE_HEIGHT = 19
+const EDITOR_VERTICAL_PADDING = 12
+
+export function clampEditorHeight(contentHeight: number) {
+  return Math.min(MAX_EDITOR_HEIGHT, Math.max(MIN_EDITOR_HEIGHT, Math.ceil(contentHeight)))
+}
+
+/** First-paint height from the line count, before Monaco can measure itself. */
+export function estimateEditorHeight(value: string) {
+  const lines = value.split('\n').length
+  return clampEditorHeight(lines * ESTIMATED_LINE_HEIGHT + EDITOR_VERTICAL_PADDING)
+}
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -40,11 +59,12 @@ export function SqlCellEditor({
   useEffect(() => {
     paramsRef.current = params
   }, [params])
+  const [height, setHeight] = useState(() => estimateEditorHeight(value))
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--border)]">
       <MonacoEditor
-        height="190px"
+        height={`${height}px`}
         language="pgsql"
         value={value}
         onChange={(next) => onChange(next || '')}
@@ -135,6 +155,13 @@ export function SqlCellEditor({
             onRunAndFocusNext()
           })
 
+          // Grow and shrink with the content; the virtualized list re-measures the row.
+          const applyContentHeight = () => {
+            setHeight(clampEditorHeight(editor.getContentHeight() + EDITOR_VERTICAL_PADDING))
+          }
+          applyContentHeight()
+          editor.onDidContentSizeChange(applyContentHeight)
+
           editor.onDidDispose(() => {
             provider.dispose()
             window.removeEventListener('pgstudio:themechange', applyEditorTheme)
@@ -151,6 +178,8 @@ export function SqlCellEditor({
           lineNumbersMinChars: 3,
           scrollBeyondLastLine: false,
           automaticLayout: true,
+          // Let the page scroll when the wheel reaches the end of a cell's editor.
+          scrollbar: { alwaysConsumeMouseWheel: false },
         }}
         theme="supabase-light"
       />

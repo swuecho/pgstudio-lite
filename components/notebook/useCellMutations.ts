@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { NotebookCell, NotebookCellType, NotebookWidgetMetadata } from './types'
 import { createCell, deleteCell, updateCell } from '@/features/notebook/notebook.service'
@@ -8,10 +9,13 @@ import {
 } from '@/lib/notebook-widgets'
 import { getNormalizedWidgetMetadata } from './cellSyncHelpers'
 
+/** The cell types a cell can be converted between; widgets hold metadata, not text, so they stay put. */
+export type ConvertibleCellType = Exclude<NotebookCellType, 'widget'>
+
 /**
- * Server mutations on cells within the active notebook: add, duplicate, delete,
- * reorder, collapse. Each one reports to the status bar and invalidates the
- * notebook detail query on success.
+ * Server mutations on cells within the active notebook: add, duplicate, convert,
+ * delete, reorder, collapse. Each one reports to the status bar and invalidates
+ * the notebook detail query on success.
  */
 export function useCellMutations(params: {
   activeNotebookId: string
@@ -19,6 +23,7 @@ export function useCellMutations(params: {
   sortedCells: NotebookCell[]
   selectedCellId: string
   setSelectedCellId: (cellId: string) => void
+  draftByCellRef: { current: Record<string, string> }
   widgetDraftByCellRef: { current: Record<string, NotebookWidgetMetadata> }
 }) {
   const {
@@ -27,9 +32,11 @@ export function useCellMutations(params: {
     sortedCells,
     selectedCellId,
     setSelectedCellId,
+    draftByCellRef,
     widgetDraftByCellRef,
   } = params
   const queryClient = useQueryClient()
+  const [cellPendingDelete, setCellPendingDelete] = useState<NotebookCell | null>(null)
 
   function reportError(error: unknown) {
     setStatus(error instanceof Error ? error.message : String(error))
@@ -37,6 +44,10 @@ export function useCellMutations(params: {
 
   function invalidateNotebook() {
     void queryClient.invalidateQueries({ queryKey: ['notebook', activeNotebookId] })
+  }
+
+  function currentContent(cell: NotebookCell) {
+    return draftByCellRef.current[cell.id] ?? cell.content
   }
 
   /** New cells land directly under the selected cell, or at the end when nothing is selected. */
@@ -79,27 +90,34 @@ export function useCellMutations(params: {
     onError: reportError,
   })
 
-  const duplicateWidgetMutation = useMutation({
+  /** Copies the cell as it is on screen (unsaved draft included) directly below the source. */
+  const duplicateCellMutation = useMutation({
     mutationFn: (cellId: string) => {
       const sourceCell = sortedCells.find((cell) => cell.id === cellId)
-      if (!sourceCell || sourceCell.type !== 'widget') {
-        throw new Error('widget cell not found')
+      if (!sourceCell) throw new Error('cell not found')
+      const position = sourceCell.position + 1
+      if (sourceCell.type === 'widget') {
+        const metadata = widgetDraftByCellRef.current[cellId] || getNormalizedWidgetMetadata(sourceCell)
+        return createCell(activeNotebookId, { type: 'widget', metadata, position })
       }
-      const metadata = widgetDraftByCellRef.current[cellId] || getNormalizedWidgetMetadata(sourceCell)
       return createCell(activeNotebookId, {
-        type: 'widget',
-        metadata,
-        position: sourceCell.position + 1,
+        type: sourceCell.type,
+        content: currentContent(sourceCell),
+        position,
       })
     },
-    onSuccess: selectCreatedCell('Widget duplicated'),
+    onSuccess: selectCreatedCell('Cell duplicated'),
     onError: reportError,
   })
 
   const deleteCellMutation = useMutation({
     mutationFn: (cellId: string) => deleteCell(activeNotebookId, cellId),
-    onSuccess: () => {
+    onSuccess: (_, cellId) => {
       setStatus('Cell deleted')
+      // Keep the selection where the user was working so the next Add lands there.
+      const index = sortedCells.findIndex((cell) => cell.id === cellId)
+      const neighbour = sortedCells[index + 1] ?? sortedCells[index - 1]
+      if (neighbour) setSelectedCellId(neighbour.id)
       if (activeNotebookId) invalidateNotebook()
     },
     onError: reportError,
@@ -125,22 +143,60 @@ export function useCellMutations(params: {
       .catch(reportError)
   }
 
-  function deleteCellById(cellId: string) {
-    deleteCellMutation.mutate(cellId)
+  /**
+   * Switches a text cell between SQL and Markdown, keeping its text. The draft
+   * travels with the request so an unsaved edit is not lost to the type change.
+   */
+  function convertCellType(cell: NotebookCell, nextType: ConvertibleCellType) {
+    if (cell.type === 'widget' || cell.type === nextType) return
+    void updateCell(activeNotebookId, { cellId: cell.id, type: nextType, content: currentContent(cell) })
+      .then(() => {
+        setStatus(nextType === 'sql' ? 'Converted to SQL' : 'Converted to Markdown')
+        invalidateNotebook()
+      })
+      .catch(reportError)
   }
 
-  function duplicateWidgetCellById(cellId: string) {
-    duplicateWidgetMutation.mutate(cellId)
+  /** Empty text cells go straight away; anything with content (or any widget) asks first. */
+  function isCellEmpty(cell: NotebookCell) {
+    if (cell.type === 'widget') return false
+    return !currentContent(cell).trim()
+  }
+
+  function requestDeleteCell(cell: NotebookCell) {
+    if (isCellEmpty(cell)) {
+      deleteCellMutation.mutate(cell.id)
+      return
+    }
+    setCellPendingDelete(cell)
+  }
+
+  function confirmDeleteCell() {
+    if (!cellPendingDelete) return
+    deleteCellMutation.mutate(cellPendingDelete.id)
+    setCellPendingDelete(null)
+  }
+
+  function cancelDeleteCell() {
+    setCellPendingDelete(null)
+  }
+
+  function duplicateCellById(cellId: string) {
+    duplicateCellMutation.mutate(cellId)
   }
 
   return {
     addCellMutation,
     addWidgetPresetMutation,
-    duplicateWidgetMutation,
+    duplicateCellMutation,
     deleteCellMutation,
+    cellPendingDelete,
     moveCell,
     toggleCellCollapsed,
-    deleteCellById,
-    duplicateWidgetCellById,
+    convertCellType,
+    requestDeleteCell,
+    confirmDeleteCell,
+    cancelDeleteCell,
+    duplicateCellById,
   }
 }

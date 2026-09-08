@@ -46,8 +46,9 @@ export const NotebookCellRow = memo(function NotebookCellRow({ cell, controller 
     staleResultByCell,
     sqlEditorRefs,
     toggleCellCollapsed,
-    deleteCellById,
-    duplicateWidgetCellById,
+    requestDeleteCell,
+    duplicateCellById,
+    convertCellType,
     cellSectionRefs,
     pendingCellAction,
     clearPendingCellAction,
@@ -101,13 +102,16 @@ export const NotebookCellRow = memo(function NotebookCellRow({ cell, controller 
     delete sqlEditorRefs.current[cell.id]
   }, [cell.id, sqlEditorRefs])
   const handleToggleCollapsed = useCallback(() => toggleCellCollapsed(cell), [cell, toggleCellCollapsed])
-  const handleDuplicate = useCallback(
-    () => duplicateWidgetCellById(cell.id),
-    [cell.id, duplicateWidgetCellById]
-  )
+  const handleDuplicate = useCallback(() => duplicateCellById(cell.id), [cell.id, duplicateCellById])
   const handleMoveUp = useCallback(() => moveCell(cell, 'up'), [cell, moveCell])
   const handleMoveDown = useCallback(() => moveCell(cell, 'down'), [cell, moveCell])
-  const handleDelete = useCallback(() => deleteCellById(cell.id), [cell.id, deleteCellById])
+  const handleDelete = useCallback(() => requestDeleteCell(cell), [cell, requestDeleteCell])
+  const handleConvert = useCallback(
+    () => convertCellType(cell, cell.type === 'sql' ? 'markdown' : 'sql'),
+    [cell, convertCellType]
+  )
+  const isFirst = cell.position === 0
+  const isLast = cell.position === sortedCells.length - 1
   const handleWidgetChange = useCallback(
     (next: NotebookWidgetMetadata) => onWidgetMetadataChange(cell, next as any),
     [cell, onWidgetMetadataChange]
@@ -211,15 +215,40 @@ export const NotebookCellRow = memo(function NotebookCellRow({ cell, controller 
           </button>
           {!cell.collapsed ? (
             <>
-              {cell.type === 'widget' ? (
-                <button className="btn small" onClick={handleDuplicate}>
-                  Duplicate
+              <button
+                className="btn small"
+                onClick={handleDuplicate}
+                title="Insert a copy of this cell below it"
+              >
+                Duplicate
+              </button>
+              {cell.type !== 'widget' ? (
+                <button
+                  className="btn small"
+                  onClick={handleConvert}
+                  title={
+                    cell.type === 'sql'
+                      ? 'Turn this cell into a Markdown cell, keeping its text'
+                      : 'Turn this cell into a SQL cell, keeping its text'
+                  }
+                >
+                  {cell.type === 'sql' ? 'To Markdown' : 'To SQL'}
                 </button>
               ) : null}
-              <button className="btn small" onClick={handleMoveUp}>
+              <button
+                className="btn small"
+                onClick={handleMoveUp}
+                disabled={isFirst}
+                title={isFirst ? 'Already the first cell' : 'Move up'}
+              >
                 Up
               </button>
-              <button className="btn small" onClick={handleMoveDown}>
+              <button
+                className="btn small"
+                onClick={handleMoveDown}
+                disabled={isLast}
+                title={isLast ? 'Already the last cell' : 'Move down'}
+              >
                 Down
               </button>
               <button className="btn small" onClick={handleDelete}>

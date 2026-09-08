@@ -123,6 +123,15 @@ export function updateNotebookCell(
     if (input.type !== undefined) {
       values.type = input.type
       if (input.type !== 'widget' && input.metadata === undefined) values.metadataJson = null
+      // Run columns describe a SQL execution; a cell converted away from SQL has none.
+      if (input.type !== 'sql' && existing.type === 'sql') {
+        values.lastRunStatus = null
+        values.lastRunAt = null
+        values.lastDurationMs = null
+        values.lastRowCount = null
+        values.lastResultJson = null
+        values.lastError = null
+      }
     }
     if (input.content !== undefined) values.content = input.content
     if (input.collapsed !== undefined) values.collapsed = input.collapsed

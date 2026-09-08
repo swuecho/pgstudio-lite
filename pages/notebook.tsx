@@ -110,7 +110,7 @@ export default function NotebookPage() {
               className={`btn small ${styles.actionButton}`}
               aria-pressed={controller.dashboardMode}
               disabled={!controller.activeNotebookId}
-              title="Toggle a read-only dashboard view of results and charts"
+              title="Toggle the dashboard view: results, charts and the notebook's controls"
               onClick={() => controller.setDashboardMode((prev) => !prev)}
             >
               {controller.dashboardMode ? 'Edit' : 'Dashboard'}
@@ -207,7 +207,7 @@ export default function NotebookPage() {
           />
         ) : null}
 
-        <NotebookParameterPanel controller={controller} />
+        {!controller.dashboardMode ? <NotebookParameterPanel controller={controller} /> : null}
 
         {controller.dashboardMode ? (
           <NotebookDashboard controller={controller} />

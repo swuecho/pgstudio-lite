@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { ConfirmDialog } from '../shared/Dialog'
 import { ErrorBoundary } from '../shared/ErrorBoundary'
 import { NotebookCellRow } from './NotebookCellRow'
+import { describeCellForDelete } from './cellPresentation'
 import type { NotebookPageController } from './useNotebookPageState'
 import styles from './NotebookPage.module.css'
 
@@ -11,7 +13,17 @@ type NotebookCellListProps = {
 
 /** Virtualized list of cells; each row is a `NotebookCellRow`. */
 export function NotebookCellList({ controller }: NotebookCellListProps) {
-  const { activeNotebookId, clearPendingCellAction, detailQuery, pendingCellAction, sortedCells } = controller
+  const {
+    activeNotebookId,
+    cancelDeleteCell,
+    cellPendingDelete,
+    clearPendingCellAction,
+    confirmDeleteCell,
+    detailQuery,
+    draftByCell,
+    pendingCellAction,
+    sortedCells,
+  } = controller
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -51,6 +63,17 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
 
   return (
     <div ref={scrollRef} className={styles.cells}>
+      <ConfirmDialog
+        open={Boolean(cellPendingDelete)}
+        title="Delete cell"
+        message={
+          cellPendingDelete ? describeCellForDelete(cellPendingDelete, draftByCell[cellPendingDelete.id]) : ''
+        }
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onClose={cancelDeleteCell}
+        onConfirm={confirmDeleteCell}
+      />
       <div
         style={{
           height: virtualizer.getTotalSize(),

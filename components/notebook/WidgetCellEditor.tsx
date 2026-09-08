@@ -19,6 +19,8 @@ type WidgetCellEditorProps = {
   disabled?: boolean
   collapsed?: boolean
   valueOnly?: boolean
+  /** Text for the inline label in value-only mode; defaults to the parameter key. `null` hides it. */
+  inlineLabel?: string | null
   notebookId?: string
   inputValues?: NotebookInputValues
   sqlOptionsState?: NotebookResolvedOptionsState
@@ -49,6 +51,7 @@ export function WidgetCellEditor({
   disabled,
   collapsed,
   valueOnly,
+  inlineLabel,
   notebookId: _notebookId,
   inputValues: _inputValues,
   sqlOptionsState,
@@ -63,7 +66,11 @@ export function WidgetCellEditor({
       <div className={styles.widgetCollapsedSummary}>
         {isInputLikeWidgetType(metadata.widgetType) ? (
           <div className={styles.widgetInlineRow}>
-            <span className={styles.widgetInlineLabel}>{metadata.key || metadata.label || 'param'}</span>
+            {inlineLabel === null ? null : (
+              <span className={styles.widgetInlineLabel}>
+                {inlineLabel || metadata.key || metadata.label || 'param'}
+              </span>
+            )}
             <InputLikeWidgetEditor
               metadata={metadata}
               disabled={disabled}

@@ -67,6 +67,7 @@ This document defines:
 ```
 
 - `id`: required stable identifier string (agent-generated).
+  Ids must be unique within the notebook. They are also the storage key across all notebooks, so an id already used by a _different_ notebook is replaced with a fresh UUID on import (any `targetCellIds` pointing at it are updated too) and the response lists the swap under `warnings`. Ids already in the target notebook are kept, so `replace`/`upsert`/patch leave unchanged cells, and their stored results, in place.
 - `type`: required enum: `markdown`, `input`, `sql`.
 - `position`: optional integer >= 0. If missing, server derives order from array index.
 - `collapsed`: optional boolean, default `false`.

@@ -12,6 +12,7 @@ import {
   syncCellResultState,
   syncCellDraftState,
   syncWidgetDraftState,
+  getParamStaleByCell,
 } from '../components/notebook/cellSyncHelpers'
 import {
   buildInputValues,
@@ -538,5 +539,45 @@ describe('notebook reactive runner', () => {
 
   it('clears a save error without affecting other cells', () => {
     expect(clearSaveError({ a: 'boom', b: 'retry' }, 'a')).toEqual({ b: 'retry' })
+  })
+
+  it('marks a result out of date when a bound parameter no longer matches the current inputs', () => {
+    const cells = [
+      { id: 'a', type: 'sql' },
+      { id: 'b', type: 'sql' },
+      { id: 'c', type: 'sql' },
+      { id: 'w', type: 'widget' },
+    ] as any
+    const withParams = (params: Array<{ key: string; value: unknown }>) =>
+      ({
+        statements: [],
+        totalRows: 0,
+        durationMs: 0,
+        executedQuery: {
+          text: '',
+          values: params.map((p) => p.value),
+          params: params.map((p, i) => ({
+            ...p,
+            placeholder: `$${i + 1}`,
+            valueType: typeof p.value,
+            source: 'request',
+          })),
+        },
+      }) as any
+
+    const stale = getParamStaleByCell({
+      sortedCells: cells,
+      resultsByCell: {
+        a: withParams([
+          { key: 'region', value: 'emea' },
+          { key: 'ids', value: ['1', '2'] },
+        ]),
+        b: withParams([{ key: 'region', value: 'apac' }]),
+        c: { statements: [], totalRows: 0, durationMs: 0 } as any,
+      },
+      inputValues: { region: 'emea', ids: ['1', '2'] },
+    })
+
+    expect(stale).toEqual({ a: false, b: true })
   })
 })

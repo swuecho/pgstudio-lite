@@ -484,6 +484,99 @@
   border-style: dashed;
 }
 
+.dashboardShell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboardToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-size-xs);
+  color: var(--muted);
+}
+
+.dashboardToolbarActions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.dashboardFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 94%, var(--accent) 6%);
+}
+
+.dashboardFilter {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 260px;
+  max-width: 460px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  padding: 8px 10px;
+}
+
+/* The filter card carries its own heading, so the inline editor spans the full width. */
+.dashboardFilter .widgetInlineRow {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dashboardFilterHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dashboardFilterReset {
+  margin-left: auto;
+}
+
+.dashboardCardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--muted);
+}
+
+.dashboardCardTitle {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dashboardCardActions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.dashboardCardStale {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.dashboardCalloutCard {
+  grid-column: 1 / -1;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
 .markdownPreview a {
   color: var(--link);
   text-decoration: underline;

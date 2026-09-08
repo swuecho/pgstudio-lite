@@ -3,6 +3,7 @@ import type { QueryResult } from '../sql-editor/types'
 import type { NotebookCell, NotebookDetail } from './types'
 import { buildInputValues } from '@/lib/notebook-reactive'
 import {
+  getParamStaleByCell,
   getPendingSaveCount,
   getStaleResultByCell,
   getCellUiStateByCell,
@@ -100,6 +101,7 @@ export function useNotebookCellState(params: {
     sortedCells,
     selectedCellId,
     setSelectedCellId,
+    draftByCellRef: execution.draftByCellRef,
     widgetDraftByCellRef: drafts.widgetDraftByCellRef,
   })
 
@@ -277,6 +279,10 @@ export function useNotebookCellState(params: {
       }),
     [sortedCells, draftByCell, execution.resultsByCell, execution.lastExecutedQueryByCell]
   )
+  const paramStaleByCell = useMemo(
+    () => getParamStaleByCell({ sortedCells, resultsByCell: execution.resultsByCell, inputValues }),
+    [sortedCells, execution.resultsByCell, inputValues]
+  )
   const cellUiStateByCell = useMemo(
     () =>
       getCellUiStateByCell({
@@ -299,11 +305,15 @@ export function useNotebookCellState(params: {
 
   return {
     addCellMutation: mutations.addCellMutation,
-    duplicateWidgetCellById: mutations.duplicateWidgetCellById,
-    duplicateWidgetMutation: mutations.duplicateWidgetMutation,
+    duplicateCellById: mutations.duplicateCellById,
+    duplicateCellMutation: mutations.duplicateCellMutation,
     addWidgetPresetMutation: mutations.addWidgetPresetMutation,
     cellSectionRefs,
-    deleteCellById: mutations.deleteCellById,
+    cellPendingDelete: mutations.cellPendingDelete,
+    requestDeleteCell: mutations.requestDeleteCell,
+    confirmDeleteCell: mutations.confirmDeleteCell,
+    cancelDeleteCell: mutations.cancelDeleteCell,
+    convertCellType: mutations.convertCellType,
     draftByCell,
     inputValues,
     inputKeys,
@@ -323,6 +333,7 @@ export function useNotebookCellState(params: {
     queuedRunByCell: execution.queuedRunByCell,
     saveErrorByCell: autoSave.saveErrorByCell,
     staleResultByCell,
+    paramStaleByCell,
     runTargetSqlCells: (cellIds: string[]) => execution.runTargetSqlCells(sortedCells, cellIds),
     runAllSqlCells: () => execution.runAllSqlCells(sortedCells),
     runningAll: execution.runningAll,
