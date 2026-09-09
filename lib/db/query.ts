@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { parseSql } from '../pg-parser'
+import { isWriteStatement } from '../sql-write-detection'
 import { extractSelectOutputColumnNames, narrowResultToSelectList } from '../query-output-columns'
 import { queryHistory } from '@/drizzle/schema'
 import { getMetaDb } from '../meta-db'
 import { getConnectionByName } from './connections'
-import { getPool } from './pool'
+import { getPool, type PoolClient } from './pool'
 import { getPrimaryKeyColumns } from './introspect'
 
 const QUERY_STATEMENT_TIMEOUT_MS = 15_000
@@ -22,6 +23,42 @@ function getSqlParser(): Promise<void> {
     sqlParserReady = parseSql('select 1').then(() => undefined)
   }
   return sqlParserReady
+}
+
+/**
+ * Runs one statement. On a read-only connection it is wrapped in an explicit
+ * `BEGIN READ ONLY` transaction so Postgres itself refuses writes, whatever the
+ * statement does to session state first: `SET default_transaction_read_only`,
+ * `SET SESSION CHARACTERISTICS`, `RESET ALL`, or `set_config()` only change
+ * the default for *future* transactions, and every statement here opens its own
+ * explicitly read-only one. A user's own BEGIN/COMMIT inside the wrapper is
+ * reduced to a warning by Postgres, which is fine for reads.
+ *
+ * The transaction is rolled back on error so the pooled client is never
+ * released mid-transaction.
+ */
+async function runStatement(
+  client: PoolClient,
+  statement: string,
+  values: unknown[] | undefined,
+  readOnly: boolean
+) {
+  const execute = () => (values ? client.query({ text: statement, values }) : client.query(statement))
+  if (!readOnly) return execute()
+
+  await client.query('begin read only')
+  try {
+    const result = await execute()
+    await client.query('commit')
+    return result
+  } catch (error) {
+    try {
+      await client.query('rollback')
+    } catch {
+      // The original error is what the caller needs to see.
+    }
+    throw error
+  }
 }
 
 export async function splitStatements(sql: string): Promise<string[]> {
@@ -50,93 +87,6 @@ export async function splitStatements(sql: string): Promise<string[]> {
       .trim()
       .replace(/;+$/, '')
   })
-}
-
-const WRITE_STMT_TYPES = new Set([
-  'InsertStmt',
-  'UpdateStmt',
-  'DeleteStmt',
-  'MergeStmt',
-  'CreateStmt',
-  'CreateSchemaStmt',
-  'CreateFunctionStmt',
-  'CreatePLangStmt',
-  'CreateTableAsStmt',
-  'CreateSeqStmt',
-  'CreateRoleStmt',
-  'CreateTrigStmt',
-  'CreateCastStmt',
-  'CreateOpClassStmt',
-  'CreateOpFamilyStmt',
-  'CreateConversionStmt',
-  'CreateDomainStmt',
-  'CreateExtensionStmt',
-  'CreateFdwStmt',
-  'CreateForeignServerStmt',
-  'CreateForeignTableStmt',
-  'CreatePolicyStmt',
-  'CreatePublicationStmt',
-  'CreateStatsStmt',
-  'CreateSubStmt',
-  'CreateTransformStmt',
-  'CreateAmStmt',
-  'CreateUserMappingStmt',
-  'IndexStmt',
-  'ViewStmt',
-  'RuleStmt',
-  'AlterTableStmt',
-  'AlterDomainStmt',
-  'AlterFunctionStmt',
-  'AlterObjectDependsStmt',
-  'AlterObjectSchemaStmt',
-  'AlterOwnerStmt',
-  'AlterOperatorStmt',
-  'AlterTypeStmt',
-  'AlterPolicyStmt',
-  'AlterSeqStmt',
-  'AlterSystemStmt',
-  'AlterTSConfigStmt',
-  'AlterTSDictStmt',
-  'AlterCollationStmt',
-  'AlterFdwStmt',
-  'AlterForeignServerStmt',
-  'AlterDefaultPrivilegesStmt',
-  'AlterExtensionStmt',
-  'AlterExtensionContentsStmt',
-  'AlterPublicationStmt',
-  'AlterSubStmt',
-  'AlterRoleStmt',
-  'AlterStatsStmt',
-  'AlterOpFamilyStmt',
-  'RenameStmt',
-  'DropStmt',
-  'TruncateStmt',
-  'GrantStmt',
-  'CommentStmt',
-  'VacuumStmt',
-  'ReindexStmt',
-  'ClusterStmt',
-  'RefreshMatViewStmt',
-  'CallStmt',
-  'DoStmt',
-  'CopyStmt',
-  'ListenStmt',
-  'NotifyStmt',
-  'UnlistenStmt',
-  'DiscardStmt',
-  'DefineStmt',
-  'CompositeTypeStmt',
-  'SecLabelStmt',
-  'ImportForeignSchemaStmt',
-  'CheckPointStmt',
-])
-
-async function isWriteStatement(sql: string): Promise<boolean> {
-  await getSqlParser()
-  const { stmts } = await parseSql(sql)
-  if (!stmts || stmts.length === 0) return false
-  const nodeType = Object.keys(stmts[0].stmt as Record<string, unknown>)[0]
-  return WRITE_STMT_TYPES.has(nodeType)
 }
 
 function getSelectCteNames(node: Record<string, unknown>): Set<string> {
@@ -263,9 +213,7 @@ export async function executeQuery({
       for (const statement of statements) {
         statementOffset = query.indexOf(statement, statementSearchOffset)
         statementSearchOffset = statementOffset + statement.length
-        const result = values
-          ? await client.query({ text: statement, values })
-          : await client.query(statement)
+        const result = await runStatement(client, statement, values, connection.readOnly)
         const pgFields = result.fields.map((f: { name: string }) => f.name)
         const outputColumns = await extractSelectOutputColumnNames(statement)
         const rawRows = result.rows.length > resultLimit ? result.rows.slice(0, resultLimit) : result.rows

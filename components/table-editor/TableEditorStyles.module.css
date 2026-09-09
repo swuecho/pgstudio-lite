@@ -854,10 +854,26 @@ code.tableHeaderTable {
 .fkCellIcon {
   flex: 0 0 auto;
   margin-top: 2px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: 10px;
   line-height: 1;
   color: var(--accent);
   opacity: 0.85;
+  cursor: pointer;
+}
+
+.fkCellIcon:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.fkCellIcon:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-radius: 3px;
 }
 
 .fkCell :global(.copyable-cell),

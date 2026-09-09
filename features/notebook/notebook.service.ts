@@ -83,13 +83,19 @@ export async function updateCell(
     metadata?: NotebookWidgetMetadata | null
     collapsed?: boolean
     position?: number
-  }
+  },
+  /**
+   * `keepalive` lets the browser complete the request after the page unloads;
+   * the autosave flush on tab close relies on it.
+   */
+  init: { keepalive?: boolean } = {}
 ) {
   return fetchJson<{ item: NotebookCell; cells: NotebookCell[] }>(
     `/api/notebooks/${encodeURIComponent(notebookId)}/cells`,
     {
       method: 'PATCH',
       body: JSON.stringify(payload),
+      ...init,
     }
   )
 }

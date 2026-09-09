@@ -1,83 +1,84 @@
 {
+  "id": "826cf177-16a6-f42d-78e8-00d92381f1c7",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "6",
   "dialect": "sqlite",
-  "id": "8b78d624-7a82-4ffd-aa9a-61fb99e88699",
-  "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "query_history": {
       "name": "query_history",
       "columns": {
         "id": {
+          "autoincrement": false,
           "name": "id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "connection_name": {
+          "autoincrement": false,
           "name": "connection_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "query_text": {
+          "autoincrement": false,
           "name": "query_text",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "status": {
+          "autoincrement": false,
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "duration_ms": {
+          "autoincrement": false,
           "name": "duration_ms",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "row_count": {
+          "autoincrement": false,
           "name": "row_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "error_text": {
+          "autoincrement": false,
           "name": "error_text",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "executed_at": {
+          "autoincrement": false,
           "name": "executed_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "started_at": {
+          "autoincrement": false,
           "name": "started_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "metadata_json": {
+          "autoincrement": false,
           "name": "metadata_json",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
+      "compositePrimaryKeys": {},
       "indexes": {
         "idx_query_history_executed_at": {
           "name": "idx_query_history_executed_at",
@@ -88,7 +89,6 @@
         }
       },
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -96,41 +96,42 @@
       "name": "query_snippets",
       "columns": {
         "id": {
+          "autoincrement": false,
           "name": "id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "title": {
+          "autoincrement": false,
           "name": "title",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "query_text": {
+          "autoincrement": false,
           "name": "query_text",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
+          "autoincrement": false,
           "name": "created_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "updated_at": {
+          "autoincrement": false,
           "name": "updated_at",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
+      "compositePrimaryKeys": {},
       "indexes": {
         "idx_query_snippets_updated_at": {
           "name": "idx_query_snippets_updated_at",
@@ -141,7 +142,6 @@
         }
       },
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
     }

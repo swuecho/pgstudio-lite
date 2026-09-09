@@ -35,6 +35,8 @@ staged files. Run `npm run check` before opening a PR.
 - **Schema lives only in `drizzle/migrations`.** `migrate()` runs on every open of
   the meta DB. Never add `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE` fallbacks to
   `lib/meta-db.ts`. Authoring rules: [docs/migrations/README.md](./docs/migrations/README.md).
+  After adding a migration run `npm run db:snapshots`; `tests/migration-snapshots.test.ts`
+  checks that every journal entry has a snapshot matching its SQL.
 - **Open the meta DB lazily.** Call `getMetaDb()` / `getSqlite()` inside the
   function that queries. Never hoist the handle to a module-level `const`.
 - **Files under `pages/api/` are `.ts`, pages are `.tsx`.** The desktop build sets

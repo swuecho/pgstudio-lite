@@ -1,5 +1,8 @@
 import { formatUuidDisplay, looksLikeUuid } from '@/lib/format-uuid-display'
+import { buildTableEditorHref } from '@/lib/table-editor-url'
 import type { ColumnForeignKey } from './types'
+
+export const FOREIGN_KEY_JUMP_HINT = '⌘/Ctrl+click to open the referenced row'
 
 export function buildForeignKeyMatch(
   row: Record<string, unknown>,
@@ -14,6 +17,30 @@ export function buildForeignKeyMatch(
     match[referencedColumn] = value
   }
   return match
+}
+
+/**
+ * Table-editor URL for the row a foreign key points at. The URL filter only
+ * carries one column, so composite keys filter on the first referenced column.
+ */
+export function buildForeignKeyTableEditorHref(args: {
+  connectionName: string
+  foreignKey: ColumnForeignKey
+  match: Record<string, unknown>
+}) {
+  const { foreignKey, match, connectionName } = args
+  const filterColumn = foreignKey.constraintReferencedColumns[0]
+  return buildTableEditorHref({
+    connectionName,
+    schema: foreignKey.referencedSchema,
+    table: foreignKey.referencedTable,
+    filter: {
+      filterColumn,
+      filterValue: String(match[filterColumn] ?? ''),
+      filterMode: 'equals',
+      filterValueEnd: '',
+    },
+  })
 }
 
 export function formatForeignKeyTarget(foreignKey: ColumnForeignKey) {

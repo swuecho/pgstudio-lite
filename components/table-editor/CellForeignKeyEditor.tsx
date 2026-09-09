@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { getForeignKeyOptions, type ForeignKeyOption } from '@/features/table/table.service'
 import { FK_DISPLAY_CONFIG_CHANGED_EVENT, ForeignKeyCombobox } from './ForeignKeyCombobox'
+import { isForeignKeyJumpClick, jumpToReferencedRow } from './foreignKeyJump'
+import { buildForeignKeyMatch, FOREIGN_KEY_JUMP_HINT } from './foreignKeyUtils'
 import type { ColumnInfo, RowData } from './types'
 import type { CommitRowChange } from './useGridRowChanges'
 import styles from './TableEditorStyles.module.css'
@@ -170,15 +172,25 @@ export function CellForeignKeyEditor({ connectionName, column, row, onCommit }: 
 
   const displayedRawValue = resolvedSelection?.value ?? initialText
   const displayValue = resolvedSelection?.label || displayedRawValue
+  const jumpMatch = column.foreignKey ? buildForeignKeyMatch(row, column.foreignKey) : null
+
+  function handleButtonClick(event: MouseEvent<HTMLButtonElement>) {
+    if (jumpMatch && column.foreignKey && isForeignKeyJumpClick(event)) {
+      event.preventDefault()
+      jumpToReferencedRow({ connectionName, foreignKey: column.foreignKey, match: jumpMatch })
+      return
+    }
+    openEditor()
+  }
 
   return (
     <div className={styles.tableCellEditor} ref={anchorRef}>
       <button
         type="button"
         className={styles.fkCellEditorButton}
-        title={`Edit ${column.name}`}
+        title={jumpMatch ? `Edit ${column.name} · ${FOREIGN_KEY_JUMP_HINT}` : `Edit ${column.name}`}
         aria-expanded={editing}
-        onClick={openEditor}
+        onClick={handleButtonClick}
       >
         <span className={styles.fkCellEditorIcon} aria-hidden>
           ↗

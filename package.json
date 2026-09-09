@@ -29,6 +29,7 @@
     "desktop:dist": "npm run desktop:build && electron-builder",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:snapshots": "node scripts/rebuild-migration-snapshots.mjs",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && npm run db:up",

@@ -35,3 +35,9 @@
 - Start from `docs/migrations/MIGRATION_TEMPLATE.sql`.
 - Keep checklist notes at the top of each migration SQL file.
 - Do not merge migrations missing checklist sections.
+- After adding a migration, run `npm run db:snapshots`. It rebuilds
+  `drizzle/migrations/meta/NNNN_snapshot.json` for every journal entry by applying the
+  SQL to a scratch database and pulling the result. `drizzle-kit generate` diffs
+  `drizzle/schema.ts` against the newest snapshot, so a hand-written migration without a
+  snapshot makes the next generated migration repeat DDL that was already applied.
+  `tests/migration-snapshots.test.ts` fails until the snapshots match the SQL.

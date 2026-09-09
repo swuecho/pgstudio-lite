@@ -127,24 +127,39 @@ function reconcileSchema({ sqlite, metaDb }: MetaDbHandles) {
   // Repair 2: notebook_cells.last_result_json was created by this file, never by
   // a migration, until 0012. A database that already has the column would make
   // 0012's ALTER fail, and recording 0012 early would skip every migration
-  // between the DB's last one and 0012 (Drizzle applies by timestamp). So move
-  // the drifted column aside, let 0012 create the real one, then copy back.
-  const LEGACY_RESULT_COLUMN = '__legacy_last_result_json'
+  // between the DB's last one and 0012 (Drizzle applies by timestamp). So stage
+  // the drifted values in a side table, drop the drifted column, let 0012 create
+  // the real one, and copy the values back once every pending migration has run.
+  // A side table (rather than a renamed column) survives later rebuilds of
+  // notebook_cells such as 0013, and a crash between the two steps is harmless:
+  // the next open finds the side table and finishes the copy.
+  const LEGACY_RESULT_TABLE = '__legacy_notebook_cell_results'
   if (
     hasTable('notebook_cells') &&
     hasColumn('notebook_cells', 'last_result_json') &&
     !isMigrationRecorded(migrationHash('0012_notebook_cells_last_result_json.sql'))
   ) {
-    sqlite.exec(`ALTER TABLE notebook_cells RENAME COLUMN last_result_json TO ${LEGACY_RESULT_COLUMN};`)
+    sqlite.exec(`
+      BEGIN;
+      CREATE TABLE IF NOT EXISTS ${LEGACY_RESULT_TABLE} (cell_id text PRIMARY KEY, last_result_json text);
+      INSERT OR REPLACE INTO ${LEGACY_RESULT_TABLE} (cell_id, last_result_json)
+        SELECT id, last_result_json FROM notebook_cells WHERE last_result_json IS NOT NULL;
+      ALTER TABLE notebook_cells DROP COLUMN last_result_json;
+      COMMIT;
+    `)
   }
 
   migrate(metaDb, { migrationsFolder: getMigrationsDir() })
 
-  if (hasTable('notebook_cells') && hasColumn('notebook_cells', LEGACY_RESULT_COLUMN)) {
+  if (hasTable(LEGACY_RESULT_TABLE)) {
     sqlite.exec(`
       BEGIN;
-      UPDATE notebook_cells SET last_result_json = ${LEGACY_RESULT_COLUMN};
-      ALTER TABLE notebook_cells DROP COLUMN ${LEGACY_RESULT_COLUMN};
+      UPDATE notebook_cells
+        SET last_result_json = (
+          SELECT staged.last_result_json FROM ${LEGACY_RESULT_TABLE} staged WHERE staged.cell_id = notebook_cells.id
+        )
+        WHERE id IN (SELECT cell_id FROM ${LEGACY_RESULT_TABLE});
+      DROP TABLE ${LEGACY_RESULT_TABLE};
       COMMIT;
     `)
   }

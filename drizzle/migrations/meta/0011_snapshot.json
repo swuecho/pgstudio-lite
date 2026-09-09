@@ -1,0 +1,941 @@
+{
+  "id": "6ea08c42-7c91-4ec6-6bb1-e0e27e86a1c9",
+  "prevId": "3ff379dd-d0b6-3b1a-0287-1ffb42ef6fcb",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "query_history": {
+      "name": "query_history",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "connection_name": {
+          "autoincrement": false,
+          "name": "connection_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "query_text": {
+          "autoincrement": false,
+          "name": "query_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "autoincrement": false,
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_ms": {
+          "autoincrement": false,
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "row_count": {
+          "autoincrement": false,
+          "name": "row_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error_text": {
+          "autoincrement": false,
+          "name": "error_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "executed_at": {
+          "autoincrement": false,
+          "name": "executed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "autoincrement": false,
+          "name": "started_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_json": {
+          "autoincrement": false,
+          "name": "metadata_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_query_history_executed_at": {
+          "name": "idx_query_history_executed_at",
+          "columns": [
+            "executed_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "db_connections": {
+      "name": "db_connections",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "autoincrement": false,
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_string": {
+          "autoincrement": false,
+          "name": "connection_string",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_default": {
+          "default": false,
+          "autoincrement": false,
+          "name": "is_default",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "read_only": {
+          "default": false,
+          "autoincrement": false,
+          "name": "read_only",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_db_connections_default": {
+          "name": "idx_db_connections_default",
+          "columns": [
+            "is_default"
+          ],
+          "isUnique": false
+        },
+        "idx_db_connections_name": {
+          "name": "idx_db_connections_name",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "notebook_cells": {
+      "name": "notebook_cells",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "notebook_id": {
+          "autoincrement": false,
+          "name": "notebook_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "autoincrement": false,
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "autoincrement": false,
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "autoincrement": false,
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "collapsed": {
+          "default": false,
+          "autoincrement": false,
+          "name": "collapsed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_run_status": {
+          "autoincrement": false,
+          "name": "last_run_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_run_at": {
+          "autoincrement": false,
+          "name": "last_run_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_duration_ms": {
+          "autoincrement": false,
+          "name": "last_duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_row_count": {
+          "autoincrement": false,
+          "name": "last_row_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "autoincrement": false,
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_json": {
+          "autoincrement": false,
+          "name": "metadata_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_notebook_cells_updated_at": {
+          "name": "idx_notebook_cells_updated_at",
+          "columns": [
+            "updated_at"
+          ],
+          "isUnique": false
+        },
+        "idx_notebook_cells_notebook_position": {
+          "name": "idx_notebook_cells_notebook_position",
+          "columns": [
+            "notebook_id",
+            "position"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "notebooks": {
+      "name": "notebooks",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "autoincrement": false,
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_name": {
+          "autoincrement": false,
+          "name": "connection_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "default": "''",
+          "autoincrement": false,
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_json": {
+          "default": "'{}'",
+          "autoincrement": false,
+          "name": "metadata_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_notebooks_updated_at": {
+          "name": "idx_notebooks_updated_at",
+          "columns": [
+            "updated_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "query_snippets": {
+      "name": "query_snippets",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "title": {
+          "autoincrement": false,
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "query_text": {
+          "autoincrement": false,
+          "name": "query_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_name": {
+          "autoincrement": false,
+          "name": "connection_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_query_snippets_updated_at": {
+          "name": "idx_query_snippets_updated_at",
+          "columns": [
+            "updated_at"
+          ],
+          "isUnique": false
+        },
+        "idx_query_snippets_connection_updated_at": {
+          "name": "idx_query_snippets_connection_updated_at",
+          "columns": [
+            "connection_name",
+            "updated_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "table_editor_bookmarks": {
+      "name": "table_editor_bookmarks",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "connection_name": {
+          "autoincrement": false,
+          "name": "connection_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "autoincrement": false,
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pinned": {
+          "default": false,
+          "autoincrement": false,
+          "name": "pinned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active_table": {
+          "autoincrement": false,
+          "name": "active_table",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "filter_column": {
+          "autoincrement": false,
+          "name": "filter_column",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_mode": {
+          "autoincrement": false,
+          "name": "filter_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_value": {
+          "autoincrement": false,
+          "name": "filter_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_value_end": {
+          "autoincrement": false,
+          "name": "filter_value_end",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "view_key": {
+          "autoincrement": false,
+          "name": "view_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_table_editor_bookmarks_connection_updated": {
+          "name": "idx_table_editor_bookmarks_connection_updated",
+          "columns": [
+            "connection_name",
+            "updated_at"
+          ],
+          "isUnique": false
+        },
+        "idx_table_editor_bookmarks_connection_view_key": {
+          "name": "idx_table_editor_bookmarks_connection_view_key",
+          "columns": [
+            "connection_name",
+            "view_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "table_editor_recent_views": {
+      "name": "table_editor_recent_views",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "connection_name": {
+          "autoincrement": false,
+          "name": "connection_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active_table": {
+          "autoincrement": false,
+          "name": "active_table",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "filter_column": {
+          "autoincrement": false,
+          "name": "filter_column",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_mode": {
+          "autoincrement": false,
+          "name": "filter_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_value": {
+          "autoincrement": false,
+          "name": "filter_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_value_end": {
+          "autoincrement": false,
+          "name": "filter_value_end",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "view_key": {
+          "autoincrement": false,
+          "name": "view_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visited_at": {
+          "autoincrement": false,
+          "name": "visited_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_table_editor_recent_views_connection_visited": {
+          "name": "idx_table_editor_recent_views_connection_visited",
+          "columns": [
+            "connection_name",
+            "visited_at"
+          ],
+          "isUnique": false
+        },
+        "idx_table_editor_recent_views_connection_view_key": {
+          "name": "idx_table_editor_recent_views_connection_view_key",
+          "columns": [
+            "connection_name",
+            "view_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "table_foreign_key_display": {
+      "name": "table_foreign_key_display",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "connection_name": {
+          "autoincrement": false,
+          "name": "connection_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "schema_name": {
+          "autoincrement": false,
+          "name": "schema_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "table_name": {
+          "autoincrement": false,
+          "name": "table_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_columns_json": {
+          "autoincrement": false,
+          "name": "display_columns_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_template": {
+          "autoincrement": false,
+          "name": "display_template",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_table_foreign_key_display_target": {
+          "name": "idx_table_foreign_key_display_target",
+          "columns": [
+            "connection_name",
+            "schema_name",
+            "table_name"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "notebook_runs": {
+      "name": "notebook_runs",
+      "columns": {
+        "id": {
+          "autoincrement": false,
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "notebook_id": {
+          "autoincrement": false,
+          "name": "notebook_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trigger": {
+          "autoincrement": false,
+          "name": "trigger",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "autoincrement": false,
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "autoincrement": false,
+          "name": "started_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "finished_at": {
+          "autoincrement": false,
+          "name": "finished_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_ms": {
+          "autoincrement": false,
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cell_count": {
+          "default": 0,
+          "autoincrement": false,
+          "name": "cell_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "error_count": {
+          "default": 0,
+          "autoincrement": false,
+          "name": "error_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "error": {
+          "autoincrement": false,
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notebook_title": {
+          "autoincrement": false,
+          "name": "notebook_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_name": {
+          "autoincrement": false,
+          "name": "connection_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "input_values_json": {
+          "default": "'{}'",
+          "autoincrement": false,
+          "name": "input_values_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_json": {
+          "default": "'[]'",
+          "autoincrement": false,
+          "name": "snapshot_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_notebook_runs_notebook_started": {
+          "name": "idx_notebook_runs_notebook_started",
+          "columns": [
+            "notebook_id",
+            "started_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "notebook_runs_notebook_id_notebooks_id_fk": {
+          "name": "notebook_runs_notebook_id_notebooks_id_fk",
+          "tableFrom": "notebook_runs",
+          "tableTo": "notebooks",
+          "columnsFrom": [
+            "notebook_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "notebook_schedules": {
+      "name": "notebook_schedules",
+      "columns": {
+        "notebook_id": {
+          "autoincrement": false,
+          "name": "notebook_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "enabled": {
+          "default": false,
+          "autoincrement": false,
+          "name": "enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval_minutes": {
+          "default": 60,
+          "autoincrement": false,
+          "name": "interval_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "next_run_at": {
+          "autoincrement": false,
+          "name": "next_run_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_run_at": {
+          "autoincrement": false,
+          "name": "last_run_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_run_id": {
+          "autoincrement": false,
+          "name": "last_run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "autoincrement": false,
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "autoincrement": false,
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "idx_notebook_schedules_due": {
+          "name": "idx_notebook_schedules_due",
+          "columns": [
+            "enabled",
+            "next_run_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "notebook_schedules_notebook_id_notebooks_id_fk": {
+          "name": "notebook_schedules_notebook_id_notebooks_id_fk",
+          "tableFrom": "notebook_schedules",
+          "tableTo": "notebooks",
+          "columnsFrom": [
+            "notebook_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

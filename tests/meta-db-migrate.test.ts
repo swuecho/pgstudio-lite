@@ -129,6 +129,10 @@ describe('metadata DB migrations', () => {
     const cellColumns = columns(sqlite, 'notebook_cells')
     expect(cellColumns.filter((name) => name === 'last_result_json')).toHaveLength(1)
     expect(cellColumns).not.toContain('__legacy_last_result_json')
+    const stagingTable = sqlite
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '__legacy_notebook_cell_results'`)
+      .get()
+    expect(stagingTable).toBeUndefined()
 
     const rows = sqlite.prepare(`SELECT id, last_result_json FROM notebook_cells ORDER BY position`).all()
     expect(rows).toEqual([

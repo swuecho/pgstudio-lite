@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildForeignKeyMatch,
+  buildForeignKeyTableEditorHref,
   formatForeignKeyHeaderTitle,
   formatForeignKeyTarget,
 } from '../components/table-editor/foreignKeyUtils'
@@ -38,6 +39,31 @@ describe('foreignKeyUtils', () => {
       id: 1,
       tenant_id: 't1',
     })
+  })
+
+  it('builds a table-editor href filtered to the referenced key', () => {
+    expect(
+      buildForeignKeyTableEditorHref({ connectionName: 'local', foreignKey: singleFk, match: { id: 42 } })
+    ).toEqual({
+      pathname: '/table-editor',
+      query: {
+        connectionName: 'local',
+        schema: 'public',
+        table: 'users',
+        filterColumn: 'id',
+        filterMode: 'equals',
+        filterValue: '42',
+      },
+    })
+  })
+
+  it('filters composite keys on the first referenced column', () => {
+    const href = buildForeignKeyTableEditorHref({
+      connectionName: 'local',
+      foreignKey: compositeFk,
+      match: { id: 7, tenant_id: 't1' },
+    })
+    expect(href.query).toMatchObject({ table: 'orders', filterColumn: 'id', filterValue: '7' })
   })
 
   it('formats target and header labels', () => {

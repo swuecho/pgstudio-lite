@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import type { ColumnInfo } from './types'
-import { buildForeignKeyMatch } from './foreignKeyUtils'
+import { buildForeignKeyMatch, FOREIGN_KEY_JUMP_HINT, formatForeignKeyTarget } from './foreignKeyUtils'
+import { isForeignKeyJumpClick, jumpToReferencedRow } from './foreignKeyJump'
 import { ForeignKeyPopover } from './ForeignKeyPopover'
 import { useForeignKeyLookup } from './useForeignKeyLookup'
 import { useToolbarPopoverPosition } from './useToolbarPopover'
@@ -145,19 +146,45 @@ export function ForeignKeyCell({ connectionName, column, row, children }: Foreig
     return <>{children}</>
   }
 
+  // Arrow functions (not hoisted declarations) so the `match`/`foreignKey` narrowing above applies.
+  const jump = () => {
+    closePopover()
+    jumpToReferencedRow({ connectionName, foreignKey, match })
+  }
+
+  // Capture phase so a ⌘/Ctrl+click never reaches the click-to-copy cell underneath.
+  const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (!isForeignKeyJumpClick(event)) return
+    event.preventDefault()
+    event.stopPropagation()
+    jump()
+  }
+
   return (
     <div
       ref={anchorRef}
       className={styles.fkCell}
+      title={FOREIGN_KEY_JUMP_HINT}
+      onClickCapture={handleClickCapture}
       onMouseEnter={() => {
         clearLeaveTimer()
         scheduleOpen()
       }}
       onMouseLeave={scheduleClose}
     >
-      <span className={styles.fkCellIcon} aria-hidden>
+      <button
+        type="button"
+        className={styles.fkCellIcon}
+        title={`Open referenced row in ${formatForeignKeyTarget(foreignKey)}`}
+        aria-label={`Open referenced row in ${formatForeignKeyTarget(foreignKey)}`}
+        tabIndex={-1}
+        onClick={(event) => {
+          event.stopPropagation()
+          jump()
+        }}
+      >
         ↗
-      </span>
+      </button>
       {children}
       {isOpen && popover ? (
         <ForeignKeyPopover

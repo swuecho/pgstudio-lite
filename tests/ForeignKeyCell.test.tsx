@@ -6,10 +6,27 @@ import { ForeignKeyCell } from '../components/table-editor/ForeignKeyCell'
 import type { ColumnInfo } from '../components/table-editor/types'
 
 const fetchReferencedRow = vi.fn()
+const routerPush = vi.fn()
 
 vi.mock('../components/table-editor/useForeignKeyLookup', () => ({
   useForeignKeyLookup: () => ({ fetchReferencedRow }),
 }))
+
+vi.mock('next/router', () => ({
+  default: { push: (...args: unknown[]) => routerPush(...args) },
+}))
+
+const expectedUsersHref = {
+  pathname: '/table-editor',
+  query: {
+    connectionName: 'local',
+    schema: 'public',
+    table: 'users',
+    filterColumn: 'id',
+    filterMode: 'equals',
+    filterValue: '42',
+  },
+}
 
 const userColumn: ColumnInfo = {
   name: 'user_id',
@@ -41,6 +58,11 @@ function renderCell(value: unknown = 42) {
 describe('ForeignKeyCell', () => {
   beforeEach(() => {
     fetchReferencedRow.mockReset()
+    routerPush.mockReset()
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    })
     fetchReferencedRow.mockResolvedValue({
       row: { id: 42, name: 'alice' },
       columns: [
@@ -54,6 +76,33 @@ describe('ForeignKeyCell', () => {
     renderCell(null)
     expect(screen.getByText('cell-null')).toBeInTheDocument()
     expect(screen.queryByText('↗')).not.toBeInTheDocument()
+  })
+
+  it('jumps to the referenced row on ⌘/Ctrl+click without copying the cell', () => {
+    renderCell(42)
+    const cell = screen.getByText('cell-42')
+    const copyOnChild = vi.fn()
+    cell.addEventListener('click', copyOnChild)
+
+    fireEvent.click(cell, { metaKey: true })
+    expect(routerPush).toHaveBeenCalledTimes(1)
+    expect(routerPush).toHaveBeenCalledWith(expectedUsersHref)
+    expect(copyOnChild).not.toHaveBeenCalled()
+
+    fireEvent.click(cell, { ctrlKey: true })
+    expect(routerPush).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not navigate on a plain click', () => {
+    renderCell(42)
+    fireEvent.click(screen.getByText('cell-42'))
+    expect(routerPush).not.toHaveBeenCalled()
+  })
+
+  it('jumps when the FK icon is clicked', () => {
+    renderCell(42)
+    fireEvent.click(screen.getByRole('button', { name: 'Open referenced row in users' }))
+    expect(routerPush).toHaveBeenCalledWith(expectedUsersHref)
   })
 
   it('fetches referenced row after hover delay', async () => {

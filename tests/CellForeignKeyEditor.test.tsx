@@ -10,6 +10,11 @@ vi.mock('../features/table/table.service', () => ({
   saveForeignKeyDisplayConfig: vi.fn(),
 }))
 
+const routerPush = vi.fn()
+vi.mock('next/router', () => ({
+  default: { push: (...args: unknown[]) => routerPush(...args) },
+}))
+
 const userColumn: ColumnInfo = {
   name: 'user_id',
   dataType: 'uuid',
@@ -34,6 +39,7 @@ const row: RowData = {
 
 describe('CellForeignKeyEditor', () => {
   beforeEach(() => {
+    routerPush.mockReset()
     vi.mocked(getForeignKeyOptions).mockReset()
     vi.mocked(saveForeignKeyDisplayConfig).mockReset()
     vi.mocked(getForeignKeyOptions).mockResolvedValue({
@@ -50,6 +56,44 @@ describe('CellForeignKeyEditor', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
     })
+  })
+
+  it('jumps to the referenced row on ⌘/Ctrl+click instead of opening the picker', async () => {
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(
+      <CellForeignKeyEditor
+        connectionName="local"
+        column={userColumn}
+        row={{ ...row, user_id: 'u-1' }}
+        onCommit={onCommit}
+      />
+    )
+
+    const button = await screen.findByRole('button', { name: /Adam King/i })
+    expect(button).toHaveAttribute('title', expect.stringContaining('Ctrl+click'))
+    fireEvent.click(button, { metaKey: true })
+
+    expect(routerPush).toHaveBeenCalledWith({
+      pathname: '/table-editor',
+      query: {
+        connectionName: 'local',
+        schema: 'public',
+        table: 'users',
+        filterColumn: 'id',
+        filterMode: 'equals',
+        filterValue: 'u-1',
+      },
+    })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('opens the picker on a plain click of a NULL FK cell instead of jumping', () => {
+    const onCommit = vi.fn(() => 'pending' as const)
+    render(<CellForeignKeyEditor connectionName="local" column={userColumn} row={row} onCommit={onCommit} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /null/i }), { metaKey: true })
+    expect(routerPush).not.toHaveBeenCalled()
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
   })
 
   it('opens a picker from a compact FK cell and commits selected values explicitly', async () => {
