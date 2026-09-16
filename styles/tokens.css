@@ -65,6 +65,12 @@
   --btn-danger-bg: #fff4f6;
   --control-bg: #ffffff;
   --control-bg-hover: #edf3fb;
+  --json-key: #1864d6;
+  --json-string: #0f766e;
+  --json-number: #b4530a;
+  --json-boolean: #8b3ec2;
+  --json-null: #8a94a6;
+  --json-punct: #64748b;
 }
 
 [data-theme='dark'] {
@@ -113,4 +119,10 @@
   --btn-danger-bg: #2a171d;
   --control-bg: #121925;
   --control-bg-hover: #1a2333;
+  --json-key: #8ec0ff;
+  --json-string: #6fd3bd;
+  --json-number: #f0a868;
+  --json-boolean: #d09cf5;
+  --json-null: #8e9bb3;
+  --json-punct: #93a3bd;
 }

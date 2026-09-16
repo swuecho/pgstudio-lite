@@ -1,0 +1,99 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.treeActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.tree {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.row:hover {
+  background: var(--panel-2);
+}
+
+.toggle {
+  flex: 0 0 auto;
+  width: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+.toggleSpacer {
+  flex: 0 0 auto;
+  width: 14px;
+}
+
+.key {
+  flex: 0 0 auto;
+  color: var(--json-key);
+  white-space: nowrap;
+}
+
+.punct {
+  flex: 0 0 auto;
+  color: var(--json-punct);
+}
+
+.summary {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* Scalars take the rest of the row and wrap; keys never break mid-word. */
+.scalar {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.string {
+  color: var(--json-string);
+}
+
+.number {
+  color: var(--json-number);
+}
+
+.boolean {
+  color: var(--json-boolean);
+}
+
+.null {
+  color: var(--json-null);
+}
+
+.other {
+  color: var(--text);
+}

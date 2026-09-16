@@ -99,3 +99,35 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.modeToggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.modeButton {
+  border: 0;
+  background: var(--control-bg);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.modeButton:hover {
+  background: var(--control-bg-hover);
+  color: var(--text);
+}
+
+.modeButton + .modeButton {
+  border-left: 1px solid var(--border);
+}
+
+.modeButtonActive,
+.modeButtonActive:hover {
+  background: var(--surface-active-start);
+  color: var(--text);
+  font-weight: 600;
+}

@@ -44,3 +44,32 @@ export function canOpenCellViewer(dataType: string | undefined, value: unknown):
   }
   return formatCellContentForView(value, dataType).length > 100
 }
+
+/**
+ * The value behind a cell as parsed JSON, or `null` when it is not JSON we can
+ * render as a tree (scalars included: a bare number is valid JSON but there is
+ * nothing to expand).
+ */
+export function parseJsonForView(value: unknown, dataType?: string): { data: unknown } | null {
+  const kind = dataType ? getColumnKind(dataType) : null
+  let parsed: unknown = value
+
+  if (typeof value === 'string') {
+    if (kind !== 'json' && !looksLikeJsonContainer(value)) return null
+    try {
+      parsed = JSON.parse(value)
+    } catch {
+      return null
+    }
+  }
+
+  if (parsed === null || typeof parsed !== 'object') return null
+  return { data: parsed }
+}
+
+function looksLikeJsonContainer(text: string): boolean {
+  const trimmed = text.trim()
+  return (
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))
+  )
+}
