@@ -1,0 +1,90 @@
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.swatchButton {
+  border: 1px solid transparent;
+  background: none;
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.swatchButton:hover:not(:disabled) {
+  border-color: var(--border);
+}
+
+.swatchButtonSelected,
+.swatchButtonSelected:hover {
+  border-color: var(--link);
+  background: var(--surface-active-start);
+}
+
+.swatchButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.swatch {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  border: 2px solid;
+}
+
+/* "No color" reads as an empty slot rather than a pale color. */
+.swatchNone {
+  background:
+    linear-gradient(to top right, transparent 46%, var(--muted) 46%, var(--muted) 54%, transparent 54%),
+    var(--panel-2) !important;
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  background: var(--conn-accent);
+  flex: 0 0 auto;
+}
+
+.connectionSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--conn-tint);
+  height: var(--control-h);
+}
+
+.connectionSelectColored {
+  border-color: var(--conn-accent);
+}
+
+/* Two classes on purpose: page headers style their own `<select>` elements. */
+.connectionSelect .select {
+  border: 0;
+  background: none;
+  color: var(--conn-accent);
+  font-weight: 600;
+  height: auto;
+  padding: 0;
+  min-width: 90px;
+}
+
+.connectionSelect .select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.connectionName {
+  color: var(--conn-accent);
+  font-weight: 600;
+}

@@ -1,10 +1,12 @@
 import { fetchJson } from '@/lib/http'
+import type { ConnectionColorId } from '@/lib/connection-color'
 
 export type ConnectionItem = {
   id: string
   name: string
   isDefault: boolean
   readOnly: boolean
+  color: ConnectionColorId | null
 }
 
 export async function listConnections() {
@@ -20,6 +22,7 @@ export async function createConnection(input: {
   connectionString: string
   isDefault?: boolean
   readOnly?: boolean
+  color?: ConnectionColorId | null
 }) {
   return fetchJson<{ item: ConnectionItem }>('/api/connections', {
     method: 'POST',
@@ -33,6 +36,7 @@ export async function updateConnection(input: {
   connectionString?: string
   isDefault?: boolean
   readOnly?: boolean
+  color?: ConnectionColorId | null
 }) {
   return fetchJson<{ item: ConnectionItem }>('/api/connections', {
     method: 'PATCH',

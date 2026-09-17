@@ -777,8 +777,61 @@ code.tableHeaderTable {
 
 .jsonbEditorModal :global(.modal-body) {
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   padding: 0;
+}
+
+.jsonbEditorActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jsonbModeToggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.jsonbModeButton {
+  border: 0;
+  background: var(--control-bg);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.jsonbModeButton:hover {
+  background: var(--control-bg-hover);
+  color: var(--text);
+}
+
+.jsonbModeButton + .jsonbModeButton {
+  border-left: 1px solid var(--border);
+}
+
+.jsonbModeButtonActive,
+.jsonbModeButtonActive:hover {
+  background: var(--surface-active-start);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.jsonbEditorError {
+  margin: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--status-error-border);
+  background: var(--status-error-bg);
+  color: var(--status-error-text);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.jsonbTreeWrapper {
+  padding: 10px 12px;
+  min-height: 300px;
 }
 
 .tableBoolToggle {

@@ -1,4 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
+import {
+  collectContainerPaths,
+  containerKind,
+  entriesOf,
+  scalarText,
+  summarizeContainer,
+} from '@/lib/json-tree'
 import styles from './JsonTreeView.module.css'
 
 type JsonTreeViewProps = {
@@ -7,34 +14,7 @@ type JsonTreeViewProps = {
   defaultExpandDepth?: number
 }
 
-type ContainerKind = 'object' | 'array'
-
-function containerKind(value: unknown): ContainerKind | null {
-  if (Array.isArray(value)) return 'array'
-  if (typeof value === 'object' && value !== null) return 'object'
-  return null
-}
-
-function entriesOf(value: unknown): Array<[string, unknown]> {
-  if (Array.isArray(value)) return value.map((item, index) => [String(index), item])
-  return Object.entries(value as Record<string, unknown>)
-}
-
-/** Every container path in the tree, used by expand-all. */
-function collectContainerPaths(value: unknown, path: string, out: string[]): string[] {
-  if (!containerKind(value)) return out
-  out.push(path)
-  for (const [key, child] of entriesOf(value)) collectContainerPaths(child, `${path}/${key}`, out)
-  return out
-}
-
-function summarize(value: unknown, kind: ContainerKind): string {
-  const count = entriesOf(value).length
-  if (kind === 'array') return count === 1 ? '1 item' : `${count} items`
-  return count === 1 ? '1 key' : `${count} keys`
-}
-
-function scalarClass(value: unknown): string {
+export function scalarClass(value: unknown): string {
   if (value === null) return styles.null
   switch (typeof value) {
     case 'string':
@@ -46,13 +26,6 @@ function scalarClass(value: unknown): string {
     default:
       return styles.other
   }
-}
-
-function scalarText(value: unknown): string {
-  if (value === null) return 'null'
-  if (value === undefined) return 'undefined'
-  if (typeof value === 'string') return JSON.stringify(value)
-  return String(value)
 }
 
 type NodeProps = {
@@ -109,7 +82,7 @@ function JsonNode({ nodeKey, value, path, depth, isExpanded, onToggle }: NodePro
         <span className={styles.punct}>{open}</span>
         {expanded ? null : (
           <>
-            <span className={styles.summary}>{summarize(value, kind)}</span>
+            <span className={styles.summary}>{summarizeContainer(value, kind)}</span>
             <span className={styles.punct}>{close}</span>
           </>
         )}

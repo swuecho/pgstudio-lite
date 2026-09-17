@@ -3,10 +3,11 @@ import { loader } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
 import { memo, useEffect, useRef, type MutableRefObject } from 'react'
 import { useLatestRef } from '@/hooks/useLatestRef'
-import { SQL_EDITOR_LIGHT_THEME, defineSqlEditorThemes, sqlEditorThemeName } from './editorThemes'
+import { SQL_EDITOR_LIGHT_THEME, defineSqlEditorThemes, editorThemeName } from './editorThemes'
 import { registerSqlCompletionProvider } from './sqlCompletionProvider'
 import { createStatementTracker, type StatementTracker } from './statementTracker'
 import { getCurrentTheme } from './utils'
+import { useActiveConnectionColor } from '@/components/shared/ConnectionColorContext'
 import type { SchemaTable } from './types'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
@@ -65,6 +66,10 @@ type EditorPaneProps = {
 
 export const EditorPane = memo(function EditorPane(props: EditorPaneProps) {
   const { queryError, tabId, value, schemaTablesRef, tableColumnsByKeyRef } = props
+  const connectionColor = useActiveConnectionColor().colorId
+  const monacoRef = useRef<typeof Monaco | null>(null)
+  const connectionColorRef = useRef(connectionColor)
+  connectionColorRef.current = connectionColor
   const latest = useLatestRef(props)
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
   const trackerRef = useRef<StatementTracker | null>(null)
@@ -162,6 +167,12 @@ export const EditorPane = memo(function EditorPane(props: EditorPaneProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    const monaco = monacoRef.current
+    if (!monaco) return
+    monaco.editor.setTheme(editorThemeName(getCurrentTheme(), connectionColor))
+  }, [connectionColor])
+
   return (
     <div className="editor-wrap">
       <MonacoEditor
@@ -173,8 +184,10 @@ export const EditorPane = memo(function EditorPane(props: EditorPaneProps) {
           editorRef.current = editor
           draftRef.current = editor.getValue()
 
+          monacoRef.current = monaco
           defineSqlEditorThemes(monaco)
-          const applyEditorTheme = () => monaco.editor.setTheme(sqlEditorThemeName(getCurrentTheme()))
+          const applyEditorTheme = () =>
+            monaco.editor.setTheme(editorThemeName(getCurrentTheme(), connectionColorRef.current))
           applyEditorTheme()
           window.addEventListener('pgstudio:themechange', applyEditorTheme)
 
@@ -231,6 +244,7 @@ export const EditorPane = memo(function EditorPane(props: EditorPaneProps) {
 
           editor.onDidDispose(() => {
             editorRef.current = null
+            monacoRef.current = null
             trackerRef.current = null
             tracker.dispose()
             completion.dispose()

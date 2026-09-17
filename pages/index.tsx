@@ -1,4 +1,6 @@
 import type { editor as MonacoEditorNs } from 'monaco-editor'
+import { ConnectionSelect } from '@/components/shared/ConnectionSelect'
+import { ConnectionColorProvider } from '@/components/shared/ConnectionColorContext'
 import { useRouter } from 'next/router'
 import { PageHead } from '@/components/shared/PageHead'
 import { useLatestRef } from '@/hooks/useLatestRef'
@@ -257,228 +259,221 @@ export default function SqlEditorPage() {
   }
 
   return (
-    <div
-      className={styles.layoutRoot}
-      style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
-    >
-      <PageHead title="SQL Editor" />
-      <SqlSidebar
-        searchInputRef={sidebarSearchRef}
-        connectionName={state.connectionName}
-        activeNavTab={state.activeNavTab}
-        historySearch={state.historySearch}
-        canSaveAs={Boolean(state.activeQueryTab?.snippetId)}
-        savingSnippet={state.savingSnippet}
-        loadingHistory={state.loadingHistory}
-        loadingSnippets={state.loadingSnippets}
-        loadingSchema={state.loadingSchema}
-        filteredHistory={state.filteredHistory}
-        filteredSnippets={state.filteredSnippets}
-        schemaGroups={state.schemaGroups}
-        expandedSchemas={state.expandedSchemas}
-        expandedTables={state.expandedTables}
-        loadingColumnsByKey={state.loadingColumnsByKey}
-        tableColumnsByKey={state.tableColumnsByKey}
-        renamingSnippetId={state.renamingSnippetId}
-        renameDraft={state.renameDraft}
-        formatTime={formatTime}
-        {...sidebarHandlers}
-      />
-
-      <SettingsPanel />
-
-      <main className={styles.layoutMain}>
-        <div className={styles.editorPanelHeader}>
-          <div className={styles.editorTitle}>SQL Editor</div>
-          <div className={styles.editorHeaderRight}>
-            <button className="btn small" onClick={() => state.createQueryTab()}>
-              New
-            </button>
-            <span className={`${styles.statusPill} ${styles[state.status.tone] || ''}`}>
-              {state.status.text}
-            </span>
-            <select
-              aria-label="Tab connection"
-              value={state.connectionName}
-              onChange={(e) => state.setConnectionName(e.target.value)}
-            >
-              {state.connectionName && !state.connections.some((c) => c.name === state.connectionName) ? (
-                <option value={state.connectionName}>{state.connectionName} (unavailable)</option>
-              ) : null}
-              {state.connections.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                  {c.readOnly ? ' (read-only)' : ''}
-                </option>
-              ))}
-            </select>
-            <SettingsButton section="connections" label="Settings" />
-          </div>
-        </div>
-
-        <SqlTabsBar
-          queryTabs={state.queryTabs}
-          activeQueryTabId={state.activeQueryTabId}
-          onSelectTab={state.setActiveQueryTabId}
-          onRenameTab={(tabId) => {
-            const tab = state.queryTabs.find((item) => item.id === tabId)
-            if (!tab) return
-            setTabRenameState({ tabId, title: tab.title })
-          }}
-          onCloseTab={state.closeTab}
+    <ConnectionColorProvider connectionName={state.connectionName}>
+      <div
+        className={styles.layoutRoot}
+        style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
+      >
+        <PageHead title="SQL Editor" />
+        <SqlSidebar
+          searchInputRef={sidebarSearchRef}
+          connectionName={state.connectionName}
+          activeNavTab={state.activeNavTab}
+          historySearch={state.historySearch}
+          canSaveAs={Boolean(state.activeQueryTab?.snippetId)}
+          savingSnippet={state.savingSnippet}
+          loadingHistory={state.loadingHistory}
+          loadingSnippets={state.loadingSnippets}
+          loadingSchema={state.loadingSchema}
+          filteredHistory={state.filteredHistory}
+          filteredSnippets={state.filteredSnippets}
+          schemaGroups={state.schemaGroups}
+          expandedSchemas={state.expandedSchemas}
+          expandedTables={state.expandedTables}
+          loadingColumnsByKey={state.loadingColumnsByKey}
+          tableColumnsByKey={state.tableColumnsByKey}
+          renamingSnippetId={state.renamingSnippetId}
+          renameDraft={state.renameDraft}
+          formatTime={formatTime}
+          {...sidebarHandlers}
         />
 
-        <div className={styles.editorPanelBody} ref={editorPanelBodyRef}>
-          <EditorPane
-            queryError={state.queryError}
-            tabId={state.activeQueryTabId}
-            value={state.activeQueryTab?.query || ''}
-            schemaTablesRef={state.schemaTablesRef}
-            tableColumnsByKeyRef={state.tableColumnsByKeyRef}
-            {...editorHandlers}
-          />
+        <SettingsPanel />
 
-          <div
-            className={`${styles.editorSplitter} ${isResizing ? styles.active : ''}`.trim()}
-            role="separator"
-            aria-label="Resize editor and results panels"
-            aria-orientation="horizontal"
-            onMouseDown={startResize}
-          />
-
-          {state.queryError ? (
-            <div
-              role="alert"
-              style={{ padding: '8px 12px', color: 'var(--danger, #dc2626)', whiteSpace: 'pre-wrap' }}
-            >
-              {state.queryError.message}
-              {state.queryError.detail ? <div>{state.queryError.detail}</div> : null}
-              {state.queryError.hint ? <div>Hint: {state.queryError.hint}</div> : null}
-              {state.result ? <div>Previous successful results are shown below.</div> : null}
+        <main className={styles.layoutMain}>
+          <div className={styles.editorPanelHeader}>
+            <div className={styles.editorTitle}>SQL Editor</div>
+            <div className={styles.editorHeaderRight}>
+              <button className="btn small" onClick={() => state.createQueryTab()}>
+                New
+              </button>
+              <span className={`${styles.statusPill} ${styles[state.status.tone] || ''}`}>
+                {state.status.text}
+              </span>
+              <ConnectionSelect
+                ariaLabel="Tab connection"
+                value={state.connectionName}
+                connections={state.connections}
+                onChange={state.setConnectionName}
+              />
+              <SettingsButton section="connections" label="Settings" />
             </div>
-          ) : null}
-          <ErrorBoundary fallbackTitle="Failed to render query results">
-            <SqlResultsPanel
-              result={state.result}
-              formatCell={formatCell}
-              connectionName={state.connectionName}
-              style={resultsStyle}
-            />
-          </ErrorBoundary>
-
-          <div className={styles.editorFooter} ref={editorFooterRef}>
-            <label>
-              Display rows{' '}
-              <select
-                aria-label="Result row limit"
-                value={state.rowLimit}
-                onChange={(event) => state.setRowLimit(Number(event.target.value))}
-              >
-                {[100, 250, 500].map((limit) => (
-                  <option key={limit} value={limit}>
-                    {limit}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span
-              className="history-meta"
-              title="Limits rows displayed and exported; SQL executes unchanged."
-            >
-              per statement
-            </span>
-            <button
-              className="btn"
-              disabled={state.running || state.explaining}
-              onClick={() => void state.runCurrentQuery(true)}
-            >
-              Run all
-            </button>
-            <button
-              className="btn"
-              disabled={state.running || state.explaining}
-              onClick={() => void state.runExplainQuery()}
-            >
-              {state.explaining ? 'Explaining...' : 'Explain'}
-            </button>
-            <button
-              className="btn primary"
-              disabled={state.running || state.explaining}
-              onClick={() => void state.runCurrentQuery()}
-            >
-              {state.running ? 'Running...' : state.runLabel}
-            </button>
           </div>
-        </div>
-      </main>
-      <QuickActionsDialog
-        open={quickActions.open}
-        items={quickActionItems}
-        onClose={() => quickActions.setOpen(false)}
-      />
-      <PromptDialog
-        open={Boolean(tabRenameState)}
-        title="Rename tab"
-        label="Tab name"
-        value={tabRenameState?.title || ''}
-        placeholder="Query name"
-        submitLabel="Rename"
-        onClose={() => setTabRenameState(null)}
-        onChange={(value) =>
-          setTabRenameState((current) => (current ? { ...current, title: value } : current))
-        }
-        onSubmit={() => {
-          if (!tabRenameState) return
-          state.renameTab(tabRenameState.tabId, tabRenameState.title)
-          setTabRenameState(null)
-        }}
-      />
-      <PromptDialog
-        open={Boolean(saveSnippetState)}
-        title={saveSnippetState?.forceCreate ? 'Save snippet as' : 'Save snippet'}
-        label="Snippet name"
-        value={saveSnippetState?.title || ''}
-        placeholder="Snippet name"
-        hint={state.connectionName ? `Saved under connection ${state.connectionName}.` : undefined}
-        submitLabel={saveSnippetState?.forceCreate ? 'Save as' : 'Save'}
-        onClose={() => setSaveSnippetState(null)}
-        onChange={(value) =>
-          setSaveSnippetState((current) => (current ? { ...current, title: value } : current))
-        }
-        onSubmit={submitSaveSnippetDialog}
-      />
-      <PromptDialog
-        open={Boolean(duplicateSnippetItem && duplicateSnippetState)}
-        title="Duplicate snippet"
-        label="New snippet name"
-        value={duplicateSnippetState?.title || ''}
-        placeholder="Snippet copy name"
-        submitLabel="Duplicate"
-        onClose={() => setDuplicateSnippetState(null)}
-        onChange={(value) =>
-          setDuplicateSnippetState((current) => (current ? { ...current, title: value } : current))
-        }
-        onSubmit={() => {
-          if (!duplicateSnippetItem || !duplicateSnippetState) return
-          void state.duplicateSnippet(duplicateSnippetItem, duplicateSnippetState.title)
-          setDuplicateSnippetState(null)
-        }}
-      />
-      <ConfirmDialog
-        open={Boolean(deleteSnippetItem)}
-        title="Delete snippet"
-        message={
-          deleteSnippetItem ? `Delete snippet "${deleteSnippetItem.title}"? This cannot be undone.` : ''
-        }
-        confirmLabel="Delete"
-        confirmTone="danger"
-        onClose={() => setDeleteSnippetId(null)}
-        onConfirm={() => {
-          if (!deleteSnippetItem) return
-          void state.deleteSnippet(deleteSnippetItem)
-          setDeleteSnippetId(null)
-        }}
-      />
-    </div>
+
+          <SqlTabsBar
+            queryTabs={state.queryTabs}
+            activeQueryTabId={state.activeQueryTabId}
+            onSelectTab={state.setActiveQueryTabId}
+            onRenameTab={(tabId) => {
+              const tab = state.queryTabs.find((item) => item.id === tabId)
+              if (!tab) return
+              setTabRenameState({ tabId, title: tab.title })
+            }}
+            onCloseTab={state.closeTab}
+          />
+
+          <div className={styles.editorPanelBody} ref={editorPanelBodyRef}>
+            <EditorPane
+              queryError={state.queryError}
+              tabId={state.activeQueryTabId}
+              value={state.activeQueryTab?.query || ''}
+              schemaTablesRef={state.schemaTablesRef}
+              tableColumnsByKeyRef={state.tableColumnsByKeyRef}
+              {...editorHandlers}
+            />
+
+            <div
+              className={`${styles.editorSplitter} ${isResizing ? styles.active : ''}`.trim()}
+              role="separator"
+              aria-label="Resize editor and results panels"
+              aria-orientation="horizontal"
+              onMouseDown={startResize}
+            />
+
+            {state.queryError ? (
+              <div
+                role="alert"
+                style={{ padding: '8px 12px', color: 'var(--danger, #dc2626)', whiteSpace: 'pre-wrap' }}
+              >
+                {state.queryError.message}
+                {state.queryError.detail ? <div>{state.queryError.detail}</div> : null}
+                {state.queryError.hint ? <div>Hint: {state.queryError.hint}</div> : null}
+                {state.result ? <div>Previous successful results are shown below.</div> : null}
+              </div>
+            ) : null}
+            <ErrorBoundary fallbackTitle="Failed to render query results">
+              <SqlResultsPanel
+                result={state.result}
+                formatCell={formatCell}
+                connectionName={state.connectionName}
+                style={resultsStyle}
+              />
+            </ErrorBoundary>
+
+            <div className={styles.editorFooter} ref={editorFooterRef}>
+              <label>
+                Display rows{' '}
+                <select
+                  aria-label="Result row limit"
+                  value={state.rowLimit}
+                  onChange={(event) => state.setRowLimit(Number(event.target.value))}
+                >
+                  {[100, 250, 500].map((limit) => (
+                    <option key={limit} value={limit}>
+                      {limit}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span
+                className="history-meta"
+                title="Limits rows displayed and exported; SQL executes unchanged."
+              >
+                per statement
+              </span>
+              <button
+                className="btn"
+                disabled={state.running || state.explaining}
+                onClick={() => void state.runCurrentQuery(true)}
+              >
+                Run all
+              </button>
+              <button
+                className="btn"
+                disabled={state.running || state.explaining}
+                onClick={() => void state.runExplainQuery()}
+              >
+                {state.explaining ? 'Explaining...' : 'Explain'}
+              </button>
+              <button
+                className="btn primary"
+                disabled={state.running || state.explaining}
+                onClick={() => void state.runCurrentQuery()}
+              >
+                {state.running ? 'Running...' : state.runLabel}
+              </button>
+            </div>
+          </div>
+        </main>
+        <QuickActionsDialog
+          open={quickActions.open}
+          items={quickActionItems}
+          onClose={() => quickActions.setOpen(false)}
+        />
+        <PromptDialog
+          open={Boolean(tabRenameState)}
+          title="Rename tab"
+          label="Tab name"
+          value={tabRenameState?.title || ''}
+          placeholder="Query name"
+          submitLabel="Rename"
+          onClose={() => setTabRenameState(null)}
+          onChange={(value) =>
+            setTabRenameState((current) => (current ? { ...current, title: value } : current))
+          }
+          onSubmit={() => {
+            if (!tabRenameState) return
+            state.renameTab(tabRenameState.tabId, tabRenameState.title)
+            setTabRenameState(null)
+          }}
+        />
+        <PromptDialog
+          open={Boolean(saveSnippetState)}
+          title={saveSnippetState?.forceCreate ? 'Save snippet as' : 'Save snippet'}
+          label="Snippet name"
+          value={saveSnippetState?.title || ''}
+          placeholder="Snippet name"
+          hint={state.connectionName ? `Saved under connection ${state.connectionName}.` : undefined}
+          submitLabel={saveSnippetState?.forceCreate ? 'Save as' : 'Save'}
+          onClose={() => setSaveSnippetState(null)}
+          onChange={(value) =>
+            setSaveSnippetState((current) => (current ? { ...current, title: value } : current))
+          }
+          onSubmit={submitSaveSnippetDialog}
+        />
+        <PromptDialog
+          open={Boolean(duplicateSnippetItem && duplicateSnippetState)}
+          title="Duplicate snippet"
+          label="New snippet name"
+          value={duplicateSnippetState?.title || ''}
+          placeholder="Snippet copy name"
+          submitLabel="Duplicate"
+          onClose={() => setDuplicateSnippetState(null)}
+          onChange={(value) =>
+            setDuplicateSnippetState((current) => (current ? { ...current, title: value } : current))
+          }
+          onSubmit={() => {
+            if (!duplicateSnippetItem || !duplicateSnippetState) return
+            void state.duplicateSnippet(duplicateSnippetItem, duplicateSnippetState.title)
+            setDuplicateSnippetState(null)
+          }}
+        />
+        <ConfirmDialog
+          open={Boolean(deleteSnippetItem)}
+          title="Delete snippet"
+          message={
+            deleteSnippetItem ? `Delete snippet "${deleteSnippetItem.title}"? This cannot be undone.` : ''
+          }
+          confirmLabel="Delete"
+          confirmTone="danger"
+          onClose={() => setDeleteSnippetId(null)}
+          onConfirm={() => {
+            if (!deleteSnippetItem) return
+            void state.deleteSnippet(deleteSnippetItem)
+            setDeleteSnippetId(null)
+          }}
+        />
+      </div>
+    </ConnectionColorProvider>
   )
 }

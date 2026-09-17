@@ -54,6 +54,15 @@ vi.mock('@/components/shared/PageHead', () => ({ PageHead: () => null }))
 vi.mock('@/components/shared/NavRail', () => ({ NavRail: () => null }))
 vi.mock('@/components/settings/SettingsPanel', () => ({ SettingsPanel: () => null }))
 vi.mock('@/components/settings/SettingsButton', () => ({ SettingsButton: () => null }))
+vi.mock('@/components/shared/hooks/useConnections', () => ({
+  CONNECTIONS_QUERY_KEY: ['connections'],
+  useConnections: () => ({
+    connections: [{ id: 'dev', name: 'dev', isDefault: true, readOnly: false, color: null }],
+    configured: true,
+    defaultConnectionName: 'dev',
+    invalidateConnections: () => Promise.resolve(),
+  }),
+}))
 vi.mock('@/components/shared/hooks/useActiveConnection', () => ({
   useActiveConnection: () => ({ connections: [{ name: 'dev' }], connectionName: 'dev' }),
 }))

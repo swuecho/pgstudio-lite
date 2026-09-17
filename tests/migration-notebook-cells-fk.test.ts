@@ -47,8 +47,15 @@ function databaseBefore0013() {
 }
 
 describe(FK_MIGRATION, () => {
-  it('is the last journal entry', () => {
-    expect(entries.at(-1)?.tag).toBe(FK_MIGRATION)
+  it('is the newest migration touching notebook_cells', () => {
+    // The before-state below is rebuilt from every earlier migration, so a later
+    // migration that changes this table would silently invalidate this test.
+    const laterTouchingCells = entries
+      .slice(entries.findIndex((entry) => entry.tag === FK_MIGRATION) + 1)
+      .filter((entry) =>
+        readFileSync(join(MIGRATIONS_DIR, `${entry.tag}.sql`), 'utf8').includes('notebook_cells')
+      )
+    expect(laterTouchingCells).toEqual([])
   })
 
   it('keeps cell data, drops orphans, and installs the cascading foreign key', () => {

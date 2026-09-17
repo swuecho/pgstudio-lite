@@ -74,6 +74,7 @@ describe('ConnectionsSection', () => {
       connectionString: 'postgres://g',
       isDefault: false,
       readOnly: false,
+      color: null,
     })
     await waitFor(() => expect((nameInput as HTMLInputElement).value).toBe(''))
     expect((stringInput as HTMLInputElement).value).toBe('')

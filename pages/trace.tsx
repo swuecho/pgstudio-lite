@@ -1,4 +1,5 @@
 import { NavRail } from '@/components/shared/NavRail'
+import { ConnectionSelect } from '@/components/shared/ConnectionSelect'
 import Link from 'next/link'
 import { PageHead } from '@/components/shared/PageHead'
 import { useRouter } from 'next/router'
@@ -238,14 +239,11 @@ export default function TracePage() {
                 </option>
               ))}
             </select>
-            <select value={connectionName || ''} onChange={(event) => setConnectionName(event.target.value)}>
-              {connections.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                  {c.readOnly ? ' (read-only)' : ''}
-                </option>
-              ))}
-            </select>
+            <ConnectionSelect
+              value={connectionName || ''}
+              connections={connections}
+              onChange={setConnectionName}
+            />
           </div>
         </div>
 

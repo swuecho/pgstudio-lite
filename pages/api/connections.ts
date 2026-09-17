@@ -8,13 +8,17 @@ import {
   updateConnection,
 } from '@/lib/db'
 import { nonEmptyStringSchema, parseWithSchema } from '@/lib/api/validation'
+import { CONNECTION_COLOR_IDS } from '@/lib/connection-color'
 import { methodNotAllowed, sendApiError } from '@/lib/api/errors'
+
+const connectionColorSchema = z.enum(CONNECTION_COLOR_IDS).nullable()
 
 const createConnectionSchema = z.object({
   name: nonEmptyStringSchema,
   connectionString: nonEmptyStringSchema,
   isDefault: z.boolean().optional(),
   readOnly: z.boolean().optional(),
+  color: connectionColorSchema.optional(),
 })
 
 const patchConnectionSchema = z
@@ -25,6 +29,7 @@ const patchConnectionSchema = z
     connectionString: nonEmptyStringSchema.optional(),
     isDefault: z.boolean().optional(),
     readOnly: z.boolean().optional(),
+    color: connectionColorSchema.optional(),
   })
   .superRefine((value, ctx) => {
     if (value.setDefault === true) return
@@ -32,11 +37,12 @@ const patchConnectionSchema = z
       value.name === undefined &&
       value.connectionString === undefined &&
       value.isDefault === undefined &&
-      value.readOnly === undefined
+      value.readOnly === undefined &&
+      value.color === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'name, connectionString, isDefault, or readOnly is required',
+        message: 'name, connectionString, isDefault, readOnly, or color is required',
       })
     }
   })
@@ -58,13 +64,19 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === 'POST') {
-      const { name, connectionString, isDefault, readOnly } = parseWithSchema(
+      const { name, connectionString, isDefault, readOnly, color } = parseWithSchema(
         createConnectionSchema,
         req.body || {}
       )
-      const item = createConnection({ name, connectionString, isDefault, readOnly })
+      const item = createConnection({ name, connectionString, isDefault, readOnly, color })
       return res.status(200).json({
-        item: { id: item.id, name: item.name, isDefault: item.isDefault, readOnly: item.readOnly },
+        item: {
+          id: item.id,
+          name: item.name,
+          isDefault: item.isDefault,
+          readOnly: item.readOnly,
+          color: item.color,
+        },
       })
     }
 
@@ -75,7 +87,13 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         const item = setDefaultConnection(id)
         if (!item) return res.status(404).json({ error: 'connection not found' })
         return res.status(200).json({
-          item: { id: item.id, name: item.name, isDefault: item.isDefault, readOnly: item.readOnly },
+          item: {
+            id: item.id,
+            name: item.name,
+            isDefault: item.isDefault,
+            readOnly: item.readOnly,
+            color: item.color,
+          },
         })
       }
       const item = updateConnection(payload.id, {
@@ -83,10 +101,17 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         connectionString: payload.connectionString,
         isDefault: payload.isDefault,
         readOnly: payload.readOnly,
+        color: payload.color,
       })
       if (!item) return res.status(404).json({ error: 'connection not found' })
       return res.status(200).json({
-        item: { id: item.id, name: item.name, isDefault: item.isDefault, readOnly: item.readOnly },
+        item: {
+          id: item.id,
+          name: item.name,
+          isDefault: item.isDefault,
+          readOnly: item.readOnly,
+          color: item.color,
+        },
       })
     }
 

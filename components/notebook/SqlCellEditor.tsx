@@ -3,6 +3,8 @@ import { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useRef, useState } from 'react'
 import { getCurrentTheme } from '../sql-editor/utils'
+import { defineSqlEditorThemes, editorThemeName } from '../sql-editor/editorThemes'
+import { useActiveConnectionColor } from '@/components/shared/ConnectionColorContext'
 
 /**
  * The editor grows with its SQL between these bounds so short cells stay
@@ -55,6 +57,14 @@ export function SqlCellEditor({
   onMountEditor,
   onUnmountEditor,
 }: SqlCellEditorProps) {
+  const connectionColor = useActiveConnectionColor().colorId
+  const monacoRef = useRef<typeof import('monaco-editor') | null>(null)
+  const connectionColorRef = useRef(connectionColor)
+  connectionColorRef.current = connectionColor
+  useEffect(() => {
+    monacoRef.current?.editor.setTheme(editorThemeName(getCurrentTheme(), connectionColor))
+  }, [connectionColor])
+
   const paramsRef = useRef(params)
   useEffect(() => {
     paramsRef.current = params
@@ -71,41 +81,11 @@ export function SqlCellEditor({
         onMount={(editor, monaco) => {
           onMountEditor(editor)
 
-          monaco.editor.defineTheme('supabase-light', {
-            base: 'vs',
-            inherit: true,
-            rules: [
-              { token: '', background: 'fcfdff' },
-              { token: '', background: 'fcfdff', foreground: '101827' },
-              { token: 'string.sql', foreground: '1e9f6e' },
-              { token: 'comment', foreground: '7d8aa2' },
-              { token: 'predefined.sql', foreground: '1f2a3a' },
-            ],
-            colors: {
-              'editor.background': '#fcfdff',
-              'editorLineNumber.foreground': '#9ba9bf',
-              'editorLineNumber.activeForeground': '#55657f',
-            },
-          })
+          defineSqlEditorThemes(monaco)
 
-          monaco.editor.defineTheme('supabase-dark', {
-            base: 'vs-dark',
-            inherit: true,
-            rules: [
-              { token: '', background: '111827', foreground: 'e5e7eb' },
-              { token: 'string.sql', foreground: '34d399' },
-              { token: 'comment', foreground: '7c8799' },
-              { token: 'predefined.sql', foreground: 'e5e7eb' },
-            ],
-            colors: {
-              'editor.background': '#111827',
-              'editorLineNumber.foreground': '#667085',
-              'editorLineNumber.activeForeground': '#d0d5dd',
-            },
-          })
-
+          monacoRef.current = monaco
           const applyEditorTheme = () => {
-            monaco.editor.setTheme(getCurrentTheme() === 'dark' ? 'supabase-dark' : 'supabase-light')
+            monaco.editor.setTheme(editorThemeName(getCurrentTheme(), connectionColorRef.current))
           }
 
           applyEditorTheme()

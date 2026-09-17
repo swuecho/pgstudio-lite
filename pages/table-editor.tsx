@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react'
+import { ConnectionSelect } from '@/components/shared/ConnectionSelect'
+import { ConnectionColorProvider } from '@/components/shared/ConnectionColorContext'
 import { PageHead } from '@/components/shared/PageHead'
 import { QuickActionsDialog } from '@/components/shared/Dialog'
 import { CopyableCellValue } from '@/components/shared/CopyableCellValue'
@@ -71,75 +73,74 @@ export default function TableEditorPage() {
   })
 
   return (
-    <div
-      className={pageStyles.layoutRoot}
-      style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
-    >
-      <TableSidebar
-        {...sidebarProps}
-        searchInputRef={sidebarSearchRef}
-        onWidthResizerMouseDown={handleWidthResizerMouseDown}
-      />
+    <ConnectionColorProvider connectionName={state.connectionName}>
+      <div
+        className={pageStyles.layoutRoot}
+        style={{ gridTemplateColumns: `52px ${sidebarWidth}px minmax(0, 1fr)` }}
+      >
+        <TableSidebar
+          {...sidebarProps}
+          searchInputRef={sidebarSearchRef}
+          onWidthResizerMouseDown={handleWidthResizerMouseDown}
+        />
 
-      <SettingsPanel />
+        <SettingsPanel />
 
-      <PageHead title="Table Editor" subject={state.activeTable} />
-      <QuickActionsDialog
-        open={quickActions.open}
-        items={quickActionItems}
-        onClose={() => quickActions.setOpen(false)}
-      />
-      <main className={pageStyles.layoutMain}>
-        <div className={`${pageStyles.editorPanelHeader} ${tableStyles.tableMainHeader}`}>
-          <div className={tableStyles.tableHeaderTitle}>
-            <div className={pageStyles.editorTitle}>Table Editor</div>
-            {state.activeTable ? (
-              <CopyableCellValue
-                text={state.activeTable}
-                className={tableStyles.tableHeaderTable}
-                ariaLabel="Table name"
+        <PageHead title="Table Editor" subject={state.activeTable} />
+        <QuickActionsDialog
+          open={quickActions.open}
+          items={quickActionItems}
+          onClose={() => quickActions.setOpen(false)}
+        />
+        <main className={pageStyles.layoutMain}>
+          <div className={`${pageStyles.editorPanelHeader} ${tableStyles.tableMainHeader}`}>
+            <div className={tableStyles.tableHeaderTitle}>
+              <div className={pageStyles.editorTitle}>Table Editor</div>
+              {state.activeTable ? (
+                <CopyableCellValue
+                  text={state.activeTable}
+                  className={tableStyles.tableHeaderTable}
+                  ariaLabel="Table name"
+                />
+              ) : (
+                <code className={tableStyles.tableHeaderTable}>No table selected</code>
+              )}
+              {state.filterSummary ? (
+                <span className={tableStyles.tableHeaderFilterChip} title={state.filterSummary}>
+                  {state.filterSummary}
+                </span>
+              ) : null}
+              {state.activeRelation ? <RelationKindBadge kind={state.activeRelation.kind} /> : null}
+              {state.currentView ? (
+                <SaveViewPopover
+                  currentView={state.currentView}
+                  onSave={state.saveBookmark}
+                  onSaved={() => setSidebarNavTab('views')}
+                />
+              ) : null}
+            </div>
+            <div className={pageStyles.editorHeaderRight}>
+              {state.connectionReadOnly ? (
+                <span className={pageStyles.readonlyPill}>Read-only connection</span>
+              ) : null}
+              {state.rowMutationsReadOnly && state.activeRelation && state.activeRelation.kind !== 'table' ? (
+                <span className={pageStyles.readonlyPill}>View (read-only)</span>
+              ) : null}
+              <span className={pageStyles.statusPill}>{state.status}</span>
+              <ConnectionSelect
+                value={state.connectionName}
+                connections={state.connections}
+                onChange={state.setConnectionName}
               />
-            ) : (
-              <code className={tableStyles.tableHeaderTable}>No table selected</code>
-            )}
-            {state.filterSummary ? (
-              <span className={tableStyles.tableHeaderFilterChip} title={state.filterSummary}>
-                {state.filterSummary}
-              </span>
-            ) : null}
-            {state.activeRelation ? <RelationKindBadge kind={state.activeRelation.kind} /> : null}
-            {state.currentView ? (
-              <SaveViewPopover
-                currentView={state.currentView}
-                onSave={state.saveBookmark}
-                onSaved={() => setSidebarNavTab('views')}
-              />
-            ) : null}
+              <SettingsButton section="connections" label="Settings" />
+            </div>
           </div>
-          <div className={pageStyles.editorHeaderRight}>
-            {state.connectionReadOnly ? (
-              <span className={pageStyles.readonlyPill}>Read-only connection</span>
-            ) : null}
-            {state.rowMutationsReadOnly && state.activeRelation && state.activeRelation.kind !== 'table' ? (
-              <span className={pageStyles.readonlyPill}>View (read-only)</span>
-            ) : null}
-            <span className={pageStyles.statusPill}>{state.status}</span>
-            <select value={state.connectionName} onChange={(e) => state.setConnectionName(e.target.value)}>
-              {state.connections.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                  {c.readOnly ? ' (read-only)' : ''}
-                </option>
-              ))}
-            </select>
-            <SettingsButton section="connections" label="Settings" />
-          </div>
-        </div>
 
-        <ErrorBoundary fallbackTitle="Failed to render table grid">
-          <TableGridPanel {...gridProps} />
-        </ErrorBoundary>
-      </main>
-    </div>
+          <ErrorBoundary fallbackTitle="Failed to render table grid">
+            <TableGridPanel {...gridProps} />
+          </ErrorBoundary>
+        </main>
+      </div>
+    </ConnectionColorProvider>
   )
 }

@@ -1,4 +1,6 @@
 import { NavRail } from '@/components/shared/NavRail'
+import { ConnectionSelect } from '@/components/shared/ConnectionSelect'
+import { ConnectionColorProvider } from '@/components/shared/ConnectionColorContext'
 import { PageHead } from '@/components/shared/PageHead'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -32,256 +34,250 @@ export default function NotebookPage() {
   })
 
   return (
-    <div
-      className={styles.layoutRoot}
-      style={{ gridTemplateColumns: `52px ${controller.sidebarWidth}px minmax(0, 1fr)` }}
-    >
-      <NavRail active="notebook" />
+    <ConnectionColorProvider connectionName={controller.activeNotebook?.connection_name}>
+      <div
+        className={styles.layoutRoot}
+        style={{ gridTemplateColumns: `52px ${controller.sidebarWidth}px minmax(0, 1fr)` }}
+      >
+        <NavRail active="notebook" />
 
-      <NotebookSidebar
-        activeNotebookId={controller.activeNotebookId}
-        handleWidthResizerMouseDown={controller.handleWidthResizerMouseDown}
-        notebookSearch={controller.notebookSearch}
-        notebooks={controller.notebooks}
-        onChangeNotebookSearch={controller.setNotebookSearch}
-        onCreateNotebook={() => controller.createNotebookMutation.mutate()}
-        onDeleteNotebook={(item) => {
-          setDeleteNotebookState({ id: item.id, title: item.title })
-        }}
-        onRenameNotebook={(item) => {
-          setRenameNotebookState({ id: item.id, title: item.title })
-        }}
-        onSelectNotebook={controller.setActiveNotebookId}
-      />
+        <NotebookSidebar
+          activeNotebookId={controller.activeNotebookId}
+          handleWidthResizerMouseDown={controller.handleWidthResizerMouseDown}
+          notebookSearch={controller.notebookSearch}
+          notebooks={controller.notebooks}
+          onChangeNotebookSearch={controller.setNotebookSearch}
+          onCreateNotebook={() => controller.createNotebookMutation.mutate()}
+          onDeleteNotebook={(item) => {
+            setDeleteNotebookState({ id: item.id, title: item.title })
+          }}
+          onRenameNotebook={(item) => {
+            setRenameNotebookState({ id: item.id, title: item.title })
+          }}
+          onSelectNotebook={controller.setActiveNotebookId}
+        />
 
-      <PageHead title="Notebook" subject={controller.activeNotebook?.title} />
-      <main className={styles.layoutMain}>
-        <div className={styles.editorPanelHeader}>
-          <div className={`${styles.editorTitle} truncate`}>
-            Notebook · {controller.activeNotebook?.title || '-'}
-          </div>
-          <div className={`${styles.editorHeaderRight} ${styles.headerActions}`}>
-            <span className={`status-pill ${styles.statusPill}`}>{controller.status}</span>
-            <select
-              className={styles.connectionSelect}
-              value={controller.activeNotebook?.connection_name || ''}
-              onChange={(event) => {
-                controller.updateNotebookConnection(event.target.value)
-              }}
-            >
-              {controller.connections.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                  {c.readOnly ? ' (read-only)' : ''}
-                </option>
-              ))}
-            </select>
-            <SettingsButton section="connections" label="Settings" />
-            <button
-              className={`btn small ${styles.actionButton}`}
-              disabled={tourMutation.isPending}
-              title="Generate a tour notebook for the current connection"
-              onClick={() => tourMutation.mutate(controller.activeNotebook?.connection_name || undefined)}
-            >
-              {tourMutation.isPending ? 'Generating...' : 'Generate Tour'}
-            </button>
-            <button
-              className={`btn small ${styles.actionButton}`}
-              onClick={() => controller.notebookImport.setShowImportModal(true)}
-            >
-              Import
-            </button>
-            <button
-              className={`btn small ${styles.actionButton}`}
-              disabled={!controller.activeNotebookId}
-              onClick={controller.notebookImport.exportNotebookJson}
-            >
-              Export
-            </button>
-            <button
-              className={`btn small ${styles.actionButton}`}
-              disabled={!controller.activeNotebookId}
-              title="Run history and schedule for this notebook"
-              onClick={() => controller.setShowRunsPanel(true)}
-            >
-              Runs
-            </button>
-            <button
-              className={`btn small ${styles.actionButton}`}
-              aria-pressed={controller.dashboardMode}
-              disabled={!controller.activeNotebookId}
-              title="Toggle the dashboard view: results, charts and the notebook's controls"
-              onClick={() => controller.setDashboardMode((prev) => !prev)}
-            >
-              {controller.dashboardMode ? 'Edit' : 'Dashboard'}
-            </button>
-            <button
-              className={`btn small ${styles.actionButton}`}
-              onClick={() => controller.notebookImport.setShowHelp((prev) => !prev)}
-            >
-              {controller.notebookImport.showHelp ? 'Hide Help' : 'Help'}
-            </button>
-          </div>
-        </div>
-
-        {!controller.dashboardMode ? (
-          <div className={styles.toolbar}>
-            <div className={styles.cellCount}>
-              <span className="history-meta">
-                {controller.sortedCells.length} {controller.sortedCells.length === 1 ? 'cell' : 'cells'}
-              </span>
-              {controller.pendingSaveCount ? (
-                <span className="history-meta"> · {controller.pendingSaveCount} unsaved</span>
-              ) : null}
+        <PageHead title="Notebook" subject={controller.activeNotebook?.title} />
+        <main className={styles.layoutMain}>
+          <div className={styles.editorPanelHeader}>
+            <div className={`${styles.editorTitle} truncate`}>
+              Notebook · {controller.activeNotebook?.title || '-'}
             </div>
-            <div className={styles.toolbarActions}>
+            <div className={`${styles.editorHeaderRight} ${styles.headerActions}`}>
+              <span className={`status-pill ${styles.statusPill}`}>{controller.status}</span>
+              <ConnectionSelect
+                ariaLabel="Notebook connection"
+                value={controller.activeNotebook?.connection_name || ''}
+                connections={controller.connections}
+                onChange={(name) => controller.updateNotebookConnection(name)}
+              />
+              <SettingsButton section="connections" label="Settings" />
               <button
-                className="btn small"
-                disabled={!controller.activeNotebookId || controller.runningAll}
-                onClick={() => controller.addCellMutation.mutate('sql')}
+                className={`btn small ${styles.actionButton}`}
+                disabled={tourMutation.isPending}
+                title="Generate a tour notebook for the current connection"
+                onClick={() => tourMutation.mutate(controller.activeNotebook?.connection_name || undefined)}
               >
-                Add SQL
+                {tourMutation.isPending ? 'Generating...' : 'Generate Tour'}
               </button>
               <button
-                className="btn small"
-                disabled={!controller.activeNotebookId || controller.runningAll}
-                onClick={() => controller.addCellMutation.mutate('markdown')}
+                className={`btn small ${styles.actionButton}`}
+                onClick={() => controller.notebookImport.setShowImportModal(true)}
               >
-                Add Markdown
-              </button>
-              <select
-                className={styles.presetSelect}
-                value={controller.selectedWidgetPreset}
-                disabled={!controller.activeNotebookId || controller.runningAll}
-                onChange={(event) =>
-                  controller.setSelectedWidgetPreset(
-                    event.target.value as typeof controller.selectedWidgetPreset
-                  )
-                }
-                title="Widget preset"
-              >
-                {NOTEBOOK_WIDGET_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="btn small"
-                disabled={!controller.activeNotebookId || controller.runningAll}
-                onClick={() => controller.addWidgetPresetMutation.mutate(controller.selectedWidgetPreset)}
-              >
-                Add Preset
+                Import
               </button>
               <button
-                className="btn small"
-                disabled={!controller.activeNotebookId || controller.runningAll}
-                onClick={() => controller.addCellMutation.mutate('widget')}
+                className={`btn small ${styles.actionButton}`}
+                disabled={!controller.activeNotebookId}
+                onClick={controller.notebookImport.exportNotebookJson}
               >
-                Add Widget
+                Export
               </button>
               <button
-                className="btn small primary"
-                disabled={!controller.activeNotebookId || controller.runningAll}
-                onClick={() => void controller.runAllSqlCells()}
+                className={`btn small ${styles.actionButton}`}
+                disabled={!controller.activeNotebookId}
+                title="Run history and schedule for this notebook"
+                onClick={() => controller.setShowRunsPanel(true)}
               >
-                {controller.runningAll ? 'Running All...' : 'Run All'}
+                Runs
+              </button>
+              <button
+                className={`btn small ${styles.actionButton}`}
+                aria-pressed={controller.dashboardMode}
+                disabled={!controller.activeNotebookId}
+                title="Toggle the dashboard view: results, charts and the notebook's controls"
+                onClick={() => controller.setDashboardMode((prev) => !prev)}
+              >
+                {controller.dashboardMode ? 'Edit' : 'Dashboard'}
+              </button>
+              <button
+                className={`btn small ${styles.actionButton}`}
+                onClick={() => controller.notebookImport.setShowHelp((prev) => !prev)}
+              >
+                {controller.notebookImport.showHelp ? 'Hide Help' : 'Help'}
               </button>
             </div>
           </div>
-        ) : null}
 
-        {controller.notebookImport.showHelp ? (
-          <NotebookHelpPanel
-            promptTask={controller.notebookImport.promptTask}
-            setPromptTask={controller.notebookImport.setPromptTask}
-            promptDbContext={controller.notebookImport.promptDbContext}
-            setPromptDbContext={controller.notebookImport.setPromptDbContext}
-            promptStyle={controller.notebookImport.promptStyle}
-            setPromptStyle={controller.notebookImport.setPromptStyle}
-            promptPatchTask={controller.notebookImport.promptPatchTask}
-            setPromptPatchTask={controller.notebookImport.setPromptPatchTask}
-            copyGeneratePrompt={controller.notebookImport.copyGeneratePrompt}
-            copyPatchPromptPrefilled={controller.notebookImport.copyPatchPromptPrefilled}
-            copyHelpApiSnippet={controller.notebookImport.copyHelpApiSnippet}
+          {!controller.dashboardMode ? (
+            <div className={styles.toolbar}>
+              <div className={styles.cellCount}>
+                <span className="history-meta">
+                  {controller.sortedCells.length} {controller.sortedCells.length === 1 ? 'cell' : 'cells'}
+                </span>
+                {controller.pendingSaveCount ? (
+                  <span className="history-meta"> · {controller.pendingSaveCount} unsaved</span>
+                ) : null}
+              </div>
+              <div className={styles.toolbarActions}>
+                <button
+                  className="btn small"
+                  disabled={!controller.activeNotebookId || controller.runningAll}
+                  onClick={() => controller.addCellMutation.mutate('sql')}
+                >
+                  Add SQL
+                </button>
+                <button
+                  className="btn small"
+                  disabled={!controller.activeNotebookId || controller.runningAll}
+                  onClick={() => controller.addCellMutation.mutate('markdown')}
+                >
+                  Add Markdown
+                </button>
+                <select
+                  className={styles.presetSelect}
+                  value={controller.selectedWidgetPreset}
+                  disabled={!controller.activeNotebookId || controller.runningAll}
+                  onChange={(event) =>
+                    controller.setSelectedWidgetPreset(
+                      event.target.value as typeof controller.selectedWidgetPreset
+                    )
+                  }
+                  title="Widget preset"
+                >
+                  {NOTEBOOK_WIDGET_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn small"
+                  disabled={!controller.activeNotebookId || controller.runningAll}
+                  onClick={() => controller.addWidgetPresetMutation.mutate(controller.selectedWidgetPreset)}
+                >
+                  Add Preset
+                </button>
+                <button
+                  className="btn small"
+                  disabled={!controller.activeNotebookId || controller.runningAll}
+                  onClick={() => controller.addCellMutation.mutate('widget')}
+                >
+                  Add Widget
+                </button>
+                <button
+                  className="btn small primary"
+                  disabled={!controller.activeNotebookId || controller.runningAll}
+                  onClick={() => void controller.runAllSqlCells()}
+                >
+                  {controller.runningAll ? 'Running All...' : 'Run All'}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {controller.notebookImport.showHelp ? (
+            <NotebookHelpPanel
+              promptTask={controller.notebookImport.promptTask}
+              setPromptTask={controller.notebookImport.setPromptTask}
+              promptDbContext={controller.notebookImport.promptDbContext}
+              setPromptDbContext={controller.notebookImport.setPromptDbContext}
+              promptStyle={controller.notebookImport.promptStyle}
+              setPromptStyle={controller.notebookImport.setPromptStyle}
+              promptPatchTask={controller.notebookImport.promptPatchTask}
+              setPromptPatchTask={controller.notebookImport.setPromptPatchTask}
+              copyGeneratePrompt={controller.notebookImport.copyGeneratePrompt}
+              copyPatchPromptPrefilled={controller.notebookImport.copyPatchPromptPrefilled}
+              copyHelpApiSnippet={controller.notebookImport.copyHelpApiSnippet}
+            />
+          ) : null}
+
+          {!controller.dashboardMode ? <NotebookParameterPanel controller={controller} /> : null}
+
+          {controller.dashboardMode ? (
+            <NotebookDashboard controller={controller} />
+          ) : (
+            <NotebookCellList controller={controller} />
+          )}
+        </main>
+
+        <SettingsPanel />
+
+        {controller.showRunsPanel && controller.activeNotebookId ? (
+          <NotebookRunsPanel
+            notebookId={controller.activeNotebookId}
+            notebookTitle={controller.activeNotebook?.title || 'Notebook'}
+            runs={controller.runs}
+            onClose={() => controller.setShowRunsPanel(false)}
           />
         ) : null}
 
-        {!controller.dashboardMode ? <NotebookParameterPanel controller={controller} /> : null}
-
-        {controller.dashboardMode ? (
-          <NotebookDashboard controller={controller} />
-        ) : (
-          <NotebookCellList controller={controller} />
-        )}
-      </main>
-
-      <SettingsPanel />
-
-      {controller.showRunsPanel && controller.activeNotebookId ? (
-        <NotebookRunsPanel
-          notebookId={controller.activeNotebookId}
-          notebookTitle={controller.activeNotebook?.title || 'Notebook'}
-          runs={controller.runs}
-          onClose={() => controller.setShowRunsPanel(false)}
+        {controller.notebookImport.showImportModal ? (
+          <NotebookImportModal
+            importMode={controller.notebookImport.importMode}
+            setImportMode={controller.notebookImport.setImportMode}
+            importRawJson={controller.notebookImport.importRawJson}
+            setImportRawJson={controller.notebookImport.setImportRawJson}
+            isImporting={controller.notebookImport.isImporting}
+            isValidating={controller.notebookImport.isValidating}
+            importParseHint={controller.notebookImport.importParseHint}
+            importValidationSnapshot={controller.notebookImport.importValidationSnapshot}
+            importValidationWarnings={controller.notebookImport.importValidationWarnings}
+            importDiffSummary={controller.notebookImport.importDiffSummary}
+            importErrorDetails={controller.notebookImport.importErrorDetails}
+            canUseCurrentJson={Boolean(controller.activeNotebookId)}
+            onClose={() => controller.notebookImport.setShowImportModal(false)}
+            onPaste={controller.notebookImport.pasteImportJsonFromClipboard}
+            onFormatJson={controller.notebookImport.formatImportJson}
+            onValidate={controller.notebookImport.validateImportDraft}
+            onPreviewDiff={controller.notebookImport.previewImportDiff}
+            onUseCurrentJson={controller.notebookImport.loadCurrentNotebookJson}
+            onImport={controller.notebookImport.submitImportFromModal}
+          />
+        ) : null}
+        <PromptDialog
+          open={Boolean(renameNotebookState)}
+          title="Rename notebook"
+          label="Notebook title"
+          value={renameNotebookState?.title || ''}
+          placeholder="Notebook title"
+          submitLabel="Rename"
+          onClose={() => setRenameNotebookState(null)}
+          onChange={(value) =>
+            setRenameNotebookState((current) => (current ? { ...current, title: value } : current))
+          }
+          onSubmit={() => {
+            if (!renameNotebookState) return
+            const item = controller.notebooks.find((notebook) => notebook.id === renameNotebookState.id)
+            if (!item) return
+            controller.renameNotebook?.(item, renameNotebookState.title.trim())
+            setRenameNotebookState(null)
+          }}
         />
-      ) : null}
-
-      {controller.notebookImport.showImportModal ? (
-        <NotebookImportModal
-          importMode={controller.notebookImport.importMode}
-          setImportMode={controller.notebookImport.setImportMode}
-          importRawJson={controller.notebookImport.importRawJson}
-          setImportRawJson={controller.notebookImport.setImportRawJson}
-          isImporting={controller.notebookImport.isImporting}
-          isValidating={controller.notebookImport.isValidating}
-          importParseHint={controller.notebookImport.importParseHint}
-          importValidationSnapshot={controller.notebookImport.importValidationSnapshot}
-          importValidationWarnings={controller.notebookImport.importValidationWarnings}
-          importDiffSummary={controller.notebookImport.importDiffSummary}
-          importErrorDetails={controller.notebookImport.importErrorDetails}
-          canUseCurrentJson={Boolean(controller.activeNotebookId)}
-          onClose={() => controller.notebookImport.setShowImportModal(false)}
-          onPaste={controller.notebookImport.pasteImportJsonFromClipboard}
-          onFormatJson={controller.notebookImport.formatImportJson}
-          onValidate={controller.notebookImport.validateImportDraft}
-          onPreviewDiff={controller.notebookImport.previewImportDiff}
-          onUseCurrentJson={controller.notebookImport.loadCurrentNotebookJson}
-          onImport={controller.notebookImport.submitImportFromModal}
+        <ConfirmDialog
+          open={Boolean(deleteNotebookState)}
+          title="Delete notebook"
+          message={deleteNotebookState ? `Delete notebook "${deleteNotebookState.title}"?` : ''}
+          confirmLabel="Delete"
+          confirmTone="danger"
+          onClose={() => setDeleteNotebookState(null)}
+          onConfirm={() => {
+            if (!deleteNotebookState) return
+            controller.removeNotebook?.(deleteNotebookState.id)
+            setDeleteNotebookState(null)
+          }}
         />
-      ) : null}
-      <PromptDialog
-        open={Boolean(renameNotebookState)}
-        title="Rename notebook"
-        label="Notebook title"
-        value={renameNotebookState?.title || ''}
-        placeholder="Notebook title"
-        submitLabel="Rename"
-        onClose={() => setRenameNotebookState(null)}
-        onChange={(value) =>
-          setRenameNotebookState((current) => (current ? { ...current, title: value } : current))
-        }
-        onSubmit={() => {
-          if (!renameNotebookState) return
-          const item = controller.notebooks.find((notebook) => notebook.id === renameNotebookState.id)
-          if (!item) return
-          controller.renameNotebook?.(item, renameNotebookState.title.trim())
-          setRenameNotebookState(null)
-        }}
-      />
-      <ConfirmDialog
-        open={Boolean(deleteNotebookState)}
-        title="Delete notebook"
-        message={deleteNotebookState ? `Delete notebook "${deleteNotebookState.title}"?` : ''}
-        confirmLabel="Delete"
-        confirmTone="danger"
-        onClose={() => setDeleteNotebookState(null)}
-        onConfirm={() => {
-          if (!deleteNotebookState) return
-          controller.removeNotebook?.(deleteNotebookState.id)
-          setDeleteNotebookState(null)
-        }}
-      />
-    </div>
+      </div>
+    </ConnectionColorProvider>
   )
 }

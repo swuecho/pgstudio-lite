@@ -1,4 +1,5 @@
 import { NavRail } from '@/components/shared/NavRail'
+import { ConnectionSelect } from '@/components/shared/ConnectionSelect'
 import { PageHead } from '@/components/shared/PageHead'
 import { useRouter } from 'next/router'
 import { useCallback, useMemo, useState } from 'react'
@@ -144,14 +145,11 @@ export default function ActivityPage() {
             <button className="btn small" onClick={() => setPaused((value) => !value)}>
               {paused ? 'Resume' : 'Pause'}
             </button>
-            <select value={connectionName || ''} onChange={(event) => setConnectionName(event.target.value)}>
-              {connections.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                  {c.readOnly ? ' (read-only)' : ''}
-                </option>
-              ))}
-            </select>
+            <ConnectionSelect
+              value={connectionName || ''}
+              connections={connections}
+              onChange={setConnectionName}
+            />
             <SettingsButton section="connections" label="Settings" />
           </div>
         </div>

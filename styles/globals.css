@@ -636,8 +636,9 @@ pre {
 
 .monaco-editor,
 .monaco-diff-editor {
-  --vscode-editor-background: #fcfdff !important;
-  --vscode-editorGutter-background: #fcfdff !important;
+  /* `--editor-bg` is set from the active connection's color; see ConnectionColorProvider. */
+  --vscode-editor-background: var(--editor-bg, #fcfdff) !important;
+  --vscode-editorGutter-background: var(--editor-bg, #fcfdff) !important;
 }
 
 .find-widget {
@@ -733,8 +734,8 @@ pre {
 
 [data-theme='dark'] .monaco-editor,
 [data-theme='dark'] .monaco-diff-editor {
-  --vscode-editor-background: #111827 !important;
-  --vscode-editorGutter-background: #111827 !important;
+  --vscode-editor-background: var(--editor-bg, #111827) !important;
+  --vscode-editorGutter-background: var(--editor-bg, #111827) !important;
 }
 
 .sql-current-statement {

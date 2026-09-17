@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { desc, eq } from 'drizzle-orm'
 import { dbConnections, notebooks, queryHistory, querySnippets } from '@/drizzle/schema'
+import { isConnectionColorId, type ConnectionColorId } from '../connection-color'
 import { getMetaDb } from '../meta-db'
 import { closePool } from './pool'
 
@@ -10,6 +11,7 @@ export type DbConnection = {
   connectionString: string
   isDefault: boolean
   readOnly: boolean
+  color: ConnectionColorId | null
   createdAt: string
   updatedAt: string
 }
@@ -103,6 +105,12 @@ function seedConnectionsIfEmpty() {
   })
 }
 
+/** Stored colors are palette ids; anything else (or 'none') is stored as NULL. */
+function normalizeColor(value: string | null | undefined): ConnectionColorId | null {
+  if (!value || value === 'none') return null
+  return isConnectionColorId(value) ? value : null
+}
+
 function mapConnection(row: typeof dbConnections.$inferSelect): DbConnection {
   return {
     id: row.id,
@@ -110,6 +118,7 @@ function mapConnection(row: typeof dbConnections.$inferSelect): DbConnection {
     connectionString: row.connectionString,
     isDefault: row.isDefault,
     readOnly: row.readOnly,
+    color: isConnectionColorId(row.color) ? row.color : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -172,6 +181,7 @@ export function getPublicConnections() {
     name: connection.name,
     isDefault: connection.isDefault,
     readOnly: connection.readOnly,
+    color: connection.color,
   }))
 }
 
@@ -180,6 +190,7 @@ export function createConnection(input: {
   connectionString: string
   isDefault?: boolean
   readOnly?: boolean
+  color?: ConnectionColorId | null
 }) {
   const name = input.name.trim()
   const connectionString = input.connectionString.trim()
@@ -196,6 +207,7 @@ export function createConnection(input: {
   const now = new Date().toISOString()
   const shouldBeDefault = input.isDefault === true || existing.length === 0
   const readOnly = input.readOnly === true
+  const color = normalizeColor(input.color)
 
   db().transaction((tx) => {
     if (shouldBeDefault) tx.update(dbConnections).set({ isDefault: false }).run()
@@ -206,6 +218,7 @@ export function createConnection(input: {
         connectionString,
         isDefault: shouldBeDefault,
         readOnly,
+        color,
         createdAt: now,
         updatedAt: now,
       })
@@ -219,7 +232,13 @@ export function createConnection(input: {
 
 export function updateConnection(
   id: string,
-  input: { name?: string; connectionString?: string; isDefault?: boolean; readOnly?: boolean }
+  input: {
+    name?: string
+    connectionString?: string
+    isDefault?: boolean
+    readOnly?: boolean
+    color?: ConnectionColorId | null
+  }
 ) {
   const existing = db().select().from(dbConnections).where(eq(dbConnections.id, id)).get()
   if (!existing) return null
@@ -229,6 +248,7 @@ export function updateConnection(
     input.connectionString === undefined ? existing.connectionString : input.connectionString.trim()
   const nextDefault = input.isDefault === undefined ? existing.isDefault : input.isDefault
   const nextReadOnly = input.readOnly === undefined ? existing.readOnly : input.readOnly
+  const nextColor = input.color === undefined ? normalizeColor(existing.color) : normalizeColor(input.color)
 
   if (!nextName) throw new Error('name cannot be empty')
   if (!nextConnectionString) throw new Error('connectionString cannot be empty')
@@ -252,6 +272,7 @@ export function updateConnection(
         connectionString: nextConnectionString,
         isDefault: nextDefault,
         readOnly: nextReadOnly,
+        color: nextColor,
         updatedAt: now,
       })
       .where(eq(dbConnections.id, id))

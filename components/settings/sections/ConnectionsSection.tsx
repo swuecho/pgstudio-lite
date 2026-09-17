@@ -9,6 +9,9 @@ import {
 import { CONNECTIONS_QUERY_KEY, useConnections } from '@/components/shared/hooks/useConnections'
 import { useActiveConnectionStore } from '@/components/shared/stores/activeConnectionStore'
 import { ConfirmDialog } from '@/components/shared/Dialog'
+import { ConnectionColorPicker } from '@/components/shared/ConnectionColorPicker'
+import { ConnectionColorDot } from '@/components/shared/ConnectionColorDot'
+import type { ConnectionColorId } from '@/lib/connection-color'
 
 export function ConnectionsSection() {
   const queryClient = useQueryClient()
@@ -21,11 +24,13 @@ export function ConnectionsSection() {
   const [newConnectionString, setNewConnectionString] = useState('')
   const [newIsDefault, setNewIsDefault] = useState(false)
   const [newReadOnly, setNewReadOnly] = useState(false)
+  const [newColor, setNewColor] = useState<ConnectionColorId | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editConnectionString, setEditConnectionString] = useState('')
   const [editIsDefault, setEditIsDefault] = useState(false)
   const [editReadOnly, setEditReadOnly] = useState(false)
+  const [editColor, setEditColor] = useState<ConnectionColorId | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const sortedConnections = useMemo(
@@ -50,6 +55,7 @@ export function ConnectionsSection() {
       setNewConnectionString('')
       setNewIsDefault(false)
       setNewReadOnly(false)
+      setNewColor(null)
       setErrorText('')
     },
     onError: (error) => setErrorText(error instanceof Error ? error.message : 'Failed to create connection'),
@@ -68,6 +74,7 @@ export function ConnectionsSection() {
       setEditConnectionString('')
       setEditIsDefault(false)
       setEditReadOnly(false)
+      setEditColor(null)
       setErrorText('')
     },
     onError: (error) => setErrorText(error instanceof Error ? error.message : 'Failed to update connection'),
@@ -118,6 +125,7 @@ export function ConnectionsSection() {
           {sortedConnections.map((connection) => (
             <div key={connection.id || connection.name} className="modal-row">
               <div className="modal-row-main">
+                <ConnectionColorDot color={connection.color} />
                 <div className="history-query">{connection.name}</div>
                 {connection.isDefault ? <span className="pill ok">default</span> : null}
                 {connection.readOnly ? <span className="pill">read-only</span> : null}
@@ -132,6 +140,7 @@ export function ConnectionsSection() {
                     setEditConnectionString('')
                     setEditIsDefault(Boolean(connection.isDefault))
                     setEditReadOnly(Boolean(connection.readOnly))
+                    setEditColor(connection.color ?? null)
                   }}
                 >
                   Edit
@@ -191,6 +200,10 @@ export function ConnectionsSection() {
               />
               Read-only mode
             </label>
+            <label className="modal-check">
+              Color
+              <ConnectionColorPicker value={editColor} onChange={setEditColor} disabled={busy} />
+            </label>
             <div className="history-actions">
               <button
                 className="btn small"
@@ -203,6 +216,7 @@ export function ConnectionsSection() {
                     connectionString: editConnectionString.trim() || undefined,
                     isDefault: editIsDefault,
                     readOnly: editReadOnly,
+                    color: editColor,
                   })
                 }
               >
@@ -217,6 +231,7 @@ export function ConnectionsSection() {
                   setEditConnectionString('')
                   setEditIsDefault(false)
                   setEditReadOnly(false)
+                  setEditColor(null)
                 }}
               >
                 Cancel
@@ -255,6 +270,10 @@ export function ConnectionsSection() {
             />
             Read-only mode
           </label>
+          <label className="modal-check">
+            Color
+            <ConnectionColorPicker value={newColor} onChange={setNewColor} disabled={busy} />
+          </label>
           <div className="history-actions">
             <button
               className="btn small primary"
@@ -265,6 +284,7 @@ export function ConnectionsSection() {
                   connectionString: newConnectionString.trim(),
                   isDefault: newIsDefault,
                   readOnly: newReadOnly,
+                  color: newColor,
                 })
               }
             >
