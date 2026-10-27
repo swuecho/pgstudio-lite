@@ -94,6 +94,9 @@ export function NotebookCellList({ controller }: NotebookCellListProps) {
                 top: 0,
                 left: 0,
                 width: '100%',
+                // Rows are absolutely positioned, so the list's grid gap never applies;
+                // the spacing has to be part of each measured row instead.
+                paddingBottom: virtualItem.index < sortedCells.length - 1 ? 'var(--space-3)' : 0,
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >

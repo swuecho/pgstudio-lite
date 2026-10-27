@@ -1,9 +1,17 @@
+/* When the main pane is too narrow for every action, the row scrolls instead of
+   clipping the last buttons out of reach. */
 .headerActions {
   min-width: 0;
   flex-wrap: nowrap;
   gap: var(--space-2);
   flex-shrink: 1;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.headerActions > * {
+  flex: 0 0 auto;
 }
 
 .statusPill {
@@ -33,26 +41,37 @@
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  height: 46px;
+  gap: 8px 12px;
   min-height: 46px;
-  flex: 0 0 46px;
+  flex: 0 0 auto;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface-table-toolbar-start), var(--surface-table-toolbar-end));
 }
 
 .cellCount {
+  display: flex;
+  gap: 4px;
   flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* `.history-meta` is full-width by default, which stacks these on two lines. */
+.cellCount > :global(.history-meta),
+.cellHead > :global(.history-meta) {
+  width: auto;
 }
 
 .toolbarActions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .parameterPanel {
@@ -81,7 +100,7 @@
 
 .parameterGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -170,6 +189,7 @@
 
 .cellHead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -181,6 +201,8 @@
 .cellActions {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--space-2);
 }
 
@@ -464,7 +486,7 @@
   min-height: 0;
   overflow: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
   gap: 16px;
   padding: 16px;
   align-content: start;
@@ -756,6 +778,8 @@
   min-height: 0;
   overflow: auto;
   display: grid;
+  /* Without this the rows stretch to fill the list when there are few notebooks. */
+  align-content: start;
   gap: 10px;
   padding: 12px;
 }
@@ -770,7 +794,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 120px;
 }
 
 .activeItem {
@@ -853,10 +876,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   background: var(--panel);
 }
 
 .editorTitle {
+  flex: 0 1 auto;
+  min-width: 96px;
   font-size: 12px;
   color: var(--muted);
   letter-spacing: 0.04em;
