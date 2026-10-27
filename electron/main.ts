@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell, type WebPreferences } from 'electron'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { ensureMetaDbReady } from '@/lib/meta-db'
@@ -6,7 +6,8 @@ import { startNotebookScheduler } from '@/lib/notebook-scheduler'
 import { buildAppMenu } from './menu'
 import { installShutdownHandlers } from './lifecycle'
 import { installRuntimePaths } from './paths'
-import { APP_ORIGIN, APP_SCHEME, registerAppProtocol, registerAppScheme } from './protocol'
+import { classifyUrl } from './navigation'
+import { APP_ORIGIN, registerAppProtocol, registerAppScheme } from './protocol'
 import { runCapture } from './capture'
 import { runSmokeChecks } from './smoke'
 import { restoreWindowState, trackWindowState } from './window-state'
@@ -39,6 +40,17 @@ if (!app.requestSingleInstanceLock()) {
   main()
 }
 
+function webPreferences(): WebPreferences {
+  return {
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+    webSecurity: true,
+    preload: join(__dirname, 'preload.js'),
+    devTools: !app.isPackaged || process.argv.includes('--devtools'),
+  }
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     ...restoreWindowState(),
@@ -47,14 +59,7 @@ function createWindow() {
     show: false,
     title: 'PgStudio Lite',
     backgroundColor: '#ffffff',
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      preload: join(__dirname, 'preload.js'),
-      devTools: !app.isPackaged || process.argv.includes('--devtools'),
-    },
+    webPreferences: webPreferences(),
   })
 
   trackWindowState(window)
@@ -69,14 +74,44 @@ function createWindow() {
     window.once('ready-to-show', () => window.show())
   }
 
-  // Nothing in this app should open a new window or navigate off-origin.
+  installNavigationGuards(window)
+
+  void window.loadURL(`${APP_ORIGIN}/`)
+  return window
+}
+
+/**
+ * Applied to the main window and to every window it opens.
+ *
+ * `target="_blank"` links to our own origin (the row-trace links) open in a
+ * new app window, mirroring the new tab they get in a browser. Everything else
+ * that tries to open a window or navigate off-origin goes to the OS browser if
+ * it is http(s), and nowhere otherwise.
+ */
+function installNavigationGuards(window: BrowserWindow) {
   window.webContents.setWindowOpenHandler(({ url }) => {
+    if (classifyUrl(url) === 'app') {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1200,
+          height: 800,
+          minWidth: 600,
+          minHeight: 400,
+          title: 'PgStudio Lite',
+          backgroundColor: '#ffffff',
+          webPreferences: webPreferences(),
+        },
+      }
+    }
     void openExternal(url)
     return { action: 'deny' }
   })
 
+  window.webContents.on('did-create-window', (child) => installNavigationGuards(child))
+
   window.webContents.on('will-navigate', (event, url) => {
-    if (new URL(url).protocol !== `${APP_SCHEME}:`) {
+    if (classifyUrl(url) !== 'app') {
       event.preventDefault()
       void openExternal(url)
     }
@@ -89,20 +124,15 @@ function createWindow() {
       console.error(`[renderer:${event.level}] ${event.message}`)
     }
   })
-
-  void window.loadURL(`${APP_ORIGIN}/`)
-  return window
 }
 
 /** Only ever hand http(s) URLs to the OS. */
 async function openExternal(rawUrl: string) {
+  if (classifyUrl(rawUrl) !== 'external') return
   try {
-    const parsed = new URL(rawUrl)
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      await shell.openExternal(parsed.toString())
-    }
+    await shell.openExternal(new URL(rawUrl).toString())
   } catch {
-    // Not a URL we can open; ignore.
+    // The OS could not open it; ignore.
   }
 }
 

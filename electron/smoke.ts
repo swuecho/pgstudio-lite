@@ -71,6 +71,52 @@ export function runSmokeChecks(window: BrowserWindow) {
       `)
       record('extensionless page falls back to .html', nav.ok === true, JSON.stringify(nav))
 
+      // The row-trace links open with target="_blank" rel="noreferrer". Click a
+      // real anchor rather than calling window.open so the noopener path is the
+      // one exercised; main.ts must open it as an app window, not drop it.
+      try {
+        const opened = new Promise<BrowserWindow>((resolveWindow, reject) => {
+          const timer = setTimeout(() => reject(new Error('no window opened')), 10_000)
+          window.webContents.once('did-create-window', (child) => {
+            clearTimeout(timer)
+            resolveWindow(child)
+          })
+        })
+        await run(`
+          (() => {
+            const a = document.createElement('a')
+            a.href = '/trace?connectionName=smoke&schema=public&table=books&pk=%7B%22id%22%3A1%7D'
+            a.target = '_blank'
+            a.rel = 'noreferrer'
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            return true
+          })()
+        `)
+        const child = await opened
+        if (child.webContents.isLoading()) {
+          await new Promise<void>((resolveLoad) =>
+            child.webContents.once('did-finish-load', () => resolveLoad())
+          )
+        }
+        const trace = (await child.webContents.executeJavaScript(
+          `({ origin: location.origin, path: location.pathname, table: new URLSearchParams(location.search).get('table') })`
+        )) as Record<string, unknown>
+        child.close()
+        record(
+          'target=_blank trace link opens an app window',
+          trace.origin === 'app://pgstudio' && trace.path === '/trace' && trace.table === 'books',
+          JSON.stringify(trace)
+        )
+      } catch (error) {
+        record(
+          'target=_blank trace link opens an app window',
+          false,
+          error instanceof Error ? error.message : String(error)
+        )
+      }
+
       const conns = await run<Record<string, unknown>>(`
         fetch('/api/connections').then(async r => ({ ok: r.ok, status: r.status, body: await r.json() }))
       `)
