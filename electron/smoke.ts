@@ -320,8 +320,8 @@ export function runSmokeChecks(window: BrowserWindow) {
     const ok = checks.every((check) => check.ok)
 
     // Quit rather than exit, so the `before-quit` shutdown path actually runs:
-    // pools drained, SQLite WAL checkpointed and closed. `checkShutdown` in
-    // main.ts verifies the result once the app is gone.
+    // pools drained, SQLite WAL checkpointed and closed. That handler exits
+    // with `process.exitCode`, which is what CI reads.
     process.exitCode = ok ? 0 : 1
     app.quit()
   })

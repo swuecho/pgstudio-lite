@@ -27,7 +27,9 @@ export function installShutdownHandlers() {
       } catch (error) {
         console.error('[shutdown] closeMetaDb failed', error)
       }
-      app.exit(0)
+      // `app.exit` takes its own code and ignores `process.exitCode`, so pass
+      // through whatever the app set before quitting (the smoke run's result).
+      app.exit(Number(process.exitCode ?? 0) || 0)
     }
 
     // Don't let a hung pool block quitting forever.
