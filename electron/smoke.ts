@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu, type MenuItem } from 'electron'
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { splitStatements } from '@/lib/db/query'
@@ -242,6 +242,37 @@ export function runSmokeChecks(window: BrowserWindow) {
           error instanceof Error ? error.message : String(error)
         )
       }
+
+      // App menu "Settings…" (Cmd+,) reaches the renderer over IPC and opens
+      // the app-wide settings panel (Appearance + Data, no Connections tab).
+      const flatten = (items: MenuItem[]): MenuItem[] =>
+        items.flatMap((item) => [item, ...(item.submenu ? flatten(item.submenu.items) : [])])
+      const settingsItem = flatten(Menu.getApplicationMenu()?.items ?? []).find(
+        (item) => item.accelerator === 'CmdOrCtrl+,'
+      )
+      window.webContents.send('pgstudio:open-settings')
+      const settingsPanel = await run<Record<string, unknown>>(`
+        new Promise((resolvePanel) => {
+          const started = Date.now()
+          const poll = () => {
+            const dialog = document.querySelector('[role="dialog"][aria-label="Settings"]')
+            if (dialog || Date.now() - started > 5000) {
+              const tabs = dialog ? Array.from(dialog.querySelectorAll('[role="tab"]')).map((t) => t.textContent) : null
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+              resolvePanel({ open: Boolean(dialog), tabs })
+            } else setTimeout(poll, 50)
+          }
+          poll()
+        })
+      `)
+      record(
+        'app menu Settings… (Cmd+,) opens app settings',
+        Boolean(settingsItem) &&
+          settingsPanel.open === true &&
+          JSON.stringify(settingsPanel.tabs) === JSON.stringify(['Appearance', 'Data']),
+        JSON.stringify({ menuLabel: settingsItem?.label, ...settingsPanel })
+      )
 
       if (HAS_POSTGRES) {
         const tables = await run<Record<string, unknown>>(`

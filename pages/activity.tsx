@@ -150,7 +150,7 @@ export default function ActivityPage() {
               connections={connections}
               onChange={setConnectionName}
             />
-            <SettingsButton section="connections" label="Settings" />
+            <SettingsButton section="connections" label="Manage connections" />
           </div>
         </div>
 

@@ -71,7 +71,7 @@ export default function NotebookPage() {
                 connections={controller.connections}
                 onChange={(name) => controller.updateNotebookConnection(name)}
               />
-              <SettingsButton section="connections" label="Settings" />
+              <SettingsButton section="connections" label="Manage connections" />
               <button
                 className={`btn small ${styles.actionButton}`}
                 disabled={tourMutation.isPending}

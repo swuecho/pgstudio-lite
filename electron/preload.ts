@@ -10,4 +10,11 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('pgstudioDesktop', {
   version: process.env.PGSTUDIO_APP_VERSION ?? null,
   openExternal: (url: string) => ipcRenderer.invoke('pgstudio:open-external', url),
+  onOpenSettings: (listener: () => void) => {
+    const handler = () => listener()
+    ipcRenderer.on('pgstudio:open-settings', handler)
+    return () => {
+      ipcRenderer.removeListener('pgstudio:open-settings', handler)
+    }
+  },
 })

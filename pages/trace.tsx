@@ -2,6 +2,7 @@ import { NavRail } from '@/components/shared/NavRail'
 import { ConnectionSelect } from '@/components/shared/ConnectionSelect'
 import Link from 'next/link'
 import { PageHead } from '@/components/shared/PageHead'
+import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { useRouter } from 'next/router'
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -218,6 +219,7 @@ export default function TracePage() {
   return (
     <div className={styles.layoutRoot}>
       <NavRail active={undefined} />
+      <SettingsPanel />
 
       <PageHead title="Trace" subject={schema && table ? `${schema}.${table}` : null} />
       <main className={styles.layoutMain}>

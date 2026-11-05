@@ -306,7 +306,7 @@ export default function SqlEditorPage() {
                 connections={state.connections}
                 onChange={state.setConnectionName}
               />
-              <SettingsButton section="connections" label="Settings" />
+              <SettingsButton section="connections" label="Manage connections" />
             </div>
           </div>
 

@@ -132,7 +132,7 @@ export default function TableEditorPage() {
                 connections={state.connections}
                 onChange={state.setConnectionName}
               />
-              <SettingsButton section="connections" label="Settings" />
+              <SettingsButton section="connections" label="Manage connections" />
             </div>
           </div>
 
