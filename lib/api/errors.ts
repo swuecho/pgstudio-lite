@@ -1,5 +1,3 @@
-import type { NextApiResponse } from 'next'
-
 type ErrorPayload = {
   error: string
   code?: string
@@ -31,11 +29,11 @@ export function badRequest(message: string, code?: string) {
   return new ApiHttpError(400, message, code)
 }
 
-export function methodNotAllowed(res: NextApiResponse, methods: string[]) {
-  res.setHeader('Allow', methods.join(', '))
-  return res
-    .status(405)
-    .json({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' } satisfies ErrorPayload)
+export function methodNotAllowedResponse(methods: readonly string[]) {
+  return Response.json({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' } satisfies ErrorPayload, {
+    status: 405,
+    headers: { Allow: methods.join(', ') },
+  })
 }
 
 export function normalizeApiError(error: unknown): ApiHttpError {
@@ -79,15 +77,28 @@ export function logApiErrorIfInternal(error: unknown, normalized: ApiHttpError) 
   console.error(prefix, error)
 }
 
-export function sendApiError(res: NextApiResponse, error: unknown) {
+/** The JSON error body for anything a route throws. */
+export function apiErrorResponse(error: unknown) {
   const normalized = normalizeApiError(error)
   logApiErrorIfInternal(error, normalized)
-  return res.status(normalized.statusCode).json({
-    error: normalized.message,
-    code: normalized.code,
-    details:
-      normalized.statusCode < 500 && error && typeof error === 'object' && 'details' in error
-        ? error.details
-        : undefined,
-  } satisfies ErrorPayload)
+  return Response.json(
+    {
+      error: normalized.message,
+      code: normalized.code,
+      details:
+        normalized.statusCode < 500 && error && typeof error === 'object' && 'details' in error
+          ? error.details
+          : undefined,
+    } satisfies ErrorPayload,
+    { status: normalized.statusCode }
+  )
+}
+
+/**
+ * A JSON error body with an exact status, for the handful of routes whose
+ * client-facing error shape predates ApiHttpError (`{ error: 'notebook not
+ * found' }` with no code, 422 `validation_failed` with details).
+ */
+export function errorResponse(status: number, payload: ErrorPayload) {
+  return Response.json(payload, { status })
 }

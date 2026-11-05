@@ -1,4 +1,4 @@
-import Router from 'next/router'
+import { navigateTo } from '@/components/shared/navigation'
 import type { ColumnForeignKey } from './types'
 import { buildForeignKeyTableEditorHref } from './foreignKeyUtils'
 
@@ -12,12 +12,12 @@ export function isForeignKeyJumpClick(event: ModifierClick) {
 
 /**
  * Navigate the table editor to the row a foreign-key cell points at. Uses the
- * router singleton so grid cells don't each need a router context.
+ * app router singleton so grid cells don't each need a router context.
  */
 export function jumpToReferencedRow(args: {
   connectionName: string
   foreignKey: ColumnForeignKey
   match: Record<string, unknown>
 }) {
-  void Router.push(buildForeignKeyTableEditorHref(args))
+  void navigateTo(buildForeignKeyTableEditorHref(args))
 }

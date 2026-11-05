@@ -7,7 +7,7 @@
  * 42 is ABI 146; Node 22 is 127), so one binary cannot serve both. Anything
  * that rebuilds in place — `@electron/rebuild` pointed at the repo, a
  * postinstall hook, or electron-builder's `npmRebuild` — breaks `npm test` and
- * `next dev` until it is rebuilt back.
+ * `npm run dev` until it is rebuilt back.
  *
  * So the Electron addon is fetched into a throwaway staging tree and copied to
  * `native/<platform>-<arch>/`. `lib/meta-db.ts` loads it through

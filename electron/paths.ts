@@ -12,7 +12,7 @@ import { setRuntimePaths } from '@/lib/runtime-paths'
  * wasm loading does not cope with the asar virtual filesystem.
  */
 
-/** The exported Next site the renderer is served from. */
+/** The Vite renderer build (`npm run desktop:renderer`) the app is served from. */
 export function getRendererDir(): string {
   return app.isPackaged ? join(process.resourcesPath, 'renderer') : join(app.getAppPath(), 'out-desktop')
 }

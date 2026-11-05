@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/router'
+import { navigateTo, useSearchRecord } from '@/components/shared/navigation'
 import {
   parseTableEditorUrlQuery,
   buildTableEditorUrlQuery,
@@ -21,14 +21,12 @@ type TableEditorUrlSyncState = {
 }
 
 export function useTableEditorUrlSync(state: TableEditorUrlSyncState) {
-  const router = useRouter()
+  const query = useSearchRecord()
   const didInitRef = useRef(false)
   const skipPushRef = useRef(false)
 
   useEffect(() => {
-    if (!router.isReady) return
-
-    const url = parseTableEditorUrlQuery(router.query)
+    const url = parseTableEditorUrlQuery(query)
     let appliedFromUrl = false
 
     if (url.connectionName && url.connectionName !== state.connectionName) {
@@ -52,28 +50,27 @@ export function useTableEditorUrlSync(state: TableEditorUrlSyncState) {
     didInitRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    router.isReady,
-    router.query.connectionName,
-    router.query.schema,
-    router.query.table,
-    router.query.filterColumn,
-    router.query.filterValue,
-    router.query.filterValueEnd,
-    router.query.filterMode,
+    query.connectionName,
+    query.schema,
+    query.table,
+    query.filterColumn,
+    query.filterValue,
+    query.filterValueEnd,
+    query.filterMode,
     state.applyTableNavigation,
     state.setConnectionName,
     state.setActiveTable,
   ])
 
   useEffect(() => {
-    if (!router.isReady || !didInitRef.current) return
+    if (!didInitRef.current) return
     if (skipPushRef.current) {
       skipPushRef.current = false
       return
     }
-    if (tableEditorUrlMatches(router.query, state)) return
+    if (tableEditorUrlMatches(query, state)) return
 
-    void router.replace(
+    void navigateTo(
       {
         pathname: '/table-editor',
         query: buildTableEditorUrlQuery({
@@ -85,20 +82,18 @@ export function useTableEditorUrlSync(state: TableEditorUrlSyncState) {
           filterValueEnd: state.filterValueEnd,
         }),
       },
-      undefined,
-      { shallow: true }
+      { replace: true }
     )
-    // Granular deps mirror URL fields + filter state; listing `router`/`state` risks replace feedback loops.
+    // Granular deps mirror URL fields + filter state; listing `query`/`state` risks replace feedback loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    router.isReady,
-    router.query.connectionName,
-    router.query.schema,
-    router.query.table,
-    router.query.filterColumn,
-    router.query.filterValue,
-    router.query.filterValueEnd,
-    router.query.filterMode,
+    query.connectionName,
+    query.schema,
+    query.table,
+    query.filterColumn,
+    query.filterValue,
+    query.filterValueEnd,
+    query.filterMode,
     state.activeTable,
     state.connectionName,
     state.filterColumn,

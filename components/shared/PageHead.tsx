@@ -1,4 +1,4 @@
-import Head from 'next/head'
+import { useEffect } from 'react'
 
 const APP_NAME = 'PG Studio Lite'
 
@@ -19,9 +19,9 @@ export function PageHead({ title, subject }: PageHeadProps) {
     ? `${trimmedSubject} · ${title} · ${APP_NAME}`
     : `${title} · ${APP_NAME}`
 
-  return (
-    <Head>
-      <title>{documentTitle}</title>
-    </Head>
-  )
+  useEffect(() => {
+    document.title = documentTitle
+  }, [documentTitle])
+
+  return null
 }

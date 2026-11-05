@@ -189,8 +189,8 @@ export function ResultChart({ fields, rows, initialConfig, onConfigChange }: Res
         <label className={styles.control}>
           <span>{chartType === 'pie' ? 'Label' : 'X axis'}</span>
           <select value={xField} onChange={(event) => setXField(event.target.value)}>
-            {fields.map((field) => (
-              <option key={field} value={field}>
+            {fields.map((field, index) => (
+              <option key={index} value={field}>
                 {field}
               </option>
             ))}
@@ -199,11 +199,11 @@ export function ResultChart({ fields, rows, initialConfig, onConfigChange }: Res
         <div className={styles.control}>
           <span>{chartType === 'pie' ? 'Value' : 'Y axis'}</span>
           <div className={styles.yFields}>
-            {numericFields.map((field) => {
+            {numericFields.map((field, index) => {
               const active = effectiveY.includes(field)
               return (
                 <button
-                  key={field}
+                  key={index}
                   type="button"
                   className={`${styles.yChip} ${active ? styles.yChipActive : ''}`.trim()}
                   onClick={() => (chartType === 'pie' ? setYFields([field]) : toggleYField(field))}

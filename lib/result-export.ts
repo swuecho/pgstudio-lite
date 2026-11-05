@@ -39,14 +39,23 @@ export function rowsToJson(fields: string[], rows: ResultExportRow[]): string {
 }
 
 export function downloadText(filename: string, content: string, mimeType: string) {
+  downloadBlob(filename, new Blob([content], { type: mimeType }))
+}
+
+/**
+ * Save a Blob through the browser's download flow. In the desktop app this is
+ * Electron's default download handler, which shows a native save dialog.
+ * The object URL is revoked after a delay rather than right after click():
+ * the download reads it asynchronously, and large blobs may not be read yet.
+ */
+export function downloadBlob(filename: string, blob: Blob) {
   if (typeof document === 'undefined') return
-  const blob = new Blob([content], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
   link.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export function buildResultExportFilename(prefix: string, extension: string, statementIndex: number) {

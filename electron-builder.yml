@@ -21,7 +21,7 @@ files:
   - '!**/*.map'
 
 extraResources:
-  # The exported Next site, served by electron/static.ts.
+  # The Vite renderer build, served by electron/static.ts.
   - from: out-desktop
     to: renderer
   # Read at runtime by lib/meta-db.ts (drizzle migrate + the 0006 hash check).
@@ -40,7 +40,7 @@ extraResources:
 asar: true
 asarUnpack: []
 # Never rebuild in node_modules: it holds the Node-ABI better-sqlite3 that
-# `npm test` and `next dev` depend on. See scripts/build-sqlite-native.mjs.
+# `npm test` and `npm run dev` depend on. See scripts/build-sqlite-native.mjs.
 npmRebuild: false
 
 mac:

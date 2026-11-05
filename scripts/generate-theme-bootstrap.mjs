@@ -7,7 +7,7 @@
  * script would weaken the whole page — so it ships as an external file
  * instead. Still parser-blocking, still runs before first paint.
  *
- * The output is committed so `next dev` needs no prebuild step;
+ * The output is committed so `npm run dev` needs no prebuild step;
  * `tests/theme-bootstrap.test.ts` fails if it drifts from the source.
  */
 import { build } from 'esbuild'

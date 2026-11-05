@@ -7,6 +7,9 @@ export default tseslint.config(
   {
     ignores: [
       '.git/**',
+      'dist/**',
+      'dist-server/**',
+      // Left over from the Next.js build.
       '.next/**',
       '.test-dist/**',
       'data/**',

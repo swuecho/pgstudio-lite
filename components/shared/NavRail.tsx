@@ -1,5 +1,9 @@
-import Link from 'next/link'
+import { AppLink } from './navigation'
+import { useEffect } from 'react'
 import ThemeToggle from '@/components/theme-toggle'
+import { GearIcon } from '@/components/settings/SettingsButton'
+import { getDesktopBridge } from '@/lib/desktop-bridge'
+import { useSettingsPanelStore } from './stores/settingsPanelStore'
 import styles from './NavRail.module.css'
 
 export type NavRailSection = 'sql' | 'table' | 'notebook' | 'activity'
@@ -34,12 +38,17 @@ type NavRailProps = {
  * or accessible name and an inert <button> standing in for the current page.
  */
 export function NavRail({ active }: NavRailProps) {
+  const openAppSettings = useSettingsPanelStore((s) => s.openAppSettings)
+
+  // Desktop app menu: Settings… (Cmd+,). Every page renders the rail, so this is the one place to listen.
+  useEffect(() => getDesktopBridge()?.onOpenSettings?.(openAppSettings), [openAppSettings])
+
   return (
     <aside className={styles.rail}>
       {ITEMS.map((item) => {
         const isActive = item.id === active
         return (
-          <Link
+          <AppLink
             key={item.id}
             href={item.href}
             className={`${styles.railBtn} ${isActive ? styles.railBtnActive : ''}`}
@@ -48,11 +57,20 @@ export function NavRail({ active }: NavRailProps) {
             title={item.label}
           >
             {item.short}
-          </Link>
+          </AppLink>
         )
       })}
-      <div className={styles.themeSlot}>
+      <div className={styles.bottomSlot}>
         <ThemeToggle />
+        <button
+          type="button"
+          className={`btn icon-btn ${styles.settingsBtn}`}
+          aria-label="Settings"
+          title="Settings"
+          onClick={openAppSettings}
+        >
+          <GearIcon size={16} />
+        </button>
       </div>
     </aside>
   )

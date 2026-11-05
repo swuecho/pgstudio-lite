@@ -1,5 +1,5 @@
-import { app, BrowserWindow } from 'electron'
-import { appendFileSync, writeFileSync } from 'node:fs'
+import { app, BrowserWindow, Menu, type MenuItem } from 'electron'
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { splitStatements } from '@/lib/db/query'
 
@@ -69,7 +69,7 @@ export function runSmokeChecks(window: BrowserWindow) {
         fetch('/activity').then(r => ({ ok: r.ok, status: r.status, type: r.headers.get('Content-Type'),
                                         csp: !!r.headers.get('Content-Security-Policy') }))
       `)
-      record('extensionless page falls back to .html', nav.ok === true, JSON.stringify(nav))
+      record('client route serves the app shell', nav.ok === true, JSON.stringify(nav))
 
       // The row-trace links open with target="_blank" rel="noreferrer". Click a
       // real anchor rather than calling window.open so the noopener path is the
@@ -192,6 +192,86 @@ export function runSmokeChecks(window: BrowserWindow) {
           snippetRoundTrip.listedCount === 1 &&
           snippetRoundTrip.after === 0,
         JSON.stringify(snippetRoundTrip).slice(0, 400)
+      )
+
+      // Settings → Data → "Back up app data" fetches the backup over app://
+      // and saves the blob through an <a download>. Electron routes that to
+      // `will-download`, which shows a save dialog unless a path is set; set
+      // one here so the run stays headless, then check the saved file.
+      try {
+        const savePath = join(app.getPath('userData'), 'smoke-meta-backup.sqlite')
+        const downloaded = new Promise<{ filename: string; state: string }>((resolveDownload, reject) => {
+          const timer = setTimeout(() => reject(new Error('no download started')), 15_000)
+          window.webContents.session.once('will-download', (_event, item) => {
+            item.setSavePath(savePath)
+            item.once('done', (_doneEvent, state) => {
+              clearTimeout(timer)
+              resolveDownload({ filename: item.getFilename(), state })
+            })
+          })
+        })
+        const response = await run<Record<string, unknown>>(`
+          (async () => {
+            const r = await fetch('/api/meta-backup')
+            const blob = await r.blob()
+            const name = /filename="([^"]+)"/.exec(r.headers.get('Content-Disposition') ?? '')?.[1]
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(blob)
+            a.download = name ?? 'meta-backup.sqlite'
+            a.click()
+            return { status: r.status, type: r.headers.get('Content-Type'), size: blob.size, name }
+          })()
+        `)
+        const result = await downloaded
+        const saved = readFileSync(savePath)
+        record(
+          'meta backup downloads and saves as SQLite',
+          response.status === 200 &&
+            result.state === 'completed' &&
+            /^meta-backup-\d{8}-\d{6}\.sqlite$/.test(result.filename) &&
+            saved.byteLength === response.size &&
+            saved.subarray(0, 16).toString('latin1') === 'SQLite format 3\u0000' &&
+            saved.includes('db_connections'),
+          JSON.stringify({ response, result, saved: saved.byteLength })
+        )
+        rmSync(savePath, { force: true })
+      } catch (error) {
+        record(
+          'meta backup downloads and saves as SQLite',
+          false,
+          error instanceof Error ? error.message : String(error)
+        )
+      }
+
+      // App menu "Settings…" (Cmd+,) reaches the renderer over IPC and opens
+      // the app-wide settings panel (Appearance + Data, no Connections tab).
+      const flatten = (items: MenuItem[]): MenuItem[] =>
+        items.flatMap((item) => [item, ...(item.submenu ? flatten(item.submenu.items) : [])])
+      const settingsItem = flatten(Menu.getApplicationMenu()?.items ?? []).find(
+        (item) => item.accelerator === 'CmdOrCtrl+,'
+      )
+      window.webContents.send('pgstudio:open-settings')
+      const settingsPanel = await run<Record<string, unknown>>(`
+        new Promise((resolvePanel) => {
+          const started = Date.now()
+          const poll = () => {
+            const dialog = document.querySelector('[role="dialog"][aria-label="Settings"]')
+            if (dialog || Date.now() - started > 5000) {
+              const tabs = dialog ? Array.from(dialog.querySelectorAll('[role="tab"]')).map((t) => t.textContent) : null
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+              resolvePanel({ open: Boolean(dialog), tabs })
+            } else setTimeout(poll, 50)
+          }
+          poll()
+        })
+      `)
+      record(
+        'app menu Settings… (Cmd+,) opens app settings',
+        Boolean(settingsItem) &&
+          settingsPanel.open === true &&
+          JSON.stringify(settingsPanel.tabs) === JSON.stringify(['Appearance', 'Data']),
+        JSON.stringify({ menuLabel: settingsItem?.label, ...settingsPanel })
       )
 
       if (HAS_POSTGRES) {

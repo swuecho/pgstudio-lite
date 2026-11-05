@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import SqlEditorPage from '@/pages/index'
+import SqlEditorPage from '@/src/routes/index'
 import { useSqlEditorTabsStore } from '@/components/sql-editor/stores/sqlEditorTabsStore'
 import type { QueryResult } from '@/components/sql-editor/types'
 
@@ -47,8 +47,9 @@ vi.mock('@/components/sql-editor/EditorPane', async () => {
   }
 })
 
-vi.mock('next/router', () => ({
-  useRouter: () => ({ isReady: true, query: {}, pathname: '/', replace: vi.fn() }),
+vi.mock('@/components/shared/navigation', () => ({
+  useSearchRecord: () => ({}),
+  navigateTo: vi.fn(),
 }))
 vi.mock('@/components/shared/PageHead', () => ({ PageHead: () => null }))
 vi.mock('@/components/shared/NavRail', () => ({ NavRail: () => null }))

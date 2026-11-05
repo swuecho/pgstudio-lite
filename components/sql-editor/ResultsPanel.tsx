@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/components/shared/navigation'
 import { memo, useState } from 'react'
 import { useGridKeyboardNav } from '@/hooks/useGridKeyboardNav'
 import styles from './ResultsPanel.module.css'
@@ -184,7 +184,7 @@ export const SqlResultsPanel = memo(function SqlResultsPanel({
                     </div>
                   ) : null}
                   {statement.tableTarget && connectionName ? (
-                    <Link
+                    <AppLink
                       className={styles.resultOpenLink}
                       href={{
                         pathname: '/table-editor',
@@ -196,7 +196,7 @@ export const SqlResultsPanel = memo(function SqlResultsPanel({
                       }}
                     >
                       Open in Table Editor
-                    </Link>
+                    </AppLink>
                   ) : null}
                 </div>
                 {statement.truncated ? (
@@ -269,8 +269,9 @@ function ResultRowsTable({
       <table>
         <thead>
           <tr>
-            {statement.fields.map((field) => (
-              <th key={field}>{field}</th>
+            {/* Keyed by position: a result can repeat a column name (`select a, a`). */}
+            {statement.fields.map((field, colIndex) => (
+              <th key={colIndex}>{field}</th>
             ))}
             {traceTarget ? <th aria-label="trace" /> : null}
           </tr>
@@ -287,7 +288,7 @@ function ResultRowsTable({
                   cellView.field === field
                 return (
                   <td
-                    key={`${rowIndex}-${field}`}
+                    key={colIndex}
                     className={isViewable ? styles.resultCellViewable : undefined}
                     data-viewing={isViewing ? 'true' : undefined}
                     title={isViewable ? 'Double-click to view full content' : undefined}
@@ -310,7 +311,7 @@ function ResultRowsTable({
                   {(() => {
                     const href = buildStatementTraceHref(connectionName, traceTarget, row)
                     return href ? (
-                      <Link
+                      <AppLink
                         className={styles.resultTraceLink}
                         href={href}
                         target="_blank"
@@ -318,7 +319,7 @@ function ResultRowsTable({
                         title="Trace foreign-key lineage from this row"
                       >
                         Trace
-                      </Link>
+                      </AppLink>
                     ) : null
                   })()}
                 </td>

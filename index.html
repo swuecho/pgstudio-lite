@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>PG Studio Lite</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!--
+      Runs before first paint so the saved (or OS) theme is already on <html>
+      when the page renders; applying it from an effect meant dark-theme users
+      saw a white flash on every load.
+
+      External rather than inlined: the desktop build serves the renderer under
+      a CSP without `script-src 'unsafe-inline'`. Generated from
+      themeBootstrapScript() by scripts/generate-theme-bootstrap.mjs.
+    -->
+    <script src="/theme-bootstrap.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

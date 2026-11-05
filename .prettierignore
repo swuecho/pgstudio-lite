@@ -1,7 +1,7 @@
 node_modules
-.next
-out
 dist
+dist-server
+.next
 build
 coverage
 drizzle/migrations

@@ -3,15 +3,17 @@
  *
  * The web server has no authentication: it trusts whoever can reach it, which
  * is the point of a local tool. That trust must not extend to other origins
- * running in the same browser. Next parses `application/x-www-form-urlencoded`
- * bodies into `req.body` exactly like JSON, and a form POST is a CORS "simple
- * request" that browsers send without a preflight, so without this check any
- * web page could auto-submit a form to `http://localhost:4180/api/query` and
- * run SQL with the stored credentials.
+ * running in the same browser. The API router parses request bodies as JSON
+ * whatever their Content-Type, and a form POST (`enctype="text/plain"` can
+ * carry a JSON-shaped body) is a CORS "simple request" that browsers send
+ * without a preflight, so without this check any web page could auto-submit a
+ * form to `http://localhost:4180/api/query` and run SQL with the stored
+ * credentials.
  *
- * This module is pure so it can be unit-tested; `proxy.ts` wires it to Next.
+ * This module is pure so it can be unit-tested; handleWebApiRequest() in
+ * server/web.ts applies it to every web `/api/*` request, dev and production.
  * The desktop app never runs it: the `app://` protocol is not reachable from
- * web content, and the desktop build excludes `proxy.ts` via `pageExtensions`.
+ * web content, and Electron calls the router directly.
  */
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])

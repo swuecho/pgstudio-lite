@@ -6,6 +6,7 @@ import {
   groupTablesByKind,
   parseTableSearchQuery,
   partitionPinnedRecent,
+  rankSchemaFirst,
   sortTables,
   toTableKey,
 } from '../lib/table-editor-nav'
@@ -54,6 +55,23 @@ describe('table-editor-nav', () => {
   it('sorts by size descending', () => {
     const sorted = sortTables(sampleTables, 'size')
     expect(sorted.map((t) => t.table)).toEqual(['orders_mv', 'users', 'summary'])
+  })
+
+  it('ranks the selected schema first while keeping sort order within each half', () => {
+    const tables: TableInfo[] = [
+      { schema: 'loop_2', table: 'candidates', estimatedRows: 0, kind: 'table' },
+      { schema: 'public', table: 'loop_actions', estimatedRows: 51, kind: 'table' },
+      { schema: 'loop_2', table: 'guidelines', estimatedRows: 0, kind: 'table' },
+      { schema: 'public', table: 'loop_items', estimatedRows: 51, kind: 'table' },
+    ]
+    const ranked = rankSchemaFirst(sortTables(tables, 'name'), 'public')
+    expect(ranked.map((t) => toTableKey(t.schema, t.table))).toEqual([
+      'public.loop_actions',
+      'public.loop_items',
+      'loop_2.candidates',
+      'loop_2.guidelines',
+    ])
+    expect(rankSchemaFirst(tables, '')).toEqual(tables)
   })
 
   it('groups tables by relation kind', () => {

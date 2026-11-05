@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { invokeApi as callApi, type ApiCall } from './helpers/invoke-api'
-import queryHandler from '../pages/api/query'
+import queryHandler from '../server/api/query'
 import { executeQuery } from '../lib/db'
 
 vi.mock('../lib/db', () => ({
