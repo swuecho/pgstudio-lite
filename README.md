@@ -234,7 +234,7 @@ Consequences worth knowing:
   persist to `localStorage`. Changing it would silently discard every user's
   editor tabs, filters, and theme.
 - **Web-only request filtering stays web-only.** The cross-site guard in
-  `server/web.ts` wraps the router for the web server; `app://` is unreachable
+  `createWebApp()` (`server/web.ts`) wraps the router for the web server; `app://` is unreachable
   from web content, so Electron calls the router directly.
 - **New API routes must be registered** in `server/routes.ts`.
   `tests/api-routes.test.ts` asserts a bijection with `server/api/**`, so a
@@ -247,7 +247,7 @@ Consequences worth knowing:
 | `electron/main.ts`     | App lifecycle, window, security guards                      |
 | `electron/protocol.ts` | `app://` scheme registration and request routing            |
 | `electron/static.ts`   | Serves `out-desktop/`, SPA shell for client routes, and CSP |
-| `server/router.ts`     | `/api/*` dispatch shared with the web build (incl. Monaco)  |
+| `server/router.ts`     | Hono app for `/api/*`, shared with the web build            |
 | `server/routes.ts`     | URL pattern → `server/api/**` route table                   |
 | `electron/smoke.ts`    | `--smoke` self-check (see below)                            |
 | `lib/runtime-paths.ts` | Single source of runtime paths for both builds              |

@@ -1,67 +1,57 @@
-import type { IncomingMessage, ServerResponse } from 'node:http'
-import { Readable } from 'node:stream'
+import { extname, join } from 'node:path'
+import { Hono, type Context } from 'hono'
+import { serveStatic } from '@hono/node-server/serve-static'
 import { CROSS_SITE_ERROR, isCrossSiteRequest } from '@/lib/api/same-origin'
 import { handleApiRequest } from './router'
 
 /**
- * The web build's request pipeline for `/api/*`: the same-origin guard, then
- * the shared router. Used by the Vite dev server (vite.config.ts) and the
- * production server (server/main.ts).
+ * The web build's request pipeline: the same-origin guard and the shared
+ * `/api/*` router, plus — for the production server — the Vite build in
+ * `distDir`. Used by the Vite dev server (vite.config.ts, no `distDir`) and the
+ * production server (server/main.ts), both through @hono/node-server.
  *
  * The desktop app does not go through here: Electron's `app://` protocol calls
  * handleApiRequest() directly, and web content cannot reach that scheme, so
  * the cross-site check has nothing to guard there.
  */
-export async function handleWebApiRequest(request: Request): Promise<Response | null> {
-  const { pathname } = new URL(request.url)
-  if (pathname !== '/api' && !pathname.startsWith('/api/')) return null
+export function createWebApp(options: { distDir?: string } = {}) {
+  const app = new Hono()
 
-  // Rejects state-changing requests from another site; see lib/api/same-origin.ts.
-  const crossSite = isCrossSiteRequest({
-    method: request.method,
-    origin: request.headers.get('origin'),
-    secFetchSite: request.headers.get('sec-fetch-site'),
-    host: request.headers.get('host'),
-  })
-  if (crossSite) return Response.json(CROSS_SITE_ERROR, { status: 403 })
+  const api = async (c: Context) => {
+    // Rejects state-changing requests from another site; see lib/api/same-origin.ts.
+    const crossSite = isCrossSiteRequest({
+      method: c.req.method,
+      origin: c.req.header('origin') ?? null,
+      secFetchSite: c.req.header('sec-fetch-site') ?? null,
+      host: c.req.header('host') ?? null,
+    })
+    if (crossSite) return c.json(CROSS_SITE_ERROR, 403)
 
-  return handleApiRequest(request)
-}
+    // handleApiRequest only returns null outside /api, which these routes exclude.
+    return (await handleApiRequest(c.req.raw)) ?? c.notFound()
+  }
+  app.all('/api', api)
+  app.all('/api/*', api)
 
-/** Node `IncomingMessage` -> Fetch `Request`. The body is streamed, not buffered. */
-export function toWebRequest(req: IncomingMessage): Request {
-  const host = req.headers.host ?? 'localhost'
-  const url = new URL(req.url ?? '/', `http://${host}`)
-
-  const headers = new Headers()
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined) continue
-    if (Array.isArray(value)) value.forEach((item) => headers.append(key, item))
-    else headers.set(key, value)
+  const { distDir } = options
+  if (distDir) {
+    // Vite fingerprints everything under /assets; the HTML shell must revalidate.
+    // Set after the fact: serveStatic's `onFound` runs once its response is
+    // already built, so headers added there are lost.
+    app.use('*', async (c, next) => {
+      await next()
+      if (!c.res.ok) return
+      const html = c.res.headers.get('Content-Type')?.startsWith('text/html')
+      c.res.headers.set('Cache-Control', html ? 'no-cache' : 'public, max-age=31536000, immutable')
+    })
+    app.use('*', serveStatic({ root: distDir }))
+    // `/table-editor` is a client route and gets the SPA shell;
+    // `/assets/missing.js` is a real 404.
+    const shell = serveStatic({ path: join(distDir, 'index.html') })
+    app.use('*', async (c, next) => (extname(c.req.path) ? c.text('Not Found', 404) : shell(c, next)))
   }
 
-  const method = req.method ?? 'GET'
-  const hasBody = method !== 'GET' && method !== 'HEAD'
-  return new Request(url, {
-    method,
-    headers,
-    body: hasBody ? (Readable.toWeb(req) as ReadableStream<Uint8Array>) : undefined,
-    // Required by undici whenever the body is a stream.
-    ...(hasBody ? { duplex: 'half' } : {}),
-  } as RequestInit)
-}
-
-/** Fetch `Response` -> Node `ServerResponse`. */
-export async function sendWebResponse(res: ServerResponse, response: Response) {
-  res.statusCode = response.status
-  response.headers.forEach((value, key) => res.setHeader(key, value))
-  if (!response.body) {
-    res.end()
-    return
-  }
-  const body = Buffer.from(await response.arrayBuffer())
-  res.setHeader('Content-Length', body.byteLength)
-  res.end(body)
+  return app
 }
 
 /**

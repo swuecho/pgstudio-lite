@@ -10,7 +10,7 @@
  * form to `http://localhost:4180/api/query` and run SQL with the stored
  * credentials.
  *
- * This module is pure so it can be unit-tested; handleWebApiRequest() in
+ * This module is pure so it can be unit-tested; createWebApp() in
  * server/web.ts applies it to every web `/api/*` request, dev and production.
  * The desktop app never runs it: the `app://` protocol is not reachable from
  * web content, and Electron calls the router directly.

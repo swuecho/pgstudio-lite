@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { handleApiRequest, matchRoute } from '@/server/router'
+import { createApiApp, handleApiRequest } from '@/server/router'
 import { routes } from '@/server/routes'
 import { allowedMethods } from '@/server/route'
 
@@ -22,6 +22,23 @@ function fileToRoute(file: string): string {
     part.startsWith('[...') ? `*${part.slice(4, -1)}` : part.startsWith('[') ? `:${part.slice(1, -1)}` : part
   )
   return ['/api', ...mapped].join('/').replace(/\/$/, '')
+}
+
+/**
+ * The real route table with every handler replaced by one that echoes which
+ * pattern matched and the query it was given, so matching can be tested
+ * without a database.
+ */
+const stubApp = createApiApp(
+  routes.map((route) => ({
+    pattern: route.pattern,
+    handler: { GET: ({ query }: { query: unknown }) => ({ pattern: route.pattern, query }) },
+  }))
+)
+
+async function matchRoute(path: string): Promise<{ pattern: string; query: Record<string, unknown> } | null> {
+  const response = await stubApp.request(path)
+  return response.status === 200 ? response.json() : null
 }
 
 describe('API route table', () => {
@@ -46,29 +63,44 @@ describe('API route table', () => {
     expect(patterns).toEqual([...new Set(patterns)])
   })
 
-  it('prefers static segments over dynamic ones', () => {
+  it('prefers static segments over dynamic ones', async () => {
     // `/api/notebooks/import` also matches `/api/notebooks/:id`; if the dynamic
     // route won, importing a notebook would try to load one with id "import".
-    expect(matchRoute('/api/notebooks/import')?.route.pattern).toBe('/api/notebooks/import')
-    expect(matchRoute('/api/notebooks/generate-tour')?.route.pattern).toBe('/api/notebooks/generate-tour')
-    expect(matchRoute('/api/notebooks/nb_123')?.route.pattern).toBe('/api/notebooks/:id')
+    expect((await matchRoute('/api/notebooks/import'))?.pattern).toBe('/api/notebooks/import')
+    expect((await matchRoute('/api/notebooks/generate-tour'))?.pattern).toBe('/api/notebooks/generate-tour')
+    expect((await matchRoute('/api/notebooks/nb_123'))?.pattern).toBe('/api/notebooks/:id')
   })
 
-  it('extracts dynamic params', () => {
-    expect(matchRoute('/api/tables/orders/rows')?.params).toEqual({ table: 'orders' })
-    expect(matchRoute('/api/notebooks/nb_1/run-cell')?.params).toEqual({ id: 'nb_1' })
+  it('extracts dynamic params', async () => {
+    expect((await matchRoute('/api/tables/orders/rows'))?.query).toEqual({ table: 'orders' })
+    expect((await matchRoute('/api/notebooks/nb_1/run-cell'))?.query).toEqual({ id: 'nb_1' })
   })
 
-  it('decodes percent-encoded params', () => {
+  it('decodes percent-encoded params', async () => {
     // Table names are `schema.table` and can contain characters the client
     // encodes, e.g. a space or a slash.
-    expect(matchRoute('/api/tables/public.my%20orders/ddl')?.params).toEqual({ table: 'public.my orders' })
+    expect((await matchRoute('/api/tables/public.my%20orders/ddl'))?.query).toEqual({
+      table: 'public.my orders',
+    })
+    expect((await matchRoute('/api/tables/odd%2Fname/ddl'))?.query).toEqual({ table: 'odd/name' })
   })
 
-  it('does not match unknown or partial paths', () => {
-    expect(matchRoute('/api/nope')).toBeNull()
-    expect(matchRoute('/api/tables/orders')).toBeNull()
-    expect(matchRoute('/api/tables/orders/rows/extra')).toBeNull()
+  it('does not match unknown or partial paths', async () => {
+    expect(await matchRoute('/api/nope')).toBeNull()
+    expect(await matchRoute('/api/tables/orders')).toBeNull()
+    expect(await matchRoute('/api/tables/orders/rows/extra')).toBeNull()
+  })
+
+  it('merges search params under path params, repeated ones as arrays', async () => {
+    expect((await matchRoute('/api/tables/orders/rows?limit=5&sort=a&sort=b&table=spoofed'))?.query).toEqual({
+      limit: '5',
+      sort: ['a', 'b'],
+      table: 'orders',
+    })
+  })
+
+  it('tolerates a trailing slash', async () => {
+    expect((await matchRoute('/api/tables/'))?.pattern).toBe('/api/tables')
   })
 })
 
