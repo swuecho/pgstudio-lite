@@ -50,7 +50,7 @@ Saved connections, history, snippets, and notebooks live in a **local SQLite** f
 ## Project layout (high level)
 
 - **`src/`** — Vite entry (`main.tsx`), the [TanStack Router](https://tanstack.com/router) route tree (`router.tsx`), and one file per page under `src/routes/`.
-- **`server/`** — The framework-free API: route files under `server/api/**` (paths mirror URLs), the route table and dispatcher, and the Node adapter used by the dev and production web servers.
+- **`server/`** — The API: route files under `server/api/**` (paths mirror URLs), the route table, the Hono app in `router.ts` that matches them, and `web.ts`, which the dev and production web servers run through `@hono/node-server`.
 - **`components/`** — React UI building blocks.
 - **`lib/`** — Server logic, DB access, API helpers, and shared utilities.
 - **`tests/`** — Vitest tests (unit and integration-style).

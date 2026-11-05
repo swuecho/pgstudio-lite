@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
+import { getRequestListener } from '@hono/node-server'
 
 /**
  * Two build targets share this config:
@@ -36,9 +37,9 @@ function apiDevServer(): Plugin {
         }
         try {
           const web = await load()
-          const response = await web.handleWebApiRequest(web.toWebRequest(req))
-          if (!response) return next()
-          await web.sendWebResponse(res, response)
+          // overrideGlobalObjects: false, as in server/main.ts — and here it
+          // would also swap Request/Response under Vite itself.
+          await getRequestListener(web.createWebApp().fetch, { overrideGlobalObjects: false })(req, res)
         } catch (error) {
           next(error)
         }

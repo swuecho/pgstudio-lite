@@ -1,7 +1,8 @@
 import { apiErrorResponse, methodNotAllowedResponse } from '@/lib/api/errors'
 
 /**
- * Framework-free API routes.
+ * API route definitions. Deliberately independent of Hono, which only does
+ * path matching in server/router.ts.
  *
  * A route is a map from HTTP method to a plain function. The function gets the
  * parsed request and returns either data (sent as a 200 JSON body) or a

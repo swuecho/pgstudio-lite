@@ -1,88 +1,22 @@
+import { Hono } from 'hono'
 import { routes, type Route } from './routes'
 import { runRoute, type RouteQuery } from './route'
 import { serveMonaco } from './monaco'
 
-type Segment =
-  | { kind: 'static'; value: string }
-  | { kind: 'dynamic'; name: string }
-  | { kind: 'catchAll'; name: string }
-
-type CompiledRoute = {
-  route: Route
-  segments: Segment[]
-  /** Lower sorts first: static routes beat dynamic, dynamic beats catch-all. */
-  rank: number
+function errorResponse(status: number, error: string, code: string) {
+  return Response.json({ error, code }, { status })
 }
 
-function compile(route: Route): CompiledRoute {
-  const segments: Segment[] = route.pattern
-    .split('/')
-    .filter((part) => part.length > 0)
-    .map((part) => {
-      if (part.startsWith('*')) return { kind: 'catchAll', name: part.slice(1) }
-      if (part.startsWith(':')) return { kind: 'dynamic', name: part.slice(1) }
-      return { kind: 'static', value: part }
-    })
-
-  // An exact static path wins over a
-  // single dynamic segment, which wins over a catch-all.
-  const rank = segments.some((s) => s.kind === 'catchAll')
-    ? 2
-    : segments.some((s) => s.kind === 'dynamic')
-      ? 1
-      : 0
-
-  return { route, segments, rank }
-}
-
-const compiled: CompiledRoute[] = routes.map(compile).sort((a, b) => a.rank - b.rank)
-
-export type RouteMatch = {
-  route: Route
-  params: Record<string, string | string[]>
-}
-
-export function matchRoute(pathname: string): RouteMatch | null {
-  const parts = pathname.split('/').filter((part) => part.length > 0)
-
-  for (const candidate of compiled) {
-    const params: Record<string, string | string[]> = {}
-    let matched = true
-
-    for (let i = 0; i < candidate.segments.length; i += 1) {
-      const segment = candidate.segments[i]
-
-      if (segment.kind === 'catchAll') {
-        const rest = parts.slice(i)
-        if (rest.length === 0) {
-          matched = false
-          break
-        }
-        params[segment.name] = rest.map((part) => decodeURIComponent(part))
-        // A catch-all consumes everything, so this is a match by construction.
-        return { route: candidate.route, params }
-      }
-
-      if (i >= parts.length) {
-        matched = false
-        break
-      }
-      if (segment.kind === 'static') {
-        if (parts[i] !== segment.value) {
-          matched = false
-          break
-        }
-      } else {
-        params[segment.name] = decodeURIComponent(parts[i])
-      }
-    }
-
-    if (matched && parts.length === candidate.segments.length) {
-      return { route: candidate.route, params }
-    }
-  }
-
-  return null
+/**
+ * Lower sorts first: static routes beat dynamic, dynamic beats catch-all.
+ * Hono tries matching handlers in registration order, so registering in this
+ * order keeps `/api/notebooks/import` ahead of `/api/notebooks/:id` whatever
+ * order server/routes.ts lists them in.
+ */
+function specificity(pattern: string) {
+  if (pattern.includes('*')) return 2
+  if (pattern.includes(':')) return 1
+  return 0
 }
 
 /**
@@ -106,17 +40,82 @@ export function buildQuery(
   return query
 }
 
-function errorResponse(status: number, error: string, code: string) {
-  return Response.json({ error, code }, { status })
+/**
+ * Bodies are read for every method that carries one — notably including
+ * DELETE, which several call sites in features/* use with a JSON payload.
+ * An empty body is `undefined`, not an error.
+ */
+async function readJsonBody(request: Request): Promise<{ body: unknown } | { error: Response }> {
+  if (request.method === 'GET' || request.method === 'HEAD') return { body: undefined }
+
+  let text = ''
+  try {
+    text = await request.text()
+  } catch {
+    return { error: errorResponse(400, 'Could not read request body', 'INVALID_REQUEST') }
+  }
+  if (text.length === 0) return { body: undefined }
+  try {
+    return { body: JSON.parse(text) }
+  } catch {
+    return { error: errorResponse(400, 'Request body is not valid JSON', 'INVALID_REQUEST') }
+  }
+}
+
+/**
+ * The Hono app behind `/api/*`. Hono does the path matching; each route's
+ * `defineRoute` methods are still dispatched by runRoute(), which owns the 405
+ * response and error normalization, so route files and `invokeApi` tests do
+ * not depend on Hono.
+ *
+ * Takes the route table as a parameter so tests can mount stub handlers.
+ */
+export function createApiApp(table: readonly Route[] = routes) {
+  // strict: false keeps `/api/tables/` matching `/api/tables`.
+  const app = new Hono({ strict: false })
+
+  // Static file servers for monaco-editor; see server/monaco.ts.
+  const monaco = (request: Request) => serveMonaco(new URL(request.url).pathname)
+  app.get('/api/monaco/*', (c) => monaco(c.req.raw) ?? c.notFound())
+  app.get('/api/vs/*', (c) => monaco(c.req.raw) ?? c.notFound())
+
+  const ordered = [...table].sort((a, b) => specificity(a.pattern) - specificity(b.pattern))
+  for (const route of ordered) {
+    app.all(route.pattern, async (c) => {
+      const parsed = await readJsonBody(c.req.raw)
+      if ('error' in parsed) return parsed.error
+
+      return runRoute(route.handler, {
+        method: c.req.method,
+        query: buildQuery(new URL(c.req.url).searchParams, c.req.param()),
+        body: parsed.body,
+      })
+    })
+  }
+
+  app.notFound((c) => errorResponse(404, `No API route for ${c.req.path}`, 'NOT_FOUND'))
+
+  // runRoute normalizes handler errors itself, so this is only reached for
+  // genuinely unexpected throws. Log it — a swallowed stack here would be
+  // invisible in a packaged app.
+  app.onError((error, c) => {
+    console.error(`[api] ${c.req.method} ${c.req.path} threw`, error)
+    return errorResponse(500, 'Internal Server Error', 'INTERNAL_ERROR')
+  })
+
+  return app
+}
+
+const apiApp = createApiApp()
+
+export function isApiPath(pathname: string) {
+  return pathname === '/api' || pathname.startsWith('/api/')
 }
 
 /**
  * The single entry point for `/api/*`, shared by the Electron `app://`
  * protocol, the web server, and the Vite dev server. Returns null for paths
  * outside `/api`, so callers can fall through to static files.
- *
- * Bodies are read for every method that carries one — notably including
- * DELETE, which several call sites in features/* use with a JSON payload.
  */
 export async function handleApiRequest(request: Request): Promise<Response | null> {
   let url: URL
@@ -125,42 +124,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   } catch {
     return null
   }
-  if (url.pathname !== '/api' && !url.pathname.startsWith('/api/')) return null
-
-  const monaco = serveMonaco(url.pathname)
-  if (monaco) return monaco
-
-  const match = matchRoute(url.pathname)
-  if (!match) return errorResponse(404, `No API route for ${url.pathname}`, 'NOT_FOUND')
-
-  let body: unknown
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    let text = ''
-    try {
-      text = await request.text()
-    } catch {
-      return errorResponse(400, 'Could not read request body', 'INVALID_REQUEST')
-    }
-    if (text.length > 0) {
-      try {
-        body = JSON.parse(text)
-      } catch {
-        return errorResponse(400, 'Request body is not valid JSON', 'INVALID_REQUEST')
-      }
-    }
-  }
-
-  try {
-    return await runRoute(match.route.handler, {
-      method: request.method,
-      query: buildQuery(url.searchParams, match.params),
-      body,
-    })
-  } catch (error) {
-    // runRoute normalizes handler errors itself, so this is only reached for
-    // genuinely unexpected throws. Log it — a swallowed stack here would be
-    // invisible in a packaged app.
-    console.error(`[api] ${request.method} ${url.pathname} threw`, error)
-    return errorResponse(500, 'Internal Server Error', 'INTERNAL_ERROR')
-  }
+  if (!isApiPath(url.pathname)) return null
+  return apiApp.fetch(request)
 }

@@ -1,7 +1,7 @@
 # PG Studio Lite — agent notes
 
 Local PostgreSQL manager: Vite + React + TypeScript with TanStack Router, shipped as a
-web app and as an Electron desktop app. The API is framework-free (`server/`). Metadata (history, snippets, notebooks,
+web app and as an Electron desktop app. The API (`server/`) is plain `defineRoute` handler files behind a small Hono app. Metadata (history, snippets, notebooks,
 connections) lives in a local SQLite file via `better-sqlite3` + Drizzle.
 
 [CONTRIBUTING.md](./CONTRIBUTING.md) is the full guide. This file is the short
@@ -43,7 +43,11 @@ staged files. Run `npm run check` before opening a PR.
 - **API routes are `defineRoute({ GET, POST, … })` files under `server/api/`**, path
   mirroring the URL (`[table]` for a param). Handlers return data (sent as JSON) or a
   `Response`, and throw for errors. Every route needs an entry in `server/routes.ts`;
-  `tests/api-routes.test.ts` checks it. Never import `next` — it is gone.
+  `tests/api-routes.test.ts` checks it. Route files don't import Hono; `runRoute` dispatches
+  methods. Never import `next` — it is gone.
+- **Never let `@hono/node-server` override the global `Request`/`Response`.** Pass
+  `overrideGlobalObjects: false` (as `server/main.ts` and `vite.config.ts` do):
+  `runRoute`'s `instanceof Response` check fails against its lightweight classes.
 - **Navigation goes through `@/components/shared/navigation`** (`AppLink`, `navigateTo`,
   `useSearchRecord`). Search params are plain strings by design; don't switch the router
   to TanStack's JSON search parsing, it would change every existing URL.
@@ -58,7 +62,7 @@ staged files. Run `npm run check` before opening a PR.
 ## Layout
 
 - `src/` — Vite entry, route tree (`router.tsx`), pages in `src/routes/`. Page files stay thin; UI lives in `components/<area>/`.
-- `server/` — `api/**` route files, `routes.ts` table, `router.ts` dispatcher (shared by web and Electron), `web.ts` (same-origin guard, Node adapter, scheduler start), `main.ts` (production server).
+- `server/` — `api/**` route files, `routes.ts` table, `router.ts` Hono app that matches `/api/*` (shared by web and Electron), `web.ts` (`createWebApp`: same-origin guard, static files, scheduler start), `main.ts` (production server via `@hono/node-server`).
 - `components/` — `sql-editor`, `table-editor`, `notebook`, `activity`, `trace`, `settings`, `shared`.
 - `features/<area>/*.service.ts` — client-side fetch wrappers used by React Query hooks.
 - `lib/` — server logic. `lib/db/` is Postgres access; `lib/meta-db.ts` and `lib/notebook-db.ts` (barrel over `lib/notebook-db/`) are SQLite.
