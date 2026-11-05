@@ -102,8 +102,9 @@ function ResultRowsTable({ fields, rows }: ResultRowsTableProps) {
       <table>
         <thead>
           <tr>
-            {fields.map((field) => (
-              <th key={field}>{field}</th>
+            {/* Keyed by position: a result can repeat a column name (`select a, a`). */}
+            {fields.map((field, colIndex) => (
+              <th key={colIndex}>{field}</th>
             ))}
           </tr>
         </thead>
@@ -111,7 +112,7 @@ function ResultRowsTable({ fields, rows }: ResultRowsTableProps) {
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {fields.map((field, colIndex) => (
-                <td key={`${rowIndex}-${field}`}>
+                <td key={colIndex}>
                   <CopyableCellValue
                     {...copyableCellDisplayProps(formatCell(row[field]))}
                     {...cellProps(rowIndex, colIndex)}

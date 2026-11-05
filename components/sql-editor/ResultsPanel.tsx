@@ -269,8 +269,9 @@ function ResultRowsTable({
       <table>
         <thead>
           <tr>
-            {statement.fields.map((field) => (
-              <th key={field}>{field}</th>
+            {/* Keyed by position: a result can repeat a column name (`select a, a`). */}
+            {statement.fields.map((field, colIndex) => (
+              <th key={colIndex}>{field}</th>
             ))}
             {traceTarget ? <th aria-label="trace" /> : null}
           </tr>
@@ -287,7 +288,7 @@ function ResultRowsTable({
                   cellView.field === field
                 return (
                   <td
-                    key={`${rowIndex}-${field}`}
+                    key={colIndex}
                     className={isViewable ? styles.resultCellViewable : undefined}
                     data-viewing={isViewing ? 'true' : undefined}
                     title={isViewable ? 'Double-click to view full content' : undefined}
