@@ -2,11 +2,13 @@ import { useEffect } from 'react'
 import { useSettingsPanelStore, type SettingsSection } from '../shared/stores/settingsPanelStore'
 import { ConnectionsSection } from './sections/ConnectionsSection'
 import { AppearanceSection } from './sections/AppearanceSection'
+import { DataSection } from './sections/DataSection'
 import styles from './SettingsPanel.module.css'
 
 const SECTIONS: { id: SettingsSection; label: string }[] = [
   { id: 'connections', label: 'Connections' },
   { id: 'appearance', label: 'Appearance' },
+  { id: 'data', label: 'Data' },
 ]
 
 export function SettingsPanel() {
@@ -59,6 +61,7 @@ export function SettingsPanel() {
         <div className={styles.body}>
           {activeSection === 'connections' ? <ConnectionsSection /> : null}
           {activeSection === 'appearance' ? <AppearanceSection /> : null}
+          {activeSection === 'data' ? <DataSection /> : null}
         </div>
       </div>
     </div>

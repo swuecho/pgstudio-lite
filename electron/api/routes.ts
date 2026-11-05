@@ -6,6 +6,7 @@ import activitySessions from '@/pages/api/activity/sessions'
 import activityStatements from '@/pages/api/activity/statements'
 import connections from '@/pages/api/connections'
 import history from '@/pages/api/history'
+import metaBackup from '@/pages/api/meta-backup'
 import notebookById from '@/pages/api/notebooks/[id]'
 import notebookCells from '@/pages/api/notebooks/[id]/cells'
 import notebookExport from '@/pages/api/notebooks/[id]/export'
@@ -59,6 +60,7 @@ export const routes: Route[] = [
   { pattern: '/api/history', handler: history as ApiHandler },
   { pattern: '/api/snippets', handler: snippets as ApiHandler },
   { pattern: '/api/table-editor-views', handler: tableEditorViews as ApiHandler },
+  { pattern: '/api/meta-backup', handler: metaBackup as ApiHandler },
 
   { pattern: '/api/schema', handler: schemaIndex as ApiHandler },
   { pattern: '/api/schema/columns', handler: schemaColumns as ApiHandler },

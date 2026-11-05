@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type SettingsSection = 'connections' | 'appearance'
+export type SettingsSection = 'connections' | 'appearance' | 'data'
 
 type SettingsPanelStore = {
   isOpen: boolean
