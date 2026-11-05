@@ -1,6 +1,5 @@
 import { protocol } from 'electron'
-import { dispatchApi } from './api/router'
-import { serveMonaco } from './monaco'
+import { handleApiRequest } from '@/server/router'
 import { serveStatic } from './static'
 
 /**
@@ -51,12 +50,8 @@ export function registerAppProtocol() {
       return new Response('Not Found', { status: 404 })
     }
 
-    const monacoResponse = serveMonaco(url.pathname)
-    if (monacoResponse) return monacoResponse
-
-    if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
-      return dispatchApi(request, url)
-    }
+    const apiResponse = await handleApiRequest(request)
+    if (apiResponse) return apiResponse
 
     return serveStatic(url.pathname)
   })

@@ -11,8 +11,9 @@ vi.mock('../features/table/table.service', () => ({
 }))
 
 const routerPush = vi.fn()
-vi.mock('next/router', () => ({
-  default: { push: (...args: unknown[]) => routerPush(...args) },
+vi.mock('@/components/shared/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/shared/navigation')>()),
+  navigateTo: (...args: unknown[]) => routerPush(...args),
 }))
 
 const userColumn: ColumnInfo = {

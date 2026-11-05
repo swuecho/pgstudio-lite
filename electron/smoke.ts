@@ -69,7 +69,7 @@ export function runSmokeChecks(window: BrowserWindow) {
         fetch('/activity').then(r => ({ ok: r.ok, status: r.status, type: r.headers.get('Content-Type'),
                                         csp: !!r.headers.get('Content-Security-Policy') }))
       `)
-      record('extensionless page falls back to .html', nav.ok === true, JSON.stringify(nav))
+      record('client route serves the app shell', nav.ok === true, JSON.stringify(nav))
 
       // The row-trace links open with target="_blank" rel="noreferrer". Click a
       // real anchor rather than calling window.open so the noopener path is the

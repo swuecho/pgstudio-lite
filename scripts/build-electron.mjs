@@ -2,8 +2,8 @@
  * Bundles the Electron main process and preload with esbuild.
  *
  * Only `electron` itself is external. Everything else — `pg`, `drizzle-orm`,
- * `zod`, better-sqlite3's JS wrapper, and all 28 `pages/api` handlers reached
- * through electron/api/routes.ts — is bundled, so the packaged app carries no
+ * `zod`, better-sqlite3's JS wrapper, and every `server/api` route reached
+ * through server/routes.ts — is bundled, so the packaged app carries no
  * `node_modules` at all.
  */
 import { build } from 'esbuild'

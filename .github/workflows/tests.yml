@@ -63,7 +63,7 @@ jobs:
   desktop-build:
     # The desktop static export and the Electron main bundle are only exercised
     # by `npm run desktop:*`, so build both here. Without this, a change to
-    # pages/api or electron/ could break the packaged app while CI stays green.
+    # server/ or electron/ could break the packaged app while CI stays green.
     needs: checks
     runs-on: macos-latest
 

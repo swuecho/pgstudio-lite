@@ -1,94 +1,69 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+import { runRoute, type RouteDefinition } from '@/server/route'
 
 /**
- * Minimal Next API test harness. Import the route handler and call it with a
- * request shape; get back the status, JSON payload, and response headers.
+ * Minimal API test harness. Import the route and call it with a request
+ * shape; get back the status, payload, and response headers.
  *
- *   import handler from '@/pages/api/query'
- *   const res = await invokeApi(handler, { method: 'POST', body: { query: 'select 1' } })
+ *   import route from '@/server/api/query'
+ *   const res = await invokeApi(route, { method: 'POST', body: { query: 'select 1' } })
  *   expect(res.statusCode).toBe(200)
+ *
+ * Runs the route through the same `runRoute()` the real router uses, so method
+ * dispatch and error normalization are exercised too.
  *
  * `vi.mock('@/lib/db', ...)` in the test file to keep Postgres out of it.
  * Vitest only picks up `tests/**\/*.test.ts(x)`, so this file is not a test.
  */
 
-export type ApiHandler = (req: NextApiRequest, res: NextApiResponse) => unknown
-
 export type ApiCall = {
   /** Defaults to GET. */
   method?: string
-  /** Route params (`[table]`, `[id]`) and query string values, as Next merges them. */
+  /** Route params (`[table]`, `[id]`) and query string values, merged as the router does. */
   query?: Record<string, unknown>
   body?: unknown
-  headers?: Record<string, string>
 }
 
 export type ApiResult<T = unknown> = {
   statusCode: number
-  /** Whatever the handler passed to `res.json()` / `res.send()`, or null. */
+  /** Parsed JSON for JSON responses, a Buffer for anything else, null when empty. */
   payload: T
-  /** Response headers as set by the handler; look up with `getHeader` for case-insensitivity. */
+  /** Response headers; look up with `getHeader` for case-insensitivity. */
   headers: Record<string, string>
   getHeader(name: string): string | undefined
 }
 
-export function createMockRes() {
+export async function toApiResult<T = unknown>(response: Response): Promise<ApiResult<T>> {
   const headers: Record<string, string> = {}
-  const state = { statusCode: 200, payload: null as unknown }
-
-  const res = {
-    setHeader(name: string, value: string | number | readonly string[]) {
-      headers[name] = Array.isArray(value) ? value.join(', ') : String(value)
-      return res
-    },
-    getHeader(name: string) {
-      const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase())
-      return key === undefined ? undefined : headers[key]
-    },
-    removeHeader(name: string) {
-      for (const key of Object.keys(headers)) {
-        if (key.toLowerCase() === name.toLowerCase()) delete headers[key]
-      }
-    },
-    status(code: number) {
-      state.statusCode = code
-      return res
-    },
-    json(body: unknown) {
-      state.payload = body
-      return res
-    },
-    send(body: unknown) {
-      state.payload = body
-      return res
-    },
-    end(body?: unknown) {
-      if (body !== undefined) state.payload = body
-      return res
-    },
-  }
-
-  const result = <T = unknown>(): ApiResult<T> => ({
-    statusCode: state.statusCode,
-    payload: state.payload as T,
-    headers,
-    getHeader: res.getHeader,
+  response.headers.forEach((value, key) => {
+    headers[key] = value
   })
 
-  return { res: res as unknown as NextApiResponse, result }
-}
+  const contentType = response.headers.get('content-type') ?? ''
+  let payload: unknown = null
+  if (contentType.includes('json')) {
+    const text = await response.text()
+    payload = text ? JSON.parse(text) : null
+  } else {
+    const bytes = Buffer.from(await response.arrayBuffer())
+    payload = bytes.byteLength > 0 ? bytes : null
+  }
 
-export function createMockReq(call: ApiCall = {}): NextApiRequest {
   return {
-    method: call.method ?? 'GET',
-    query: call.query ?? {},
-    body: call.body,
-    headers: call.headers ?? {},
-  } as unknown as NextApiRequest
+    statusCode: response.status,
+    payload: payload as T,
+    headers,
+    getHeader: (name) => response.headers.get(name) ?? undefined,
+  }
 }
 
-export async function invokeApi<T = unknown>(handler: ApiHandler, call: ApiCall = {}): Promise<ApiResult<T>> {
-  const { res, result } = createMockRes()
-  await handler(createMockReq(call), res)
-  return result<T>()
+export async function invokeApi<T = unknown>(
+  route: RouteDefinition,
+  call: ApiCall = {}
+): Promise<ApiResult<T>> {
+  const response = await runRoute(route, {
+    method: call.method ?? 'GET',
+    query: (call.query ?? {}) as Record<string, string | string[]>,
+    body: call.body,
+  })
+  return toApiResult<T>(response)
 }

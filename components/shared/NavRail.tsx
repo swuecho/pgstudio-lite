@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from './navigation'
 import { useEffect } from 'react'
 import ThemeToggle from '@/components/theme-toggle'
 import { GearIcon } from '@/components/settings/SettingsButton'
@@ -48,7 +48,7 @@ export function NavRail({ active }: NavRailProps) {
       {ITEMS.map((item) => {
         const isActive = item.id === active
         return (
-          <Link
+          <AppLink
             key={item.id}
             href={item.href}
             className={`${styles.railBtn} ${isActive ? styles.railBtnActive : ''}`}
@@ -57,7 +57,7 @@ export function NavRail({ active }: NavRailProps) {
             title={item.label}
           >
             {item.short}
-          </Link>
+          </AppLink>
         )
       })}
       <div className={styles.bottomSlot}>

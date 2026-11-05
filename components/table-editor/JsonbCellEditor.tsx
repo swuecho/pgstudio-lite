@@ -1,13 +1,10 @@
-import dynamic from 'next/dynamic'
-import { loader } from '@monaco-editor/react'
+import MonacoEditor, { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useCallback, useEffect, useRef } from 'react'
 import { getCurrentTheme } from '../sql-editor/utils'
 import { defineEditorThemes, editorThemeName } from '../sql-editor/editorThemes'
 import { useActiveConnectionColor } from '@/components/shared/ConnectionColorContext'
 import styles from './TableEditorStyles.module.css'
-
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
 if (typeof window !== 'undefined') {
   ;(window as any).MonacoEnvironment = {

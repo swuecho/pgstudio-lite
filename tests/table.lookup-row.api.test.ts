@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { invokeApi as callApi } from './helpers/invoke-api'
-import lookupRowHandler from '../pages/api/tables/[table]/lookup-row'
+import lookupRowHandler from '../server/api/tables/[table]/lookup-row'
 import * as db from '../lib/db'
 
 vi.mock('../lib/db', () => ({

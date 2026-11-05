@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createMockRes } from './helpers/invoke-api'
-import { ApiHttpError, logApiErrorIfInternal, methodNotAllowed, normalizeApiError } from '../lib/api/errors'
+import {
+  ApiHttpError,
+  apiErrorResponse,
+  logApiErrorIfInternal,
+  methodNotAllowedResponse,
+  normalizeApiError,
+} from '../lib/api/errors'
 
 describe('api error helpers', () => {
   it('keeps ApiHttpError unchanged', () => {
@@ -48,14 +53,26 @@ describe('api error helpers', () => {
     consoleError.mockRestore()
   })
 
-  it('returns 405 with Allow header', () => {
-    const { res, result } = createMockRes()
-    methodNotAllowed(res, ['GET', 'POST'])
-    expect(result().getHeader('Allow')).toBe('GET, POST')
-    expect(result().statusCode).toBe(405)
-    expect(result().payload).toEqual({
+  it('returns 405 with Allow header', async () => {
+    const response = methodNotAllowedResponse(['GET', 'POST'])
+    expect(response.headers.get('Allow')).toBe('GET, POST')
+    expect(response.status).toBe(405)
+    expect(await response.json()).toEqual({
       error: 'Method not allowed',
       code: 'METHOD_NOT_ALLOWED',
+    })
+  })
+
+  it('serializes thrown errors with their status, code and client-safe details', async () => {
+    const error = Object.assign(new ApiHttpError(400, 'bad cell', 'INVALID_REQUEST'), {
+      details: { cell: 2 },
+    })
+    const response = apiErrorResponse(error)
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      error: 'bad cell',
+      code: 'INVALID_REQUEST',
+      details: { cell: 2 },
     })
   })
 })

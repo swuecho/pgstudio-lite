@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/components/shared/navigation'
 import { createPortal } from 'react-dom'
 import type { CSSProperties } from 'react'
 import type { ColumnForeignKey, ColumnInfo } from './types'
@@ -83,9 +83,9 @@ export function ForeignKeyPopover({
         )}
       </div>
       <div className={styles.footer}>
-        <Link className="btn small" href={tableEditorHref}>
+        <AppLink className="btn small" href={tableEditorHref}>
           Open in Table Editor
-        </Link>
+        </AppLink>
         <button type="button" className="btn small" onClick={() => void copyValue()}>
           Copy value
         </button>

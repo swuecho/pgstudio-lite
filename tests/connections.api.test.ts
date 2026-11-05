@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { invokeApi as callApi, type ApiCall } from './helpers/invoke-api'
-import connectionsHandler from '../pages/api/connections'
+import connectionsHandler from '../server/api/connections'
 import { createConnection, getPublicConnections, updateConnection } from '../lib/db'
 
 vi.mock('../lib/db', () => ({

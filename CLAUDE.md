@@ -1,7 +1,7 @@
 # PG Studio Lite — agent notes
 
-Local PostgreSQL manager: Next.js (pages router) + React + TypeScript, shipped as a
-web app and as an Electron desktop app. Metadata (history, snippets, notebooks,
+Local PostgreSQL manager: Vite + React + TypeScript with TanStack Router, shipped as a
+web app and as an Electron desktop app. The API is framework-free (`server/`). Metadata (history, snippets, notebooks,
 connections) lives in a local SQLite file via `better-sqlite3` + Drizzle.
 
 [CONTRIBUTING.md](./CONTRIBUTING.md) is the full guide. This file is the short
@@ -13,6 +13,7 @@ list of things that are easy to get wrong.
 | -------------------------------- | ------------------------------------------------------------- |
 | `npm run check`                  | Prettier check, ESLint, typecheck, tests — what CI runs first |
 | `npm run dev`                    | Dev server on <http://localhost:4180>                         |
+| `npm run build` / `npm start`    | Production web build (`dist/`, `dist-server/`) and server     |
 | `npm test`                       | Vitest, single run (~4s)                                      |
 | `npm run test:watch`             | Vitest watch mode                                             |
 | `npm run test:integration`       | Real-Postgres tests; needs `PGSTUDIO_PG_INTEGRATION=1`        |
@@ -39,36 +40,41 @@ staged files. Run `npm run check` before opening a PR.
   checks that every journal entry has a snapshot matching its SQL.
 - **Open the meta DB lazily.** Call `getMetaDb()` / `getSqlite()` inside the
   function that queries. Never hoist the handle to a module-level `const`.
-- **Files under `pages/api/` are `.ts`, pages are `.tsx`.** The desktop build sets
-  `pageExtensions: ['tsx', 'jsx']` to exclude API routes from the static export.
-  Every API route also needs an entry in `electron/api/routes.ts`; `tests/desktop-routes.test.ts`
-  checks both.
+- **API routes are `defineRoute({ GET, POST, … })` files under `server/api/`**, path
+  mirroring the URL (`[table]` for a param). Handlers return data (sent as JSON) or a
+  `Response`, and throw for errors. Every route needs an entry in `server/routes.ts`;
+  `tests/api-routes.test.ts` checks it. Never import `next` — it is gone.
+- **Navigation goes through `@/components/shared/navigation`** (`AppLink`, `navigateTo`,
+  `useSearchRecord`). Search params are plain strings by design; don't switch the router
+  to TanStack's JSON search parsing, it would change every existing URL.
 - **`public/theme-bootstrap.js` is generated** from `lib/theme.ts`. After changing
   `themeBootstrapScript()`, run `node scripts/generate-theme-bootstrap.mjs`.
-- **API errors go through `lib/api/errors.ts`** (`badRequest`, `methodNotAllowed`,
-  `sendApiError`). Validate request bodies with Zod, following nearby routes.
+- **API errors go through `lib/api/errors.ts`**: throw `badRequest(...)` (or let Zod via
+  `parseWithSchema` throw); `runRoute` turns throws into the JSON error body. Use
+  `errorResponse(status, payload)` only for the legacy shapes nearby routes return.
 - **Imports:** use the `@/` alias for anything two or more directories up;
   single-level relative imports stay relative.
 
 ## Layout
 
-- `pages/` — routes and `pages/api/*` handlers. Page files stay thin; UI lives in `components/<area>/`.
+- `src/` — Vite entry, route tree (`router.tsx`), pages in `src/routes/`. Page files stay thin; UI lives in `components/<area>/`.
+- `server/` — `api/**` route files, `routes.ts` table, `router.ts` dispatcher (shared by web and Electron), `web.ts` (same-origin guard, Node adapter, scheduler start), `main.ts` (production server).
 - `components/` — `sql-editor`, `table-editor`, `notebook`, `activity`, `trace`, `settings`, `shared`.
 - `features/<area>/*.service.ts` — client-side fetch wrappers used by React Query hooks.
 - `lib/` — server logic. `lib/db/` is Postgres access; `lib/meta-db.ts` and `lib/notebook-db.ts` (barrel over `lib/notebook-db/`) are SQLite.
-- `electron/` — main process, `app://` protocol, and the API shim that dispatches `/api/*` to the same handlers.
+- `electron/` — main process and the `app://` protocol, which serves `out-desktop/` and calls `server/router.ts` for `/api/*`.
 - `tests/` — Vitest, flat directory, `*.test.ts(x)`. Each worker gets its own SQLite file under the OS tmpdir.
 
 ## Testing conventions
 
-- API route tests call `invokeApi(handler, { method, query, body })` from
+- API route tests call `invokeApi(route, { method, query, body })` from
   `tests/helpers/invoke-api.ts` and mock `lib/db` with `vi.mock`. Route params
   such as `[table]` go in `query`. See `tests/query.api.test.ts`.
 - UI tests use Testing Library + jsdom; `tests/setup.ts` loads jest-dom matchers.
 - `tests/pg.integration.test.ts` is skipped unless `PGSTUDIO_PG_INTEGRATION=1`;
   `npm run db:up && npm run test:integration:local` runs it locally.
-- If a change touches `pages/api/` or `electron/`, run `npm run desktop:build`
-  and `npx electron . --smoke --user-data-dir /tmp/pgstudio-smoke`; `next dev`
+- If a change touches `server/` or `electron/`, run `npm run desktop:build`
+  and `npx electron . --smoke --user-data-dir /tmp/pgstudio-smoke`; `npm run dev`
   does not exercise the desktop protocol handler.
 
 ## Working style

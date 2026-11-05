@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/components/shared/navigation'
 import { memo, useState } from 'react'
 import { useGridKeyboardNav } from '@/hooks/useGridKeyboardNav'
 import styles from './ResultsPanel.module.css'
@@ -184,7 +184,7 @@ export const SqlResultsPanel = memo(function SqlResultsPanel({
                     </div>
                   ) : null}
                   {statement.tableTarget && connectionName ? (
-                    <Link
+                    <AppLink
                       className={styles.resultOpenLink}
                       href={{
                         pathname: '/table-editor',
@@ -196,7 +196,7 @@ export const SqlResultsPanel = memo(function SqlResultsPanel({
                       }}
                     >
                       Open in Table Editor
-                    </Link>
+                    </AppLink>
                   ) : null}
                 </div>
                 {statement.truncated ? (
@@ -311,7 +311,7 @@ function ResultRowsTable({
                   {(() => {
                     const href = buildStatementTraceHref(connectionName, traceTarget, row)
                     return href ? (
-                      <Link
+                      <AppLink
                         className={styles.resultTraceLink}
                         href={href}
                         target="_blank"
@@ -319,7 +319,7 @@ function ResultRowsTable({
                         title="Trace foreign-key lineage from this row"
                       >
                         Trace
-                      </Link>
+                      </AppLink>
                     ) : null
                   })()}
                 </td>

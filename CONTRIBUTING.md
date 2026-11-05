@@ -12,7 +12,7 @@ Thanks for helping improve PG Studio Lite. This document covers how to set up a 
 
   This matters more than usual here: `better-sqlite3` is a native addon, and switching Node majors leaves you with binaries compiled for the wrong ABI. If tests fail with `NODE_MODULE_VERSION`, run `npm rebuild better-sqlite3`.
 
-  The desktop build needs the same addon compiled for Electron's ABI, which is a different one. It is kept out of `node_modules` on purpose — `npm run desktop:native` downloads it to `native/<platform>-<arch>/` and `lib/meta-db.ts` loads it from there — so packaging never disturbs the Node-ABI build that `npm test` and `next dev` use. Never run `electron-rebuild` or `electron-builder install-app-deps` against this repo's `node_modules`.
+  The desktop build needs the same addon compiled for Electron's ABI, which is a different one. It is kept out of `node_modules` on purpose — `npm run desktop:native` downloads it to `native/<platform>-<arch>/` and `lib/meta-db.ts` loads it from there — so packaging never disturbs the Node-ABI build that `npm test` and `npm run dev` use. Never run `electron-rebuild` or `electron-builder install-app-deps` against this repo's `node_modules`.
 
 - **npm**: this repo uses `package-lock.json`; install dependencies with `npm ci` in CI-like workflows, or `npm install` locally.
 - **PostgreSQL**: a reachable instance for the SQL editor, table editor, and notebook SQL cells. The app talks to Postgres over TCP using `pg`. If you have Docker, `npm run db:up` starts one that matches `.env.example` and CI (see [Local Postgres](#local-postgres-with-docker)).
@@ -49,7 +49,8 @@ Saved connections, history, snippets, and notebooks live in a **local SQLite** f
 
 ## Project layout (high level)
 
-- **`pages/`** — Next.js [Pages Router](https://nextjs.org/docs/pages) UI and `pages/api/*` route handlers.
+- **`src/`** — Vite entry (`main.tsx`), the [TanStack Router](https://tanstack.com/router) route tree (`router.tsx`), and one file per page under `src/routes/`.
+- **`server/`** — The framework-free API: route files under `server/api/**` (paths mirror URLs), the route table and dispatcher, and the Node adapter used by the dev and production web servers.
 - **`components/`** — React UI building blocks.
 - **`lib/`** — Server logic, DB access, API helpers, and shared utilities.
 - **`tests/`** — Vitest tests (unit and integration-style).
@@ -121,7 +122,7 @@ npm run build
 
 If Prettier reports issues, fix them with `npm run format`.
 
-If your change touches `pages/api/**` or `electron/**`, also verify the desktop build. `npm run dev` does not exercise the `app://` protocol handler or the API shim, so a regression there is invisible to the normal checks:
+If your change touches `server/**` or `electron/**`, also verify the desktop build. `npm run dev` does not exercise the `app://` protocol handler, so a regression there is invisible to the normal checks:
 
 ```bash
 npm run desktop:build
@@ -134,7 +135,8 @@ See [Desktop app](./README.md#desktop-app) for what the smoke run covers and how
 
 - Tests live under **`tests/`** and use **Vitest** with **jsdom** where UI is involved.
 - Prefer focused tests next to the behavior they protect; reuse existing helpers and fixtures if present.
-- API route tests use `invokeApi(handler, { method, query, body })` from [`tests/helpers/invoke-api.ts`](./tests/helpers/invoke-api.ts), with `lib/db` mocked via `vi.mock`. See `tests/query.api.test.ts` for the pattern.
+- API route tests use `invokeApi(route, { method, query, body })` from [`tests/helpers/invoke-api.ts`](./tests/helpers/invoke-api.ts), with `lib/db` mocked via `vi.mock`. It runs the route through the same `runRoute()` the router uses. See `tests/query.api.test.ts` for the pattern.
+- Components navigate through `@/components/shared/navigation` (`AppLink`, `navigateTo`, `useSearchRecord`), never the router package directly; tests mock that module instead of providing a router.
 - `npm run test:coverage` prints a summary and writes `coverage/index.html`. There are no thresholds; use it to find untested areas before touching them.
 - If a change touches API contracts or parsing, add or extend tests that cover success and validation/error paths where practical.
 

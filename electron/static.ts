@@ -58,25 +58,25 @@ function isFile(candidate: string) {
 }
 
 /**
- * Resolve a request path against the exported site.
+ * Resolve a request path against the Vite build.
  *
- * The export emits `activity.html` while in-app links point at `/activity`, so
- * the `.html` suffix fallback is what makes both deep links and client-side
- * navigation reload correctly.
+ * Real files (scripts, styles, the theme bootstrap) are served as-is. Any
+ * extensionless path is a client route (`/activity`, `/trace?…`), so it gets
+ * the single-page shell and the router renders it — that is what makes deep
+ * links, new windows and reloads work.
  */
 function resolveFile(pathname: string): string | null {
   const root = resolve(getRendererDir())
   const relative = decodeURIComponent(pathname).replace(/^\/+/, '')
-  const base = relative === '' ? 'index.html' : relative
 
-  const candidates = [base, `${base}.html`, join(base, 'index.html')]
-  for (const candidate of candidates) {
-    const full = resolve(root, candidate)
+  if (relative) {
+    const full = resolve(root, relative)
     // Path traversal guard: never serve outside the renderer directory.
-    if (full !== root && !full.startsWith(root + sep)) continue
-    if (isFile(full)) return full
+    if ((full === root || full.startsWith(root + sep)) && isFile(full)) return full
+    if (extname(relative)) return null
   }
-  return null
+  const shell = join(root, 'index.html')
+  return isFile(shell) ? shell : null
 }
 
 function respond(filePath: string, status: number) {
@@ -101,8 +101,5 @@ function respond(filePath: string, status: number) {
 export function serveStatic(pathname: string): Response {
   const found = resolveFile(pathname)
   if (found) return respond(found, 200)
-
-  const notFoundPage = resolve(getRendererDir(), '404.html')
-  if (isFile(notFoundPage)) return respond(notFoundPage, 404)
   return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
 }

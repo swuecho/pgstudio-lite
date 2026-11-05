@@ -1,5 +1,4 @@
-import dynamic from 'next/dynamic'
-import { loader } from '@monaco-editor/react'
+import MonacoEditor, { loader } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
 import { memo, useEffect, useRef, type MutableRefObject } from 'react'
 import { useLatestRef } from '@/hooks/useLatestRef'
@@ -9,8 +8,6 @@ import { createStatementTracker, type StatementTracker } from './statementTracke
 import { getCurrentTheme } from './utils'
 import { useActiveConnectionColor } from '@/components/shared/ConnectionColorContext'
 import type { SchemaTable } from './types'
-
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
 const QUERY_PERSIST_DELAY_MS = 400
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { invokeApi as callApi } from './helpers/invoke-api'
-import fkOptionsHandler from '../pages/api/tables/[table]/fk-options'
+import fkOptionsHandler from '../server/api/tables/[table]/fk-options'
 import * as db from '../lib/db'
 
 vi.mock('../lib/db', () => ({

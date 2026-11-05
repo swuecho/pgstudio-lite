@@ -2,8 +2,8 @@
 
 For development setup, checks, and pull request expectations, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-PG Studio Lite is a local PostgreSQL manager built with Next.js. It runs either as a
-web app (`npm run dev`) or as a macOS desktop app (see [Desktop app](#desktop-app)).
+PG Studio Lite is a local PostgreSQL manager built with Vite, React and TanStack
+Router. It runs either as a web app (`npm run dev`, or `npm run build && npm start`) or as a macOS desktop app (see [Desktop app](#desktop-app)).
 It includes:
 
 - SQL Editor
@@ -14,8 +14,8 @@ It includes:
 
 ## Stack
 
-- Next.js (pages router)
-- React + TypeScript
+- Vite + React + TypeScript
+- TanStack Router (client routes), with a framework-free API router in `server/`
 - Monaco editor
 - PostgreSQL via `pg`
 - SQLite metadata via `better-sqlite3` + Drizzle ORM
@@ -171,8 +171,8 @@ moment. The last 50 runs per notebook are kept.
 
 A notebook can also run on a schedule (5 minutes to 24 hours). Scheduled runs
 only happen while the app is running: the web build starts the ticker with the
-Next server (`instrumentation.ts`), the desktop app starts it in the Electron
-main process. A schedule whose time passed while the app was closed fires on the
+dev or production server (`startWebScheduler` in `server/web.ts`), the desktop
+app starts it in the Electron main process. A schedule whose time passed while the app was closed fires on the
 next tick after start-up. Set `PGSTUDIO_DISABLE_SCHEDULER=1` to keep the web
 server from running schedules (useful when several instances share a metadata
 DB).
@@ -218,12 +218,12 @@ tab builds everything and keeps the artifacts on the run without publishing.
 
 ### How it differs from the web build
 
-There is no HTTP server at runtime. `next build` runs with `output: 'export'`
-(`PGSTUDIO_TARGET=desktop`) to emit a static site into `out-desktop/`, and the
-Electron main process serves it from a custom `app://pgstudio` scheme. That same
-protocol handler dispatches `/api/*` straight to the existing `pages/api/**`
-handler functions through a `NextApiRequest`/`NextApiResponse` shim, so
-`lib/http.ts` and every `features/*/*.service.ts` call site are unchanged.
+There is no HTTP server at runtime. `vite build` (`PGSTUDIO_TARGET=desktop`)
+emits the renderer into `out-desktop/`, and the Electron main process serves it
+from a custom `app://pgstudio` scheme. That same protocol handler passes `/api/*`
+requests to `handleApiRequest()` in `server/router.ts` — the exact router the
+web server uses — so `lib/http.ts` and every `features/*/*.service.ts` call site
+are the same in both builds.
 
 Consequences worth knowing:
 
@@ -233,30 +233,30 @@ Consequences worth knowing:
   `navigator.clipboard`) and gives a stable origin for the eight modules that
   persist to `localStorage`. Changing it would silently discard every user's
   editor tabs, filters, and theme.
-- **API routes are excluded from the export** by `pageExtensions: ['tsx','jsx']`,
-  which works because every file under `pages/api/**` is `.ts` and every page is
-  `.tsx`. `tests/desktop-api-route-extensions.test.ts` enforces that.
-- **New API routes must be registered** in `electron/api/routes.ts`.
-  `tests/desktop-routes.test.ts` asserts a bijection with `pages/api/**`, so a
-  missing entry fails `npm test` rather than 404ing in a shipped build.
+- **Web-only request filtering stays web-only.** The cross-site guard in
+  `server/web.ts` wraps the router for the web server; `app://` is unreachable
+  from web content, so Electron calls the router directly.
+- **New API routes must be registered** in `server/routes.ts`.
+  `tests/api-routes.test.ts` asserts a bijection with `server/api/**`, so a
+  missing entry fails `npm test` rather than 404ing at runtime.
 
 ### Layout
 
-| Path                                   | Purpose                                               |
-| -------------------------------------- | ----------------------------------------------------- |
-| `electron/main.ts`                     | App lifecycle, window, security guards                |
-| `electron/protocol.ts`                 | `app://` scheme registration and request routing      |
-| `electron/static.ts`                   | Serves `out-desktop/`, with `.html` fallbacks and CSP |
-| `electron/monaco.ts`                   | Serves monaco's AMD bundle and workers                |
-| `electron/api/{routes,router,shim}.ts` | Dispatch to `pages/api` handlers                      |
-| `electron/smoke.ts`                    | `--smoke` self-check (see below)                      |
-| `lib/runtime-paths.ts`                 | Single source of runtime paths for both builds        |
+| Path                   | Purpose                                                     |
+| ---------------------- | ----------------------------------------------------------- |
+| `electron/main.ts`     | App lifecycle, window, security guards                      |
+| `electron/protocol.ts` | `app://` scheme registration and request routing            |
+| `electron/static.ts`   | Serves `out-desktop/`, SPA shell for client routes, and CSP |
+| `server/router.ts`     | `/api/*` dispatch shared with the web build (incl. Monaco)  |
+| `server/routes.ts`     | URL pattern → `server/api/**` route table                   |
+| `electron/smoke.ts`    | `--smoke` self-check (see below)                            |
+| `lib/runtime-paths.ts` | Single source of runtime paths for both builds              |
 
 ### Native SQLite
 
 `better-sqlite3` is the only native addon, and Electron's `NODE_MODULE_VERSION`
 differs from the Node the repo targets. Rather than rebuilding in place — which
-would break `npm test` and `next dev` — `npm run desktop:native` downloads an
+would break `npm test` and `npm run dev` — `npm run desktop:native` downloads an
 Electron-ABI prebuilt addon into `native/<platform>-<arch>/`, and
 `lib/meta-db.ts` loads it via better-sqlite3's `nativeBinding` option.
 `node_modules` stays at the Node ABI.
@@ -268,8 +268,8 @@ first.
 
 ### Verifying a desktop change
 
-`npm run dev` does not exercise the protocol handler or the API shim, so run
-this after touching `pages/api/**` or `electron/**`:
+`npm run dev` does not exercise the `app://` protocol handler, so run this after
+touching `server/**` or `electron/**`:
 
 ```bash
 npm run desktop:build
@@ -371,9 +371,9 @@ Metadata DB path issues:
 - Set `PGSTUDIO_META_DB_PATH` to a writable path
 - The directory will be created automatically if needed
 
-Stale Next build lock:
+Leftover Next.js files:
 
-- If `next build` reports a lock error, stop any existing build/dev process using this repo and remove `.next/lock`
+- The app used to be built with Next.js. A `.next/` folder or `next-env.d.ts` left in an old checkout is unused and safe to delete.
 
 ## Notes
 

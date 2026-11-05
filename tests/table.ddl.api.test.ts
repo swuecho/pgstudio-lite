@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { invokeApi as callApi } from './helpers/invoke-api'
-import ddlHandler from '../pages/api/tables/[table]/ddl'
+import ddlHandler from '../server/api/tables/[table]/ddl'
 import * as db from '../lib/db'
 
 vi.mock('../lib/db', () => ({

@@ -8,9 +8,9 @@ import {
 /**
  * Runs due notebook schedules while the app is up.
  *
- * There is deliberately no daemon: in web mode the Next server starts the
- * ticker from instrumentation.ts, in the desktop app the Electron main process
- * starts it after the metadata DB is ready. A schedule whose time passed while
+ * There is deliberately no daemon: in web mode the dev or production server
+ * starts the ticker (startWebScheduler in server/web.ts), in the desktop app
+ * the Electron main process starts it after the metadata DB is ready. A schedule whose time passed while
  * nothing was running fires on the first tick after start-up.
  *
  * State lives on globalThis so a dev server that evaluates this module in more

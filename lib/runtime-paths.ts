@@ -3,8 +3,8 @@ import { isAbsolute, join, resolve } from 'node:path'
 /**
  * Every runtime asset path the server-side code needs, resolved in one place.
  *
- * `process.cwd()` used to be baked into five call sites. That works for `next
- * dev`/`next start`/vitest, where cwd is the repo root, and breaks in a
+ * `process.cwd()` used to be baked into five call sites. That works for `npm run
+ * dev`/`npm start`/vitest, where cwd is the repo root, and breaks in a
  * packaged desktop app: cwd there is arbitrary (often `/`), the bundle is
  * read-only and code-signed, and `node_modules` may not exist at all.
  *

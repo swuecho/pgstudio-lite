@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { isForeignKeyJumpClick, jumpToReferencedRow } from '../components/table-editor/foreignKeyJump'
 
 const routerPush = vi.fn()
-vi.mock('next/router', () => ({
-  default: { push: (...args: unknown[]) => routerPush(...args) },
+vi.mock('@/components/shared/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/shared/navigation')>()),
+  navigateTo: (...args: unknown[]) => routerPush(...args),
 }))
 
 describe('foreignKeyJump', () => {

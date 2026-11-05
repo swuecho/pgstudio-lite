@@ -1,5 +1,5 @@
+import { createRequire } from 'node:module'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { getPgParserWasmDir } from './runtime-paths'
 
 type WasmModule = {
@@ -23,8 +23,14 @@ async function loadWasmModule(): Promise<WasmModule> {
       // Resolved lazily, not at module scope: the desktop main process
       // injects runtime paths at startup, after this module may be imported.
       const wasmDir = getPgParserWasmDir()
-      const libpgQueryUrl = pathToFileURL(path.join(wasmDir, 'libpg-query.js')).href
-      const initPgQuery = (await import(/* webpackIgnore: true */ libpgQueryUrl)).default as (options?: {
+      // libpg-query.js is an Emscripten UMD file that only exports through
+      // `module.exports`. Load it with a real CommonJS require: a dynamic
+      // import() is intercepted by Vite's SSR loader in dev, which evaluates
+      // the file as ESM and gets no export at all. createRequire is runtime
+      // Node, so it behaves the same under Vite, Vitest, the web server bundle
+      // and the Electron CJS bundle.
+      const requireFromWasmDir = createRequire(path.join(wasmDir, 'package.json'))
+      const initPgQuery = requireFromWasmDir(path.join(wasmDir, 'libpg-query.js')) as (options?: {
         locateFile?: (file: string) => string
       }) => Promise<WasmModule>
       wasmModule = await initPgQuery({

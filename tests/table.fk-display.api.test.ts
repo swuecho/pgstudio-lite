@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { invokeApi as callApi, type ApiCall } from './helpers/invoke-api'
-import fkDisplayHandler from '../pages/api/tables/[table]/fk-display'
+import fkDisplayHandler from '../server/api/tables/[table]/fk-display'
 import * as db from '../lib/db'
 
 vi.mock('../lib/db', () => ({

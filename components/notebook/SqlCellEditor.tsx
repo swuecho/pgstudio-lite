@@ -1,5 +1,4 @@
-import dynamic from 'next/dynamic'
-import { loader } from '@monaco-editor/react'
+import MonacoEditor, { loader } from '@monaco-editor/react'
 import type { editor as MonacoEditorNs } from 'monaco-editor'
 import { useEffect, useRef, useState } from 'react'
 import { getCurrentTheme } from '../sql-editor/utils'
@@ -24,8 +23,6 @@ export function estimateEditorHeight(value: string) {
   const lines = value.split('\n').length
   return clampEditorHeight(lines * ESTIMATED_LINE_HEIGHT + EDITOR_VERTICAL_PADDING)
 }
-
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
 if (typeof window !== 'undefined') {
   ;(window as any).MonacoEnvironment = {

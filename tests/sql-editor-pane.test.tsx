@@ -254,11 +254,6 @@ vi.mock('@monaco-editor/react', async () => {
   return { default: FakeMonacoEditor, loader: { config: vi.fn() } }
 })
 
-vi.mock('next/dynamic', async () => {
-  const monacoReact = await import('@monaco-editor/react')
-  return { default: () => monacoReact.default }
-})
-
 const DEBOUNCE_MS = 400
 const CTRL_ENTER = 2048 | 3
 
