@@ -5,6 +5,7 @@ import {
   groupTablesByKind,
   parseTableSearchQuery,
   partitionPinnedRecent,
+  rankSchemaFirst,
   sortTables,
   toTableKey,
   type TableListGroup,
@@ -70,7 +71,10 @@ export function useTableSidebarSections(input: {
     [parsedSearch, searchAllSchemas, selectedSchema, tables]
   )
 
-  const sortedTables = useMemo(() => sortTables(filteredTables, sortMode), [filteredTables, sortMode])
+  const sortedTables = useMemo(() => {
+    const sorted = sortTables(filteredTables, sortMode)
+    return searchAllSchemas ? rankSchemaFirst(sorted, selectedSchema) : sorted
+  }, [filteredTables, searchAllSchemas, selectedSchema, sortMode])
 
   const { pinned, recent, rest } = useMemo(
     () => partitionPinnedRecent(tables, pinnedKeys, recentKeys, sortedTables),

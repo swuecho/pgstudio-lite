@@ -112,6 +112,22 @@ export function sortTables(tables: TableInfo[], mode: TableListSortMode): TableI
   return copy.sort(compareTablesByName)
 }
 
+/**
+ * Moves tables in `schema` ahead of the rest, keeping each half's existing
+ * order. Used while a search spans all schemas so the selected schema's
+ * matches come first.
+ */
+export function rankSchemaFirst(tables: TableInfo[], schema: string): TableInfo[] {
+  if (!schema) return tables
+  const inSchema: TableInfo[] = []
+  const others: TableInfo[] = []
+  for (const table of tables) {
+    if (table.schema === schema) inSchema.push(table)
+    else others.push(table)
+  }
+  return [...inSchema, ...others]
+}
+
 export function groupTablesByKind(tables: TableInfo[]): TableListGroup[] {
   const buckets: TableListGroup[] = [
     { id: 'table', label: 'Tables', tables: [] },
