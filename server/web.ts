@@ -1,7 +1,13 @@
 import { extname, join } from 'node:path'
 import { Hono, type Context } from 'hono'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { CROSS_SITE_ERROR, isCrossSiteRequest } from '@/lib/api/same-origin'
+import {
+  CROSS_SITE_ERROR,
+  HOST_NOT_ALLOWED_ERROR,
+  isAllowedHost,
+  isCrossSiteRequest,
+  parseAllowedHosts,
+} from '@/lib/api/same-origin'
 import { handleApiRequest } from './router'
 
 /**
@@ -14,10 +20,14 @@ import { handleApiRequest } from './router'
  * handleApiRequest() directly, and web content cannot reach that scheme, so
  * the cross-site check has nothing to guard there.
  */
-export function createWebApp(options: { distDir?: string } = {}) {
+export function createWebApp(options: { distDir?: string; allowedHosts?: string[] } = {}) {
   const app = new Hono()
+  const allowedHosts = options.allowedHosts ?? parseAllowedHosts(process.env.PGSTUDIO_ALLOWED_HOSTS)
 
   const api = async (c: Context) => {
+    // Rejects DNS-rebinding requests, reads included; see isAllowedHost().
+    if (!isAllowedHost(c.req.header('host') ?? null, allowedHosts)) return c.json(HOST_NOT_ALLOWED_ERROR, 403)
+
     // Rejects state-changing requests from another site; see lib/api/same-origin.ts.
     const crossSite = isCrossSiteRequest({
       method: c.req.method,

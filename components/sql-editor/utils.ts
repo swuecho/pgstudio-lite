@@ -20,6 +20,11 @@ export function formatCell(value: unknown) {
   return String(value)
 }
 
+/** "42 rows", or "500+ rows" when the server stopped reading at the display limit. */
+export function formatStatementRowCount(statement: { rowCount: number; rowCountExact?: boolean }) {
+  return `${statement.rowCount}${statement.rowCountExact === false ? '+' : ''} rows`
+}
+
 export function getCurrentTheme() {
   if (typeof document === 'undefined') return 'light'
   return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'

@@ -6,6 +6,7 @@ import {
   normalizeValueForComparison,
   previewValue,
   toDateInputValue,
+  toDateTimeInputValue,
   truncate,
 } from '../components/table-editor/gridCellValues'
 
@@ -53,7 +54,35 @@ describe('gridCellValues', () => {
 
   it('converts stored dates to date-input values', () => {
     expect(toDateInputValue('2026-03-01T12:34:56.000Z')).toBe('2026-03-01')
+    expect(toDateInputValue('2024-01-15')).toBe('2024-01-15')
     expect(toDateInputValue('nope')).toBe('')
     expect(toDateInputValue(null)).toBe('')
+  })
+})
+
+describe('Postgres date/time text', () => {
+  it('reads the calendar day of a date without a time-zone shift', () => {
+    expect(toDateInputValue('2024-01-01')).toBe('2024-01-01')
+    expect(normalizeValueForComparison('2024-01-01', 'date')).toBe('2024-01-01')
+  })
+
+  it('keeps the wall-clock reading of a timestamp without time zone', () => {
+    expect(toDateTimeInputValue('2024-01-15 10:30:00')).toBe('2024-01-15T10:30')
+    expect(toDateTimeInputValue('2024-01-15 10:30:59.123456')).toBe('2024-01-15T10:30')
+    expect(normalizeValueForComparison('2024-01-15 10:30:00', 'timestamp without time zone')).toBe(
+      '2024-01-15T10:30'
+    )
+  })
+
+  it('shows a timestamptz in the browser time zone, whatever offset Postgres printed', () => {
+    const expected = toDateTimeInputValue('2024-01-15T02:30:00.000Z')
+    for (const text of ['2024-01-15 10:30:00+08', '2024-01-15 08:00:00.5+05:30', '2024-01-15 02:30:00+00']) {
+      expect(toDateTimeInputValue(text), text).toBe(expected)
+    }
+  })
+
+  it('returns nothing for values an input cannot show', () => {
+    expect(toDateTimeInputValue('infinity')).toBe('')
+    expect(toDateInputValue('-infinity')).toBe('')
   })
 })

@@ -28,6 +28,35 @@ describe('createWebApp() API', () => {
     expect(await response.json()).toMatchObject({ error: 'query is required' })
   })
 
+  it('rejects a DNS-rebinding request whose Host is not ours, GETs included', async () => {
+    const rebound = { 'Sec-Fetch-Site': 'same-origin', Origin: 'http://attacker.example:4180' }
+    for (const init of [blankQuery, { method: 'GET' }]) {
+      const response = await app.request('/api/query', {
+        ...init,
+        headers: { ...rebound, Host: 'attacker.example:4180' },
+      })
+      expect(response.status).toBe(403)
+      expect(await response.json()).toMatchObject({ code: 'HOST_NOT_ALLOWED' })
+    }
+  })
+
+  it('accepts a loopback Host', async () => {
+    const response = await app.request('/api/query', {
+      ...blankQuery,
+      headers: { 'Sec-Fetch-Site': 'same-origin', Host: '127.0.0.1:4180' },
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('accepts a Host listed in allowedHosts', async () => {
+    const lan = createWebApp({ allowedHosts: ['devbox.lan'] })
+    const response = await lan.request('/api/query', {
+      ...blankQuery,
+      headers: { 'Sec-Fetch-Site': 'same-origin', Host: 'devbox.lan:4180' },
+    })
+    expect(response.status).toBe(400)
+  })
+
   it('answers unknown API paths with the JSON 404', async () => {
     const response = await app.request('/api/nope')
     expect(response.status).toBe(404)

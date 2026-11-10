@@ -56,21 +56,53 @@ export function getEditorKind(dataType: string): GridEditorKind | null {
   return null
 }
 
+/**
+ * `YYYY-MM-DD` from a `date` value. The server sends Postgres's own text
+ * (lib/db/pool.ts), so the calendar day is read off directly, never through a
+ * `Date`, which would shift it by the time zone.
+ */
+function dateOnly(value: string): string | null {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:$|[ T])/.exec(value.trim())
+  if (match) return match[1]
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10)
+}
+
+// `2024-01-15 10:00:00.123456+05:30` as Postgres prints it, or an ISO string.
+const PG_TIMESTAMP =
+  /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(:\d{2}(?:\.\d+)?)?\s*(Z|[+-]\d{2}(?::?\d{2})?(?::?\d{2})?)?$/i
+
+/**
+ * `YYYY-MM-DDTHH:mm` for a `datetime-local` input. A `timestamp` (no offset)
+ * keeps its wall-clock reading; a `timestamptz` (with offset) is shown in the
+ * browser's time zone.
+ */
+function localDateTimeMinutes(value: string): string | null {
+  const match = PG_TIMESTAMP.exec(value.trim())
+  let parsed: Date
+  if (match) {
+    const [, date, hoursMinutes, seconds = '', zone] = match
+    if (!zone) return `${date}T${hoursMinutes}`
+    // `+08` / `+0530` → `+08:00` / `+05:30`; an offset with seconds (pre-1900 LMT) drops them.
+    const digits = zone.replace(/:/g, '')
+    const isoZone = zone.toUpperCase() === 'Z' ? 'Z' : `${digits.slice(0, 3)}:${digits.slice(3, 5) || '00'}`
+    parsed = new Date(`${date}T${hoursMinutes}${seconds.slice(0, 7)}${isoZone}`)
+  } else {
+    parsed = new Date(value)
+  }
+  if (Number.isNaN(parsed.getTime())) return null
+  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
 function normalizeDateValue(value: unknown) {
   if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-  const parsed = new Date(String(value))
-  if (Number.isNaN(parsed.getTime())) return String(value)
-  return parsed.toISOString().slice(0, 10)
+  return dateOnly(String(value)) ?? String(value)
 }
 
 function normalizeDateTimeValue(value: unknown) {
   if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value
-  const parsed = new Date(String(value))
-  if (Number.isNaN(parsed.getTime())) return String(value)
-  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 16)
+  return localDateTimeMinutes(String(value)) ?? String(value)
 }
 
 function normalizeJsonValue(value: unknown) {
@@ -105,16 +137,11 @@ export function normalizeValueForComparison(value: unknown, dataType: string) {
 /** Value for an `<input type="date">`, or '' when unparseable. */
 export function toDateInputValue(value: unknown) {
   if (typeof value !== 'string' || !value) return ''
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toISOString().slice(0, 10)
+  return dateOnly(value) ?? ''
 }
 
 /** Value for an `<input type="datetime-local">` in the browser's timezone. */
 export function toDateTimeInputValue(value: unknown) {
   if (typeof value !== 'string' || !value) return ''
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return ''
-  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 16)
+  return localDateTimeMinutes(value) ?? ''
 }

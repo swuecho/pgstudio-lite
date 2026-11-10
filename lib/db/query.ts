@@ -5,7 +5,8 @@ import { extractSelectOutputColumnNames, narrowResultToSelectList } from '../que
 import { queryHistory } from '@/drizzle/schema'
 import { getMetaDb } from '../meta-db'
 import { getConnectionByName } from './connections'
-import { getPool, type PoolClient } from './pool'
+import { getPool, POOL_STATEMENT_TIMEOUT_MS, type PoolClient } from './pool'
+import { queryCapped } from './capped-query'
 import { getPrimaryKeyColumns } from './introspect'
 
 const QUERY_STATEMENT_TIMEOUT_MS = 15_000
@@ -25,8 +26,19 @@ function getSqlParser(): Promise<void> {
   return sqlParserReady
 }
 
+type StatementOutcome = {
+  command: string
+  /** `null` when a capped read stopped early and the total is unknown. */
+  rowCount: number | null
+  fields: Array<{ name: string }>
+  rows: Record<string, unknown>[]
+}
+
 /**
- * Runs one statement. On a read-only connection it is wrapped in an explicit
+ * Runs one statement. With `maxRows`, it is read through a cursor that stops
+ * after that many rows (see queryCapped); otherwise the whole result is read.
+ *
+ * On a read-only connection it is wrapped in an explicit
  * `BEGIN READ ONLY` transaction so Postgres itself refuses writes, whatever the
  * statement does to session state first: `SET default_transaction_read_only`,
  * `SET SESSION CHARACTERISTICS`, `RESET ALL`, or `set_config()` only change
@@ -41,9 +53,17 @@ async function runStatement(
   client: PoolClient,
   statement: string,
   values: unknown[] | undefined,
-  readOnly: boolean
-) {
-  const execute = () => (values ? client.query({ text: statement, values }) : client.query(statement))
+  readOnly: boolean,
+  maxRows: number | null
+): Promise<StatementOutcome> {
+  const execute = async (): Promise<StatementOutcome> => {
+    if (maxRows !== null) {
+      const capped = await queryCapped(client, statement, values, maxRows)
+      return { ...capped, command: capped.command ?? 'SELECT' }
+    }
+    const result = values ? await client.query({ text: statement, values }) : await client.query(statement)
+    return { command: result.command, rowCount: result.rowCount, fields: result.fields, rows: result.rows }
+  }
   if (!readOnly) return execute()
 
   await client.query('begin read only')
@@ -99,6 +119,23 @@ function getSelectCteNames(node: Record<string, unknown>): Set<string> {
     if (name) names.add(name)
   }
   return names
+}
+
+/**
+ * True for a plain query (`SELECT`, `VALUES`, `TABLE`, set operations), the
+ * statements that can return far more rows than the editor shows and are safe
+ * to stop reading early. Data-modifying statements keep the full read so
+ * their command tag and row count stay exact.
+ */
+async function isSelectStatement(sql: string): Promise<boolean> {
+  await getSqlParser()
+  try {
+    const { stmts } = await parseSql(sql)
+    const root = stmts?.[0]?.stmt as Record<string, unknown> | undefined
+    return Boolean(root && 'SelectStmt' in root)
+  } catch {
+    return false
+  }
 }
 
 export async function extractPrimaryTableTarget(sql: string): Promise<QueryTableTarget | null> {
@@ -200,6 +237,8 @@ export async function executeQuery({
       const results: Array<{
         command: string
         rowCount: number
+        /** False when the read stopped early: `rowCount` is then only the rows shown. */
+        rowCountExact: boolean
         returnedRowCount: number
         truncated: boolean
         fields: string[]
@@ -213,8 +252,10 @@ export async function executeQuery({
       for (const statement of statements) {
         statementOffset = query.indexOf(statement, statementSearchOffset)
         statementSearchOffset = statementOffset + statement.length
-        const result = await runStatement(client, statement, values, connection.readOnly)
-        const pgFields = result.fields.map((f: { name: string }) => f.name)
+        // One row past the limit tells "exactly the limit" from "more".
+        const maxRows = (await isSelectStatement(statement)) ? resultLimit + 1 : null
+        const result = await runStatement(client, statement, values, connection.readOnly, maxRows)
+        const pgFields = result.fields.map((f) => f.name)
         const outputColumns = await extractSelectOutputColumnNames(statement)
         const rawRows = result.rows.length > resultLimit ? result.rows.slice(0, resultLimit) : result.rows
         const { fields, rows } = narrowResultToSelectList(
@@ -233,7 +274,8 @@ export async function executeQuery({
         }
         results.push({
           command: result.command,
-          rowCount: result.rowCount ?? 0,
+          rowCount: result.rowCount ?? rows.length,
+          rowCountExact: result.rowCount !== null,
           returnedRowCount: rows.length,
           truncated: result.rows.length > resultLimit,
           fields,
@@ -282,7 +324,7 @@ export async function executeQuery({
         }
       }
       try {
-        await client.query('set statement_timeout = default')
+        await client.query(`set statement_timeout = ${POOL_STATEMENT_TIMEOUT_MS}`)
       } catch {
         // Avoid masking original query errors during connection cleanup.
       }

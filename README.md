@@ -123,6 +123,14 @@ Advanced optional:
 - `PGSTUDIO_META_DB_PATH`
   Override the local SQLite metadata DB path.
   Default: `./data/history.db`
+- `HOST` / `PORT`
+  Address `npm start` listens on. Default: `127.0.0.1:4180`.
+- `PGSTUDIO_ALLOWED_HOSTS`
+  Comma-separated hostnames the web server answers `/api/*` for, beyond
+  `localhost`, `*.localhost` and IP addresses (which are always accepted).
+  Requests naming any other host get a 403, which blocks DNS-rebinding attacks.
+  Set it only if you reach the server by a machine or DNS name, e.g.
+  `HOST=0.0.0.0 PGSTUDIO_ALLOWED_HOSTS=devbox.lan npm start`; `*` turns the check off.
 
 ## Local Persistence
 
