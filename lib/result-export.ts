@@ -17,6 +17,13 @@ export function rowsToCsv(
   return [header, ...body].join('\n')
 }
 
+/**
+ * A UTF-8 byte-order mark for downloaded CSV files. Without it Excel reads the
+ * file in the system's legacy code page, garbling CJK and other non-Latin text.
+ * Clipboard copies (TSV) never carry it.
+ */
+export const CSV_BOM = '\uFEFF'
+
 export function rowsToTsv(
   fields: string[],
   rows: ResultExportRow[],

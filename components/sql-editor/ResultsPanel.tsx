@@ -10,13 +10,14 @@ import { canOpenCellViewer } from '@/lib/format-cell-content'
 import { copyableCellDisplayProps } from '@/lib/format-uuid-display'
 import {
   buildResultExportFilename,
+  CSV_BOM,
   downloadText,
   rowsToCsv,
   rowsToJson,
   rowsToTsv,
 } from '@/lib/result-export'
 import { buildTraceHref } from '@/lib/trace-url'
-import { formatExplainPlan } from './utils'
+import { formatExplainPlan, formatStatementRowCount } from './utils'
 import { ExplainPlanTree } from './ExplainPlanTree'
 import { ResultChart } from './ResultChart'
 import { copyTextToClipboard } from '@/lib/clipboard'
@@ -75,9 +76,10 @@ function exportStatement(
   if (statement.fields.length === 0 || statement.rows.length === 0) return
   const content =
     format === 'csv'
-      ? rowsToCsv(statement.fields, statement.rows, formatCell)
+      ? CSV_BOM + rowsToCsv(statement.fields, statement.rows, formatCell)
       : rowsToJson(statement.fields, statement.rows)
-  downloadText(buildResultExportFilename('query-result', format, statementIndex), content, `text/${format}`)
+  const mimeType = format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json'
+  downloadText(buildResultExportFilename('query-result', format, statementIndex), content, mimeType)
 }
 
 async function copyStatementTsv(statement: StatementResult, formatCell: (value: unknown) => string) {
@@ -132,10 +134,12 @@ export const SqlResultsPanel = memo(function SqlResultsPanel({
                 <div className={styles.resultBlockHead}>
                   <span>#{index + 1}</span>
                   <span>{statement.command}</span>
-                  <span>{statement.rowCount} rows</span>
+                  <span>{formatStatementRowCount(statement)}</span>
                   {statement.truncated ? (
                     <span className={styles.resultNotice}>
-                      Showing {statement.returnedRowCount} of {statement.rowCount}
+                      {statement.rowCountExact === false
+                        ? `Showing first ${statement.returnedRowCount}`
+                        : `Showing ${statement.returnedRowCount} of ${statement.rowCount}`}
                     </span>
                   ) : null}
                   {statement.fields.length > 0 &&

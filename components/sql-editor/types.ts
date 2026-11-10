@@ -7,6 +7,8 @@ export type QueryResult = {
   statements: Array<{
     command: string
     rowCount: number
+    /** False when the server stopped reading at the display limit; absent in older stored results. */
+    rowCountExact?: boolean
     returnedRowCount: number
     truncated: boolean
     fields: string[]

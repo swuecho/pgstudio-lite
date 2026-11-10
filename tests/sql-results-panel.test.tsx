@@ -1,6 +1,15 @@
 // @vitest-environment jsdom
-import { render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+
+const downloads = vi.hoisted(() => [] as Array<{ filename: string; content: string; mimeType: string }>)
+vi.mock('@/lib/result-export', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/result-export')>()),
+  downloadText: (filename: string, content: string, mimeType: string) => {
+    downloads.push({ filename, content, mimeType })
+  },
+}))
+
 import { SqlResultsPanel } from '@/components/sql-editor/ResultsPanel'
 import type { QueryResult } from '@/components/sql-editor/types'
 
@@ -42,5 +51,31 @@ describe('SqlResultsPanel', () => {
       Array.from(tr.querySelectorAll('td')).map((td) => td.textContent)
     )
     expect(rows).toEqual([['sycm-brand-mkt'], ['sycm-comments'], ['sycm-marketing']])
+  })
+
+  it('starts a CSV download with a UTF-8 byte-order mark so Excel reads non-Latin text', () => {
+    downloads.length = 0
+    render(
+      <SqlResultsPanel
+        result={makeResult(['name'], [{ name: '张三' }])}
+        formatCell={(value) => String(value ?? '')}
+        connectionName="localdev"
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
+
+    expect(downloads).toHaveLength(1)
+    expect(downloads[0].content).toBe('\uFEFFname\n张三')
+    expect(downloads[0].mimeType).toBe('text/csv;charset=utf-8')
+  })
+
+  it('marks a row count as a lower bound when the server stopped at the display limit', () => {
+    const result = makeResult(['n'], [{ n: 1 }])
+    result.statements[0] = { ...result.statements[0], rowCount: 1, rowCountExact: false, truncated: true }
+    render(<SqlResultsPanel result={result} formatCell={String} connectionName="localdev" />)
+
+    expect(screen.getByText('1+ rows')).toBeInTheDocument()
+    expect(screen.getByText('Showing first 1')).toBeInTheDocument()
   })
 })

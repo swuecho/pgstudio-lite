@@ -2,7 +2,7 @@ import { memo, useState } from 'react'
 import { useGridKeyboardNav } from '@/hooks/useGridKeyboardNav'
 import { ResultChart } from '../sql-editor/ResultChart'
 import { CopyableCellValue } from '../shared/CopyableCellValue'
-import { formatCell } from '../sql-editor/utils'
+import { formatCell, formatStatementRowCount } from '../sql-editor/utils'
 import { copyableCellDisplayProps } from '@/lib/format-uuid-display'
 import { getChartConfig, setChartConfig } from '@/lib/notebook-chart-config'
 import type { QueryResult } from '../sql-editor/types'
@@ -42,7 +42,7 @@ export const CellResult = memo(function CellResult({
           <div className="result-block-head">
             <span>#{index + 1}</span>
             <span>{statement.command}</span>
-            <span>{statement.rowCount} rows</span>
+            <span>{formatStatementRowCount(statement)}</span>
             {!hideToggle && statement.fields.length > 0 && statement.rows.length > 0 ? (
               <span className="result-view-toggle">
                 <button
