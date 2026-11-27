@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import { getRequestListener } from '@hono/node-server'
+import { loadEnvFiles } from './server/env-files'
 
 /**
  * Two build targets share this config:
@@ -23,6 +24,9 @@ function apiDevServer(): Plugin {
     name: 'pgstudio-api',
     apply: 'serve',
     configureServer(server: ViteDevServer) {
+      // PG_CONNECTION_* and friends for the API. Vite's own env loading only
+      // exposes VITE_* to the client and never touches process.env.
+      loadEnvFiles(server.config.root)
       const load = () => server.ssrLoadModule('/server/web.ts') as Promise<typeof import('./server/web')>
 
       // Same start-up behaviour as `npm start`: the notebook scheduler runs in

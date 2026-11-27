@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import { serve } from '@hono/node-server'
+import { loadEnvFiles } from './env-files'
 import { createWebApp, startWebScheduler } from './web'
 
 /**
@@ -10,6 +11,8 @@ import { createWebApp, startWebScheduler } from './web'
  * by scripts/build-web-server.mjs; run from the repo root so the cwd-relative
  * runtime paths in lib/runtime-paths.ts resolve (migrations, Monaco, wasm).
  */
+
+loadEnvFiles()
 
 const PORT = Number(process.env.PORT) || 4180
 const HOST = process.env.HOST || '127.0.0.1'

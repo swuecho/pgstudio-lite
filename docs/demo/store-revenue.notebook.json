@@ -1,0 +1,63 @@
+{
+  "spec_version": "1.0",
+  "title": "Store revenue",
+  "description": "Weekly revenue and top customers from the demo schema",
+  "metadata": {},
+  "cells": [
+    {
+      "id": "demo_md_intro",
+      "type": "markdown",
+      "position": 0,
+      "collapsed": false,
+      "content": "# Store revenue\nRevenue from the `demo` schema. Pick the order statuses to include; every SQL cell below re-runs with the new value."
+    },
+    {
+      "id": "demo_input_status",
+      "type": "widget",
+      "position": 1,
+      "collapsed": false,
+      "content": "",
+      "metadata": {
+        "widgetType": "radio-group",
+        "key": "statuses",
+        "label": "Order status",
+        "autoRun": true,
+        "required": true,
+        "value": "paid,shipped",
+        "defaultValue": "paid,shipped",
+        "options": [
+          {
+            "label": "Paid + shipped",
+            "value": "paid,shipped"
+          },
+          {
+            "label": "Paid only",
+            "value": "paid"
+          },
+          {
+            "label": "Shipped only",
+            "value": "shipped"
+          },
+          {
+            "label": "Everything",
+            "value": "pending,paid,shipped,cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "id": "demo_sql_weekly",
+      "type": "sql",
+      "position": 2,
+      "collapsed": false,
+      "content": "-- Weekly revenue for the selected statuses\nselect date_trunc('week', placed_at)::date as week,\n       sum(total)::numeric(12, 2) as revenue,\n       count(*) as orders\nfrom demo.order_totals\nwhere status::text = any(string_to_array({{statuses}}, ','))\ngroup by 1\norder by 1;"
+    },
+    {
+      "id": "demo_sql_top",
+      "type": "sql",
+      "position": 3,
+      "collapsed": false,
+      "content": "-- Top customers\nselect customer, count(*) as orders, sum(total)::numeric(12, 2) as revenue\nfrom demo.order_totals\nwhere status::text = any(string_to_array({{statuses}}, ','))\ngroup by customer\norder by revenue desc\nlimit 5;"
+    }
+  ]
+}

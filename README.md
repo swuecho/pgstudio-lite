@@ -12,6 +12,11 @@ It includes:
 - Notebook runs: run every cell on demand or on a schedule and keep a snapshot history
 - SQLite-backed local metadata for history, snippets, notebooks, and saved connections
 
+![SQL editor running a query against the demo database](docs/screenshots/sql-editor.png)
+
+New here? [Take the tour](#tour-the-demo-database): it starts a seeded demo
+database and walks through each screen.
+
 ## Stack
 
 - Vite + React + TypeScript
@@ -57,6 +62,125 @@ npm run dev
 - SQL Editor: [http://localhost:4180](http://localhost:4180)
 - Table Editor: [http://localhost:4180/table-editor](http://localhost:4180/table-editor)
 - Notebook: [http://localhost:4180/notebook](http://localhost:4180/notebook)
+
+## Tour: the demo database
+
+The repo ships a small shop database so you can try every screen without
+pointing the app at your own data. It lives in a `demo` schema: `customers`,
+`products`, `orders`, `order_items` (foreign keys, a uuid key, `jsonb`, a
+`text[]`, an enum) and an `order_totals` view, with about three months of
+generated orders. The seed SQL is in [docker/postgres/init](docker/postgres/init).
+
+### 1. Start the demo database and the app
+
+With Docker running:
+
+```bash
+npm run db:up
+```
+
+```bash
+PG_CONNECTION_STRING=postgres://postgres:postgres@localhost:5432/postgres PG_CONNECTION_NAME=demo npm run dev
+```
+
+If port 5432 is already in use (for example by a Postgres you installed
+locally), start the container on another port with `PGSTUDIO_PG_PORT=5433 npm run db:up`
+and use `localhost:5433` in the connection string.
+
+The connection string is only read on first boot, when the app has no saved
+connections. If you have run the app before, add the demo database from the
+UI instead: open <http://localhost:4180>, click the database icon in the top
+right (**Manage connections**), and add
+`postgres://postgres:postgres@localhost:5432/postgres` as a new connection.
+Tick **Set as default** to use it everywhere.
+
+`npm run db:reset` drops the container's data and re-seeds it from scratch;
+`npm run db:down` stops it.
+
+### 2. SQL editor
+
+Open <http://localhost:4180>. The **Explorer** on the left lists the `demo`
+tables and views; **Insert table** drops a name into the editor. Paste a
+query and press Cmd/Ctrl+Enter:
+
+```sql
+select order_id, customer, status, placed_at::date as placed_on, total
+from demo.order_totals
+where status in ('paid', 'shipped')
+order by placed_at desc;
+```
+
+Each tab keeps its own connection. Results can be exported as CSV, JSON or
+TSV, and **Explain** shows the query plan as a tree. **Snippets** saves
+queries you reuse, and **History** keeps everything you have run.
+
+Switch a result to **Chart** to plot it. Pick the chart type and the X and
+Y columns; this is weekly revenue split by status:
+
+```sql
+select date_trunc('week', placed_at)::date as week,
+       sum(total) filter (where status = 'paid')    as paid,
+       sum(total) filter (where status = 'shipped') as shipped
+from demo.order_totals
+group by 1
+order by 1;
+```
+
+![Weekly revenue plotted as a bar chart](docs/screenshots/sql-chart.png)
+
+### 3. Table editor
+
+**TB** in the left rail opens the table editor. Pick the `demo` schema and
+open `orders`. Cells are edited in place; **Add row**, **Filter**, **Sort**,
+**Columns** and **DDL** are in the toolbar. Foreign keys show the row they
+point to (here the customer's name next to `customer_id`); click the arrow
+to jump to that row.
+
+![The orders table in the table editor](docs/screenshots/table-editor.png)
+
+### 4. Trace a row
+
+**Trace** on any row follows its foreign keys in both directions. For order 2
+the trace shows the customer who placed it (parent) and its line items
+(children). **Re-root here** makes any related row the new centre.
+
+![Trace view of order 2 with its customer and line items](docs/screenshots/trace.png)
+
+### 5. Notebooks
+
+**NB** opens notebooks: Markdown, SQL and widget cells kept in one document.
+To load the demo notebook, click **Import**, paste the contents of
+[docs/demo/store-revenue.notebook.json](docs/demo/store-revenue.notebook.json),
+and import it.
+
+The **Order status** widget sets a `{{statuses}}` parameter that both SQL
+cells use, so picking a different option re-runs them. **Dashboard** hides
+the editors and shows only the controls and results, with charts where you
+switched a result to **Chart**. **Runs** runs every cell on demand or on a
+schedule and keeps snapshots (see
+[Notebook runs and schedules](#notebook-runs-and-schedules)).
+
+![The Store revenue notebook in dashboard view](docs/screenshots/notebook.png)
+
+### 6. Activity
+
+**AC** shows what the database is doing right now: sessions, locks and, if
+the `pg_stat_statements` extension is installed, statement statistics. It
+refreshes every 2 seconds. Blocked sessions are highlighted with the PID
+that blocks them, and **Cancel** / **Terminate** act on a session.
+**↗ editor** opens a session's query in a new SQL tab.
+
+To see a lock wait, run this in one `psql` session:
+
+```sql
+begin;
+update demo.orders set note = 'locked' where id = 2;
+```
+
+Then run `update demo.orders set note = 'x' where id = 2;` in a second one
+and watch it appear as blocked.
+
+![Activity page with one session blocked by another](docs/screenshots/activity.png)
 
 ## First Run Notes
 
