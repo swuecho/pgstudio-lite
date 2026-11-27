@@ -15,14 +15,16 @@ Requirements:
 - Set `"spec_version"` to `"1.0"`.
 - Include top-level fields: `spec_version`, `title`, `description`, `connection_name`, `metadata`, `cells`.
 - `cells` must be a non-empty array.
-- Allowed cell types: `markdown`, `input`, `sql`.
-- Every cell must have stable `id`, `type`, and `content`.
-- `input` cells must include `metadata` with:
-  - `key` matching `^[A-Za-z_][A-Za-z0-9_]*$`
-  - `label`, `inputType`, `value`
-- SQL cells should use template params in `{{param_key}}` form when input cells exist.
+- Allowed cell types: `markdown`, `sql`, `widget`.
+- Every cell must have stable `id`, `type`, and `content` (use `""` for widget cells).
+- `widget` cells must include `metadata` with a `widgetType`:
+  - Parameter widgets (`text`, `number`, `date`, `datetime-local`, `checkbox`, `select`, `range`, `multiselect`, `radio-group`) need `key` matching `^[A-Za-z_][A-Za-z0-9_]*$`, a `label`, and a `value`.
+  - `select`, `multiselect` and `radio-group` also need `options`: `[{ "label": "...", "value": "..." }]`.
+  - `date-range` needs `config.startKey` and `config.endKey`, and a `value` of `{ "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }`.
+  - Set `autoRun: true` so dependent SQL re-runs when the value changes.
+- SQL cells use widget values as `{{key}}`. They are bound as query parameters, so use them only where a value is allowed, and compare `multiselect` values with `= any({{key}})`.
 - SQL content must not be empty.
-- Keep cell IDs deterministic and readable (e.g., `md_intro`, `input_start_date`, `sql_main_query`).
+- Keep cell IDs deterministic and readable (e.g., `md_intro`, `widget_date_range`, `sql_main_query`).
 - Put cells in intended execution order.
 - Prefer safe, read-only SQL (`SELECT ...`) unless asked otherwise.
 
@@ -51,14 +53,16 @@ Requirements:
 - Set `"spec_version"` to `"1.0"`.
 - Include top-level fields: `spec_version`, `title`, `description`, `connection_name`, `metadata`, `cells`.
 - `cells` must be a non-empty array.
-- Allowed cell types: `markdown`, `input`, `sql`.
-- Every cell must have stable `id`, `type`, and `content`.
-- `input` cells must include `metadata` with:
-  - `key` matching `^[A-Za-z_][A-Za-z0-9_]*$`
-  - `label`, `inputType`, `value`
-- SQL cells should use template params in `{{param_key}}` form when input cells exist.
+- Allowed cell types: `markdown`, `sql`, `widget`.
+- Every cell must have stable `id`, `type`, and `content` (use `""` for widget cells).
+- `widget` cells must include `metadata` with a `widgetType`:
+  - Parameter widgets (`text`, `number`, `date`, `datetime-local`, `checkbox`, `select`, `range`, `multiselect`, `radio-group`) need `key` matching `^[A-Za-z_][A-Za-z0-9_]*$`, a `label`, and a `value`.
+  - `select`, `multiselect` and `radio-group` also need `options`: `[{ "label": "...", "value": "..." }]`.
+  - `date-range` needs `config.startKey` and `config.endKey`, and a `value` of `{ "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }`.
+  - Set `autoRun: true` so dependent SQL re-runs when the value changes.
+- SQL cells use widget values as `{{key}}`. They are bound as query parameters, so use them only where a value is allowed, and compare `multiselect` values with `= any({{key}})`.
 - SQL content must not be empty.
-- Keep cell IDs deterministic and readable (e.g., `md_intro`, `input_start_date`, `sql_main_query`).
+- Keep cell IDs deterministic and readable (e.g., `md_intro`, `widget_date_range`, `sql_main_query`).
 - Put cells in intended execution order.
 - Prefer safe, read-only SQL (`SELECT ...`) unless asked otherwise.
 
@@ -98,38 +102,49 @@ Return JSON only.
       "content": "# Sales Performance\nThis notebook summarizes recent sales metrics."
     },
     {
-      "id": "input_start_date",
-      "type": "input",
+      "id": "widget_date_range",
+      "type": "widget",
       "content": "",
       "metadata": {
-        "key": "start_date",
-        "label": "Start date",
-        "inputType": "date",
-        "value": "2026-01-01",
-        "required": true,
+        "widgetType": "date-range",
+        "label": "Order date",
+        "config": { "startKey": "start_date", "endKey": "end_date" },
+        "value": { "start": "2026-01-01", "end": "2026-06-30" },
         "autoRun": true
       }
     },
     {
       "id": "sql_monthly_revenue",
       "type": "sql",
-      "content": "select date_trunc('month', created_at) as month, sum(amount) as revenue\nfrom orders\nwhere created_at >= {{start_date}}\ngroup by 1\norder by 1;"
+      "content": "select date_trunc('month', created_at) as month, sum(amount) as revenue\nfrom orders\nwhere created_at >= {{start_date}} and created_at < {{end_date}}::date + 1\ngroup by 1\norder by 1;"
+    },
+    {
+      "id": "sql_top_customers",
+      "type": "sql",
+      "content": "select c.name, c.segment, sum(o.amount) as revenue\nfrom orders o\njoin customers c on c.id = o.customer_id\nwhere o.created_at >= {{start_date}} and o.created_at < {{end_date}}::date + 1\ngroup by c.name, c.segment\norder by revenue desc\nlimit 10;"
     }
   ]
 }
 ```
 
-## Import Command (API)
+## Import
 
-After generating JSON, send to:
+Paste the generated JSON into **Import** on the Notebook page, or send it to the API:
 
 - `POST /api/notebooks/import`
 
-Body:
+Body: the generated notebook under `notebook`.
 
 ```json
 {
   "mode": "create",
-  "notebook": { "...generated notebook JSON..." }
+  "notebook": {
+    "spec_version": "1.0",
+    "title": "Sales Performance",
+    "cells": [{ "id": "sql_main", "type": "sql", "content": "select 1;" }]
+  }
 }
 ```
+
+The full contract, including every widget type, is in
+[notebook-import-api-v1.md](./notebook-import-api-v1.md).

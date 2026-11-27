@@ -10,13 +10,20 @@ This document defines:
 - import/export/patch API contracts
 - validation and error response format
 
+The server's Zod schemas are the source of truth: `notebookSpecV1Schema` in
+[lib/notebook-spec.ts](../lib/notebook-spec.ts) and `notebookWidgetMetadataSchema` in
+[lib/notebook-widgets.ts](../lib/notebook-widgets.ts). The JSON Schema in
+[schemas/notebook.v1.schema.json](./schemas/notebook.v1.schema.json) mirrors them for external
+validators, and `tests/notebook-spec-docs.test.ts` checks that it, and every notebook example in
+this file, still matches the server.
+
 ## Scope
 
 ### In scope (v1)
 
 - notebook metadata: `title`, `description`, `connection_name`
-- ordered cells for `markdown`, `input`, and `sql`
-- widget metadata for input cells
+- ordered cells of type `markdown`, `sql`, and `widget`
+- widget metadata: parameter inputs, date ranges, run buttons and callouts
 - full notebook import
 - full notebook export
 - partial updates through JSON Patch
@@ -24,7 +31,7 @@ This document defines:
 ### Out of scope (v1)
 
 - LLM generation endpoint inside pgstudio
-- chart/table visualization cell types (can be added in v1.1+)
+- chart/table visualization cell types (chart settings live in the browser, not in the notebook)
 - collaborative editing/merge conflict resolution
 
 ## Canonical Notebook JSON
@@ -39,17 +46,17 @@ This document defines:
   "description": "Monthly revenue notebook with parameterized SQL",
   "connection_name": "local",
   "metadata": {},
-  "cells": []
+  "cells": [{ "id": "sql_main", "type": "sql", "content": "select 1;" }]
 }
 ```
 
 ### Field rules
 
 - `spec_version`: required, must be `"1.0"`.
-- `id`: optional on import; when present, server may ignore unless `upsert` mode is used.
+- `id`: optional. Used by `upsert` to find the notebook to update (see [Import](#1-import-notebook)); in `create` mode an `id` that already exists is a `409`.
 - `title`: required, non-empty string.
-- `description`: optional string, max 10k chars recommended.
-- `connection_name`: optional string; if omitted, server default connection is used.
+- `description`: optional string.
+- `connection_name`: optional; the name of a saved connection. If omitted, the default connection is used.
 - `metadata`: optional object for non-rendering metadata (owner, tags, source tool, etc).
 - `cells`: required array, min length `1`.
 
@@ -58,7 +65,7 @@ This document defines:
 ```json
 {
   "id": "stable-cell-id",
-  "type": "markdown | input | sql",
+  "type": "markdown | sql | widget",
   "position": 0,
   "collapsed": false,
   "content": "cell content",
@@ -68,48 +75,58 @@ This document defines:
 
 - `id`: required stable identifier string (agent-generated).
   Ids must be unique within the notebook. They are also the storage key across all notebooks, so an id already used by a _different_ notebook is replaced with a fresh UUID on import (any `targetCellIds` pointing at it are updated too) and the response lists the swap under `warnings`. Ids already in the target notebook are kept, so `replace`/`upsert`/patch leave unchanged cells, and their stored results, in place.
-- `type`: required enum: `markdown`, `input`, `sql`.
+- `type`: required enum: `markdown`, `sql`, `widget`.
 - `position`: optional integer >= 0. If missing, server derives order from array index.
 - `collapsed`: optional boolean, default `false`.
-- `content`: required string for all cell types.
-- `metadata`: required for `input`, optional otherwise.
+- `content`: required string for all cell types. It must not be blank for `sql` cells; use `""` for `widget` cells.
+- `metadata`: required for `widget` cells (see below), optional otherwise.
 
-### Input cell metadata
+### Widget cell metadata
 
-`type = "input"` requires:
+`type = "widget"` cells carry their settings in `metadata`, discriminated by `widgetType`:
 
 ```json
 {
+  "widgetType": "date",
   "key": "start_date",
-  "label": "Start Date",
-  "inputType": "date",
+  "label": "Start date",
   "value": "2026-01-01",
   "required": true,
-  "placeholder": "",
-  "options": [],
-  "min": 0,
-  "max": 100,
-  "step": 1,
   "autoRun": true
 }
 ```
 
-Field compatibility follows existing app behavior:
+| `widgetType`                     | Binds                           | Required fields                                                                                    | `value` type                   |
+| -------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `text`, `date`, `datetime-local` | `{{key}}`                       | `key`, `label`                                                                                     | string                         |
+| `number`, `range`                | `{{key}}`                       | `key`, `label`                                                                                     | number or `null`               |
+| `checkbox`                       | `{{key}}`                       | `key`, `label`                                                                                     | boolean                        |
+| `select`                         | `{{key}}`                       | `key`, `label`, and `options` (or `config.optionSource: "sql"` with `config.optionsQuery`)         | string                         |
+| `multiselect`                    | `{{key}}` (a text array)        | same as `select`                                                                                   | string array                   |
+| `radio-group`                    | `{{key}}`                       | `key`, `label`, `options`                                                                          | string                         |
+| `date-range`                     | `{{startKey}}` and `{{endKey}}` | `config.startKey`, `config.endKey` (different valid keys)                                          | `{ "start": "…", "end": "…" }` |
+| `actions`                        | nothing; a button               | `config.action`: `"run-all"`, or `"run-targets"` with a non-empty `config.targetCellIds`; no `key` | —                              |
+| `callout`                        | nothing; a static note          | a non-empty `config.title` or `config.body`; no `key`                                              | —                              |
 
-- `inputType`: `text | number | date | datetime-local | checkbox | select | range | multiselect`
-- `key` must match: `^[A-Za-z_][A-Za-z0-9_]*$`
-- `value` type depends on `inputType`
-- `options` used by `select` and `multiselect`
+Other fields, all optional: `defaultValue` (same type as `value`; used by **Reset**), `helpText`,
+`placeholder`, `required`, `hidden`, `disabled`, `autoRun` (re-run dependent SQL cells when the
+value changes), `min` / `max` / `step` (for `number` and `range`), and `config`.
+
+- `key` must match `^[A-Za-z_][A-Za-z0-9_]*$`.
+- `options` is an array of `{ "label": "…", "value": "…", "description"?: "…" }` with non-empty `label` and `value`.
 
 ### SQL parameter convention
 
-SQL cells should reference input keys using:
+SQL cells reference widget values with `{{key}}`:
 
 ```sql
 select * from events where event_date >= {{start_date}};
 ```
 
-`{{key}}` placeholders are resolved by current notebook execution logic.
+Placeholders are not pasted into the SQL text. Each distinct key becomes a bound parameter (`$1`,
+`$2`, …), so values are safe to use but must be used where a value is allowed: not as a table or
+column name. Postgres infers the parameter type from context; add a cast when it can't
+(`{{limit}}::int`). A `multiselect` binds a text array, so compare with `= any({{key}})`, not `=`.
 
 ## API Contract
 
@@ -137,13 +154,13 @@ Request:
         "content": "# Revenue Notebook\nThis notebook analyzes monthly revenue."
       },
       {
-        "id": "input_start_date",
-        "type": "input",
+        "id": "widget_start_date",
+        "type": "widget",
         "content": "",
         "metadata": {
+          "widgetType": "date",
           "key": "start_date",
           "label": "Start date",
-          "inputType": "date",
           "value": "2026-01-01",
           "required": true,
           "autoRun": true
@@ -162,9 +179,12 @@ Request:
 Request fields:
 
 - `mode`: `create | replace | upsert` (default `create`)
+  - `create`: always makes a new notebook with a new id.
+  - `replace`: overwrites the notebook named by `target_notebook_id` (required; `404` if it does not exist).
+  - `upsert`: updates the notebook named by `target_notebook_id`, else the one matching `notebook.id`, else creates one (using `notebook.id` if given).
 - `target_notebook_id`: required when `mode = replace`; optional when `mode = upsert`
 - `notebook`: canonical notebook JSON
-- `validate_only`: optional boolean; if true, do not persist
+- `validate_only`: optional boolean; if true, validate and return the normalized notebook without saving it
 
 Response:
 
@@ -189,7 +209,7 @@ Response:
 Behavior:
 
 - validates schema and business rules
-- normalizes cell order and input metadata
+- normalizes cell order and widget metadata
 - persists notebook + cells atomically
 - returns canonical persisted representation
 
@@ -222,7 +242,7 @@ Behavior:
 
 `POST /api/notebooks/:id/patch`
 
-Request (RFC 6902 JSON Patch):
+Request (a subset of RFC 6902 JSON Patch: `add`, `remove`, `replace`):
 
 ```json
 {
@@ -265,34 +285,32 @@ Behavior:
 
 ## Validation and Errors
 
-All validation failures should return `422`:
+Validation failures, including a wrong `spec_version`, return `422`:
 
 ```json
 {
   "error": "validation_failed",
   "details": [
     {
-      "code": "invalid_type",
-      "path": "/cells/2/metadata/key",
-      "message": "Expected key to match ^[A-Za-z_][A-Za-z0-9_]*$"
+      "code": "custom",
+      "path": "/notebook/cells/1/metadata/key",
+      "message": "key is required"
     }
   ]
 }
 ```
 
-Other standard errors:
+Other errors:
 
-- `400`: malformed payload / unsupported `spec_version`
-- `404`: notebook not found
-- `409`: replace/upsert conflict
+- `404`: notebook not found (`replace`, export, patch)
+- `409`: `create` with a `notebook.id` that already exists
 - `500`: unexpected server error
 
 ## Guardrails
 
 - Import does not execute SQL.
 - SQL remains subject to existing execution/read-only policies at run time.
-- Server sanitizes/normalizes dangerous or malformed metadata fields.
-- Server enforces maximum payload size and cell count limits.
+- Widget metadata is normalized on import; SQL values are always bound as parameters.
 
 ## Versioning
 
@@ -300,24 +318,19 @@ Other standard errors:
 - Backward-incompatible changes require new version (`2.0`).
 - `/export` always returns the canonical latest format for that notebook version.
 
-## Implementation Notes (mapping to current code)
+## Related endpoints
 
-- Existing notebook endpoints remain unchanged:
-  - `GET|POST|PATCH|DELETE /api/notebooks`
-  - `GET /api/notebooks/:id`
-  - `POST|PATCH|DELETE /api/notebooks/:id/cells`
-- New endpoints to add:
-  - `POST /api/notebooks/import`
-  - `GET /api/notebooks/:id/export`
-  - `POST /api/notebooks/:id/patch`
-- Internally, import can compose existing notebook and cell write functions, but should run in one transaction and return canonical output.
+- `GET|POST|PATCH|DELETE /api/notebooks`
+- `GET /api/notebooks/:id`
+- `POST|PATCH|DELETE /api/notebooks/:id/cells`
+- `POST /api/notebooks/:id/run-cell`
 
 ## JSON Schema Reference
 
-Canonical schema draft for validators is in:
+Schema for external validators (draft-07):
 
-- `docs/schemas/notebook.v1.schema.json`
+- [docs/schemas/notebook.v1.schema.json](./schemas/notebook.v1.schema.json)
 
-LLM authoring prompt template is in:
+LLM authoring prompt template:
 
-- `docs/notebook-llm-prompt-template.md`
+- [docs/notebook-llm-prompt-template.md](./notebook-llm-prompt-template.md)

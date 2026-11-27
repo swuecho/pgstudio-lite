@@ -469,21 +469,52 @@ npm run desktop:dist
 
 ## API Routes
 
-- `GET /api/connections`
-- `POST|PATCH|DELETE /api/connections`
-- `POST /api/query`
-- `GET /api/history?limit=300`
-- `DELETE /api/history`
+Every route is listed in [server/routes.ts](server/routes.ts), and the handler for
+`/api/a/b` is `server/api/a/b.ts` (`[table]`, `[id]` for a path parameter). Routes
+that touch Postgres take the connection name from a `connectionName` query
+parameter or body field, and fall back to the default connection.
+
+Connections, queries and local data:
+
+- `GET|POST|PATCH|DELETE /api/connections`: saved connections
+- `POST /api/query`: run SQL
+- `GET|DELETE /api/history`: query history (`?limit=300`)
 - `GET|POST|PATCH|DELETE /api/snippets`
+- `GET /api/meta-backup`: download a snapshot of the local metadata DB (includes connection strings)
+
+Schema and tables:
+
+- `GET /api/schema`, `GET /api/schema/columns`: tables, views and columns for the SQL explorer and autocomplete
+- `GET /api/tables`: tables and views in a schema
+- `GET|POST|PATCH|DELETE /api/tables/[table]/rows`: read, insert, update and delete rows
+- `GET /api/tables/[table]/ddl`: `CREATE` statement
+- `POST /api/tables/[table]/import`: bulk insert rows (up to 50,000 per request)
+- `GET /api/tables/[table]/fk-options`, `POST /api/tables/[table]/lookup-row`: foreign-key pickers
+- `GET|PATCH /api/tables/[table]/fk-display`: which columns label a referenced row
+- `GET|POST|PATCH|DELETE /api/table-editor-views`: saved table editor views
+- `POST /api/trace/row`: a row and its foreign-key parents and children
+
+Notebooks (the import, export and patch format is in
+[docs/notebook-import-api-v1.md](docs/notebook-import-api-v1.md)):
+
 - `GET|POST|PATCH|DELETE /api/notebooks`
 - `GET /api/notebooks/[id]`
-- `POST /api/notebooks/import`
-- `GET /api/notebooks/[id]/export`
-- `POST /api/notebooks/[id]/patch`
 - `POST|PATCH|DELETE /api/notebooks/[id]/cells`
 - `POST /api/notebooks/[id]/run-cell`
-- `GET /api/tables`
-- `GET|POST|PATCH|DELETE /api/tables/[table]/rows` (POST inserts a row)
+- `POST /api/notebooks/[id]/option-query`: options for a SQL-backed select widget
+- `POST /api/notebooks/import`, `GET /api/notebooks/[id]/export`, `POST /api/notebooks/[id]/patch`
+- `GET|POST /api/notebooks/[id]/runs`, `GET|DELETE /api/notebooks/[id]/runs/[runId]`: run history
+- `GET|PUT /api/notebooks/[id]/schedule`
+- `POST /api/notebooks/generate-tour`: create a notebook that tours a schema
+
+Activity:
+
+- `GET /api/activity/sessions`, `GET /api/activity/locks`
+- `GET|POST /api/activity/statements`: `pg_stat_statements` results; POST installs or resets the extension
+- `POST /api/activity/control`: cancel or terminate a backend
+
+Static files for the editor, served by [server/monaco.ts](server/monaco.ts):
+
 - `GET /api/monaco/*`
 - `GET /api/vs/*`
 
