@@ -73,19 +73,24 @@ generated orders. The seed SQL is in [docker/postgres/init](docker/postgres/init
 
 ### 1. Start the demo database and the app
 
-With Docker running:
+With Docker running, start the database, copy the example env file (its
+defaults already point at the container) and start the app:
 
 ```bash
 npm run db:up
 ```
 
 ```bash
-PG_CONNECTION_STRING=postgres://postgres:postgres@localhost:5432/postgres PG_CONNECTION_NAME=demo npm run dev
+cp .env.example .env.local
+```
+
+```bash
+npm run dev
 ```
 
 If port 5432 is already in use (for example by a Postgres you installed
 locally), start the container on another port with `PGSTUDIO_PG_PORT=5433 npm run db:up`
-and use `localhost:5433` in the connection string.
+and change the port in `PG_CONNECTION_STRING` in `.env.local` to `5433`.
 
 The connection string is only read on first boot, when the app has no saved
 connections. If you have run the app before, add the demo database from the
@@ -208,6 +213,10 @@ To apply changes after first boot, choose one:
    The next start will re-read `.env.local` and seed fresh.
 
 ## Environment Variables
+
+The web server (`npm run dev` and `npm start`) reads `.env.local`, then `.env`,
+from the directory it starts in. A variable set in the shell wins over both
+files, and `.env.local` wins over `.env`. The desktop app reads neither.
 
 Required:
 
